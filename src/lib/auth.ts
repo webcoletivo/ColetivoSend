@@ -222,7 +222,9 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  debug: process.env.NODE_ENV === 'development',
+  // Force debug in production to troubleshoot 503
+  debug: true,
+  trustHost: true,
 }
 
 // Helper to get current user in server components
