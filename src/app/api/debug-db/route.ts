@@ -88,7 +88,8 @@ export async function GET() {
       prisma_check: prismaResult,
       env_check: {
         DATABASE_URL_DEFINED: !!process.env.DATABASE_URL,
-        NEXTAUTH_URL: process.env.NEXTAUTH_URL
+        NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+        ALL_KEYS: Object.keys(process.env).sort().filter(k => k.indexOf('KEY') === -1 && k.indexOf('SECRET') === -1 && k.indexOf('TOKEN') === -1) // Safe dump of keys
       }
     }, { status: 200 })
 
