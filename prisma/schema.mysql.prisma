@@ -1,0 +1,106 @@
+// This is your Prisma schema file for MySQL (Hostinger Default)
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String     @id @default(cuid())
+  name              String
+  email             String     @unique
+  image             String?    @db.Text // Long URL support
+  passwordHash      String?
+  googleOauthId     String?    @unique
+  emailVerifiedAt   DateTime?
+  twoFactorEnabled  Boolean    @default(false)
+  twoFactorSecret   String?    // Encrypted TOTP secret
+  recoveryCodes     String?    @db.Text // Encrypted JSON array
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  transfers         Transfer[]
+  sessions          Session[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Transfer {
+  id              String   @id @default(cuid())
+  ownerUserId     String?
+  owner           User?    @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+  senderName      String
+  recipientEmail  String?
+  message         String?  @db.Text
+  shareToken      String   @unique // Random, non-sequential token for sharing
+  expiresAt       DateTime
+  passwordHash    String?  // Optional password protection (logged users only)
+  status          String   @default("active") // active, expired, revoked, deleted
+  cleanupStatus   String   @default("pending") // pending, done, failed
+  viewCount       Int      @default(0)
+  downloadCount   Int      @default(0)
+  totalSizeBytes  Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  files           File[]
+
+  @@index([shareToken])
+  @@index([ownerUserId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model File {
+  id           String   @id @default(cuid())
+  transferId   String
+  transfer     Transfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  storageKey   String   @db.Text // Path in storage
+  checksum     String?  // MD5 or SHA256 for integrity
+  createdAt    DateTime @default(now())
+  deletedAt    DateTime?
+
+  @@index([transferId])
+}
+
+model GuestUsage {
+  id                    String   @id @default(cuid())
+  fingerprintHash       String   @unique
+  ipHash                String
+  transfersCreatedCount Int      @default(0)
+  firstSeenAt           DateTime @default(now())
+  lastSeenAt            DateTime @updatedAt
+
+  @@index([fingerprintHash])
+  @@index([ipHash])
+}
+
+model RateLimit {
+  id        String   @id @default(cuid())
+  key       String   @unique // IP or user ID + action
+  count     Int      @default(0)
+  expiresAt DateTime
+
+  @@index([key])
+  @@index([expiresAt])
+}
