@@ -49,7 +49,10 @@ function getIconColor(mimeType: string) {
   return 'text-primary-500 bg-primary-100'
 }
 
-export default function DownloadPage({ params }: { params: { token: string } }) {
+import { useParams } from 'next/navigation'
+
+export default function DownloadPage() {
+  const params = useParams<{ token: string }>()
   const [status, setStatus] = useState<PageStatus>('loading')
   const [transfer, setTransfer] = useState<TransferData | null>(null)
   const [password, setPassword] = useState('')

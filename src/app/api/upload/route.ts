@@ -58,8 +58,4 @@ export async function POST(request: NextRequest) {
 }
 
 // Increase body size limit for uploads
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-}
+// Config removed (deprecated in Next.js 15+)

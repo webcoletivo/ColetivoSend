@@ -4,8 +4,9 @@ import { verifyPassword } from '@/lib/security'
 
 export async function POST(
   request: NextRequest, 
-  { params }: { params: { token: string } }
+  props: { params: Promise<{ token: string }> }
 ) {
+  const params = await props.params;
   try {
     const { password } = await request.json()
     const { token } = params

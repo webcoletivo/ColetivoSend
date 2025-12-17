@@ -7,8 +7,9 @@ import { isExpired } from '@/lib/utils'
 // Get transfer info by share token (public)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  props: { params: Promise<{ token: string }> }
 ) {
+  const params = await props.params;
   try {
     const transfer = await prisma.transfer.findUnique({
       where: { shareToken: params.token },
@@ -91,8 +92,9 @@ export async function GET(
 // Verify password and get download URLs
 export async function POST(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  props: { params: Promise<{ token: string }> }
 ) {
+  const params = await props.params;
   try {
     const body = await request.json()
     const { password, fileId } = body

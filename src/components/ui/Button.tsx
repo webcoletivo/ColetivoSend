@@ -1,13 +1,14 @@
 'use client'
 
 import React from 'react'
-import { motion } from 'framer-motion'
+import { motion, HTMLMotionProps } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends HTMLMotionProps<"button"> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
   size?: 'sm' | 'md' | 'lg'
+  // loading prop is already used by some libraries/elements ? no, but just in case
   loading?: boolean
   icon?: React.ReactNode
   iconPosition?: 'left' | 'right'

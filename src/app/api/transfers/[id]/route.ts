@@ -6,8 +6,9 @@ import { prisma } from '@/lib/db'
 // DELETE - Soft delete (or permanent if requested)
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   try {
     const session = await getServerSession(authOptions)
     
@@ -43,8 +44,9 @@ export async function DELETE(
 // PATCH - Update status (Revoke)
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   try {
     const session = await getServerSession(authOptions)
     

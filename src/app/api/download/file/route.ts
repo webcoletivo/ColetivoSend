@@ -36,7 +36,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Return file with appropriate headers
-    const response = new NextResponse(fileBuffer)
+    // Cast buffer to BodyInit to satisfy Next.js 16 types
+    const response = new NextResponse(fileBuffer as unknown as BodyInit)
     
     response.headers.set('Content-Type', 'application/octet-stream')
     response.headers.set('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`)

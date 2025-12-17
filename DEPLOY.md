@@ -107,3 +107,32 @@ Como você está usando VPS, os arquivos de upload serão salvos na pasta local 
 Certifique-se de que essa pasta tem permissão de escrita e que seu disco tem espaço suficiente.
 
 Não é necessário configurar S3 se o espaço em disco da VPS for suficiente.
+
+## 5. Configuração para Arquivos Grandes (1GB+)
+
+Para permitir o upload de arquivos grandes (até 1GB ou mais), você precisa ajustar o proxy reverso (Nginx) que geralmente fica na frente da aplicação.
+
+### Se usando EasyPanel / Docker
+1.  Vá nas configurações do serviço.
+2.  Procure por "Proxy Config" ou "Nginx Config".
+3.  Adicione/ajuste a seguinte linha:
+    ```nginx
+    client_max_body_size 1024M;
+    ```
+4.  Aumente também o timeout se necessário:
+    ```nginx
+    proxy_read_timeout 300;
+    proxy_connect_timeout 300;
+    proxy_send_timeout 300;
+    ```
+
+### Se usando Nginx direto (VPS limpa)
+1.  Edite o arquivo de configuração (ex: `/etc/nginx/sites-available/default`).
+2.  Dentro do bloco `server { ... }` ou `location / { ... }`, adicione:
+    ```nginx
+    client_max_body_size 1024M;
+    ```
+3.  Reinicie o Nginx: `sudo service nginx restart`.
+
+> **Nota:** O código da aplicação já está configurado para aceitar até 1GB (via variáveis de ambiente). O bloqueio geralmente ocorre "antes" de chegar no Node.js (no Nginx/Cloudflare).
+
