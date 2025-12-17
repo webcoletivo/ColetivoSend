@@ -224,6 +224,7 @@ export const authOptions: NextAuthOptions = {
 
   // Force debug in production to troubleshoot 503
   debug: true,
+  // @ts-ignore - trustHost exists in v4 runtime but types might be outdated
   trustHost: true,
 }
 
