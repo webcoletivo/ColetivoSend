@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -14,13 +14,13 @@ model User {
   id                String     @id @default(cuid())
   name              String
   email             String     @unique
-  image             String?    // Avatar URL
+  image             String?    @db.Text // Avatar URL (can be long)
   passwordHash      String?
   googleOauthId     String?    @unique
   emailVerifiedAt   DateTime?
   twoFactorEnabled  Boolean    @default(false)
-  twoFactorSecret   String?    // Encrypted TOTP secret
-  recoveryCodes     String?    // Encrypted JSON array of recovery codes
+  twoFactorSecret   String?    @db.Text // Encrypted TOTP secret
+  recoveryCodes     String?    @db.Text // Encrypted JSON array of recovery codes
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
   transfers         Transfer[]
@@ -49,7 +49,7 @@ model Transfer {
   owner           User?    @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
   senderName      String
   recipientEmail  String?
-  message         String?
+  message         String?  @db.Text
   shareToken      String   @unique // Random, non-sequential token for sharing
   expiresAt       DateTime
   passwordHash    String?  // Optional password protection (logged users only)
@@ -75,7 +75,7 @@ model File {
   originalName String
   mimeType     String
   sizeBytes    Int
-  storageKey   String   // Path in storage (S3 key or local path)
+  storageKey   String   @db.Text // Path in storage (S3 key or local path)
   checksum     String?  // MD5 or SHA256 for integrity
   createdAt    DateTime @default(now())
   deletedAt    DateTime?
