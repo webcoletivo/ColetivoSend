@@ -45,21 +45,23 @@ export async function GET() {
   
   try {
     // 1. Parse DB URL
+    // 1. HARDCODED CHECK (To bypass missing env var)
+    const hardcodedHost = '127.0.0.1'; 
+    const hardcodedPort = 3306;
+    
+    // Check 1: Raw TCP to 127.0.0.1
+    const tcpLocal = await checkTcpConnection(hardcodedHost, hardcodedPort);
+    
+    // Check 2: Raw TCP to Docker Gateway (common fallback)
+    const tcpDocker = await checkTcpConnection('172.17.0.1', 3306, 1000);
+
     if (process.env.DATABASE_URL) {
+       // ... processing env url ...
        try {
-         // Handle protocols like mysql:// and postgres://
          const url = new URL(process.env.DATABASE_URL.replace('mysql://', 'http://').replace('postgres://', 'http://'))
-         dbUrlInfo = {
-            host: url.hostname,
-            port: url.port ? parseInt(url.port) : 3306,
-            protocol: process.env.DATABASE_URL.split(':')[0]
-         }
-         
-         // 2. Perform Raw TCP Check
-        tcpResult = await checkTcpConnection(dbUrlInfo.host, dbUrlInfo.port)
-       } catch (e) {
-         dbUrlInfo = { error: 'Could not parse URL' }
-       }
+         dbUrlInfo = { host: url.hostname, port: url.port ? parseInt(url.port) : 3306 }
+         tcpResult = await checkTcpConnection(dbUrlInfo.host, dbUrlInfo.port)
+       } catch (e) {}
     }
 
     // 3. Test Prisma (Race against timeout)
@@ -79,11 +81,11 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      status: 'diagnosis_complete',
+      status: 'diagnosis_complete_V2',
       network_check: {
-        target_host: dbUrlInfo?.host,
-        target_port: dbUrlInfo?.port,
-        raw_connection: tcpResult,
+        raw_connection_env: tcpResult,
+        raw_connection_localhost: tcpLocal,
+        raw_connection_docker: tcpDocker,
       },
       prisma_check: prismaResult,
       env_check: {
