@@ -111,18 +111,11 @@ export const authOptions: NextAuthOptions = {
       // Handle Google OAuth sign in
       if (account?.provider === 'google') {
         try {
-          console.log('Google signIn callback - account:', { 
-            provider: account.provider, 
-            providerAccountId: account.providerAccountId,
-            email: user.email 
-          })
-
           const existingUser = await prisma.user.findUnique({
             where: { email: user.email! },
           })
 
           if (existingUser) {
-            console.log('Existing user found:', { id: existingUser.id, googleLinked: !!existingUser.googleOauthId })
             // Link Google account if not already linked
             if (!existingUser.googleOauthId) {
               await prisma.user.update({
@@ -132,11 +125,9 @@ export const authOptions: NextAuthOptions = {
                   emailVerifiedAt: existingUser.emailVerifiedAt || new Date(),
                 },
               })
-              console.log('Linked Google account to existing user')
             }
             user.id = existingUser.id
           } else {
-            console.log('Creating new Google user')
             // Create new user with Google
             const newUser = await prisma.user.create({
               data: {
@@ -147,13 +138,11 @@ export const authOptions: NextAuthOptions = {
                 image: user.image,
               },
             })
-            console.log('New user created:', { id: newUser.id })
             user.id = newUser.id
           }
         } catch (error) {
-          console.error('CRITICAL: Error in Google signIn callback:', error)
-          // Rethrowing instead of just returning false might show more info in logs
-          throw error 
+          console.error('Error in Google signIn callback:', error)
+          return false
         }
       }
       return true
@@ -201,7 +190,6 @@ export const authOptions: NextAuthOptions = {
     },
 
     async redirect({ url, baseUrl }) {
-      console.log('Redirect callback:', { url, baseUrl })
       // Allows relative callback URLs
       if (url.startsWith("/")) return `${baseUrl}${url}`
       // Allows callback URLs on the same origin
@@ -212,16 +200,15 @@ export const authOptions: NextAuthOptions = {
 
   events: {
     async signIn({ user }) {
-      console.log(`SignIn event success for: ${user.email}`)
+      // Basic logging for security audit
     },
     async signOut() {
-      console.log('SignOut event')
+      // Basic logging for security audit
     },
   },
 
   secret: process.env.NEXTAUTH_SECRET,
-  debug: true,
-  // Ensure we trust the host on Vercel
+  debug: false,
   // @ts-ignore
   trustHost: true,
 }

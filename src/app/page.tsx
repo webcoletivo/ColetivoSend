@@ -51,34 +51,58 @@ export default function HomePage() {
   const handleContinue = async () => {
     if (files.length === 0) return
 
-    // Simulate upload process
     setUploadStatus('uploading')
+    setUploadProgress(0)
     
-    // Simulate progress
-    for (let i = 0; i <= 100; i += 10) {
-      await new Promise(r => setTimeout(r, 200))
-      setUploadProgress(i)
+    const uploadedFilesData = []
+    const batchId = `transfer_${uuidv4().slice(0, 8)}`
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const item = files[i]
+        const formData = new FormData()
+        formData.append('file', item.file)
+        formData.append('transferId', batchId)
+
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || `Erro no upload de ${item.file.name}`)
+        }
+
+        const result = await response.json()
+        uploadedFilesData.push({
+          id: item.id,
+          name: item.file.name,
+          size: item.file.size,
+          type: item.file.type,
+          storageKey: result.storageKey,
+        })
+
+        setUploadProgress(Math.round(((i + 1) / files.length) * 100))
+      }
+
+      setUploadStatus('processing')
+      await new Promise(r => setTimeout(r, 500))
+      setUploadStatus('complete')
+
+      // Store REAL uploaded file data (with storage keys) in sessionStorage
+      sessionStorage.setItem('uploadedFiles', JSON.stringify(uploadedFilesData))
+      
+      setTimeout(() => {
+        window.location.href = '/send'
+      }, 500)
+
+    } catch (error: any) {
+      console.error('Upload failed:', error)
+      setUploadStatus('error')
+      // You might want to show a toast or alert here
+      alert(error.message || 'Falha no upload dos arquivos. Tente novamente.')
     }
-
-    setUploadStatus('processing')
-    await new Promise(r => setTimeout(r, 1000))
-    
-    setUploadStatus('complete')
-
-    // Store files in sessionStorage and redirect to send page
-    sessionStorage.setItem('uploadedFiles', JSON.stringify(
-      files.map(f => ({
-        id: f.id,
-        name: f.file.name,
-        size: f.file.size,
-        type: f.file.type,
-      }))
-    ))
-    
-    // Redirect to configuration page
-    setTimeout(() => {
-      window.location.href = '/send'
-    }, 500)
   }
 
   const canContinue = files.length > 0 && totalSize <= maxSize && totalCount <= maxFiles

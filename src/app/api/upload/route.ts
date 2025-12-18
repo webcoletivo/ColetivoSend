@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { uploadFile } from '@/lib/storage'
 import { GUEST_LIMITS, USER_LIMITS } from '@/lib/security'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File
-    const transferId = formData.get('transferId') as string
+    const transferId = (formData.get('transferId') as string) || `batch_${Date.now()}`
 
     if (!file) {
       return NextResponse.json(
@@ -15,15 +17,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!transferId) {
-      return NextResponse.json(
-        { error: 'ID do transfer não fornecido' },
-        { status: 400 }
-      )
-    }
-
-    // TODO: Get user from session to apply correct limits
-    const isLoggedIn = false
+    // Get user from session to apply correct limits
+    const session = await getServerSession(authOptions)
+    const isLoggedIn = !!session?.user
     const maxSizeBytes = (isLoggedIn ? USER_LIMITS.maxSizeMB : GUEST_LIMITS.maxSizeMB) * 1024 * 1024
 
     // Validate file size
