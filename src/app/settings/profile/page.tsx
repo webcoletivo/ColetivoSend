@@ -19,6 +19,7 @@ import { AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/Toast'
+import { UserAvatar } from '@/components/UserAvatar'
 
 export default function ProfilePage() {
   const { data: session, update } = useSession()
@@ -217,34 +218,28 @@ export default function ProfilePage() {
         <h2 className="text-lg font-semibold text-surface-900 mb-6">Informações do Perfil</h2>
 
         <div className="space-y-6">
-          {/* Avatar */}
-          <div className="flex items-center gap-6">
-            <div className="relative">
-              {avatarPreview ? (
-                <img
-                  src={avatarPreview}
-                  alt="Avatar"
-                  className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+            {/* Avatar */}
+            <div className="flex items-center gap-6">
+              <div className="relative">
+                <UserAvatar 
+                  user={{ name, image: avatarPreview }} 
+                  size="xl" 
+                  className="w-24 h-24 text-2xl border-4 border-white shadow-lg"
                 />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-2xl font-bold border-4 border-white shadow-lg">
-                  {initials}
-                </div>
-              )}
-              <button
-                onClick={handleAvatarClick}
-                className="absolute bottom-0 right-0 w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-primary-600 transition-colors"
-              >
-                <Camera className="w-4 h-4" />
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarChange}
-                className="hidden"
-              />
-            </div>
+                <button
+                  onClick={handleAvatarClick}
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-primary-600 transition-colors z-10"
+                >
+                  <Camera className="w-4 h-4" />
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                />
+              </div>
             <div>
               <p className="font-medium text-surface-900">Foto de perfil</p>
               <p className="text-sm text-surface-500 mb-2">JPG, PNG ou GIF. Máx 2MB.</p>

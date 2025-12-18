@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useSession, signOut } from 'next-auth/react'
+import { UserAvatar } from '@/components/UserAvatar'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   User, 
@@ -74,32 +75,20 @@ export function UserMenu() {
       {/* Trigger button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 p-1.5 pr-3 rounded-full bg-white/80 backdrop-blur-sm border border-surface-200 hover:border-surface-300 transition-all shadow-sm hover:shadow"
+        className="flex items-center gap-3 p-1.5 rounded-xl hover:bg-surface-100 transition-colors group"
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
-        {/* Avatar */}
-        {user.image ? (
-          <img
-            src={user.image}
-            alt={user.name || 'Avatar'}
-            className="w-8 h-8 rounded-full object-cover"
-          />
-        ) : (
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-sm font-medium">
-            {initials}
-          </div>
-        )}
-        
-        {/* Name */}
-        <span className="text-sm font-medium text-surface-700 hidden sm:block max-w-[120px] truncate">
-          {user.name || user.email}
-        </span>
-        
-        {/* Chevron */}
-        <ChevronDown 
-          className={`w-4 h-4 text-surface-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
-        />
+        <UserAvatar user={user} size="md" priority />
+        <div className="hidden md:block text-left mr-1">
+          <p className="text-sm font-semibold text-surface-900 group-hover:text-primary-600 transition-colors">
+            {user.name}
+          </p>
+          <p className="text-xs text-surface-500 truncate max-w-[120px]">
+            {user.email}
+          </p>
+        </div>
+        <ChevronDown className={`w-4 h-4 text-surface-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {/* Dropdown menu */}

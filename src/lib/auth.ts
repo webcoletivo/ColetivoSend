@@ -4,6 +4,7 @@ import GoogleProvider from 'next-auth/providers/google'
 import { prisma } from './db'
 import { authenticator } from 'otplib'
 import { decryptSecret } from './security'
+import { generatePresignedDownloadUrl } from './storage'
 import bcrypt from 'bcryptjs'
 
 
@@ -191,7 +192,18 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string
         session.user.email = token.email as string
         session.user.name = token.name as string
-        session.user.image = token.picture as string | undefined
+        
+        // Sign avatar URL if it's an S3 key
+        let imageUrl = token.picture as string | undefined
+        if (imageUrl && imageUrl.startsWith('avatars/')) {
+           try {
+             // Generate a short-lived URL (e.g. 1 hour) for the session
+             imageUrl = await generatePresignedDownloadUrl(imageUrl, 'avatar.png', 3600)
+           } catch (e) {
+             console.error('Failed to sign avatar URL in session:', e)
+           }
+        }
+        session.user.image = imageUrl
       }
       return session
     },
