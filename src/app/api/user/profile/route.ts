@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { writeFile, unlink, mkdir } from 'fs/promises'
-import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
+
+import { generatePresignedDownloadUrl, uploadBufferToS3, deleteS3Object } from '@/lib/storage'
+import { extname } from 'path'
 
 export async function GET() {
   try {
@@ -31,11 +32,18 @@ export async function GET() {
       return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
     }
 
+    // If image is an S3 key (starts with "avatars/"), generate presigned URL
+    let imageUrl = user.image
+    if (user.image && user.image.startsWith('avatars/')) {
+       // Generate presigned URL valid for 1 hour
+       imageUrl = await generatePresignedDownloadUrl(user.image, 'avatar.png', 3600)
+    }
+
     return NextResponse.json({
       id: user.id,
       name: user.name,
       email: user.email,
-      image: user.image,
+      image: imageUrl,
       hasPassword: !!user.passwordHash,
       twoFactorEnabled: user.twoFactorEnabled,
       createdAt: user.createdAt,
@@ -69,32 +77,26 @@ export async function PUT(request: Request) {
     if (avatar) {
       const bytes = await avatar.arrayBuffer()
       const buffer = Buffer.from(bytes)
+      const ext = extname(avatar.name) || '.jpg' // Fallback extension
+      const filename = `avatars/${session.user.id}-${uuidv4()}${ext}`
+      
+      // Upload to S3
+      await uploadBufferToS3(buffer, filename, avatar.type || 'image/jpeg')
 
-      // Create uploads directory if it doesn't exist
-      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'avatars')
-      await mkdir(uploadsDir, { recursive: true })
+      // Set new image key
+      updateData.image = filename
 
-      // Generate unique filename
-      const ext = avatar.name.split('.').pop()
-      const filename = `${uuidv4()}.${ext}`
-      const filepath = join(uploadsDir, filename)
-
-      // Write file
-      await writeFile(filepath, buffer)
-
-      // Set image URL
-      updateData.image = `/uploads/avatars/${filename}`
-
-      // Delete old avatar if exists
+      // Delete old avatar if it exists and is an S3 key
       const currentUser = await prisma.user.findUnique({
         where: { id: session.user.id },
         select: { image: true },
       })
-      if (currentUser?.image?.startsWith('/uploads/')) {
+      
+      if (currentUser?.image?.startsWith('avatars/')) {
         try {
-          await unlink(join(process.cwd(), 'public', currentUser.image))
+          await deleteS3Object(currentUser.image)
         } catch (e) {
-          // Ignore if file doesn't exist
+          console.warn('Failed to delete old avatar:', e)
         }
       }
     } else if (removeAvatar) {
@@ -103,11 +105,12 @@ export async function PUT(request: Request) {
         where: { id: session.user.id },
         select: { image: true },
       })
-      if (currentUser?.image?.startsWith('/uploads/')) {
+      
+      if (currentUser?.image?.startsWith('avatars/')) {
         try {
-          await unlink(join(process.cwd(), 'public', currentUser.image))
+          await deleteS3Object(currentUser.image)
         } catch (e) {
-          // Ignore if file doesn't exist
+           console.warn('Failed to delete old avatar:', e)
         }
       }
       updateData.image = null
@@ -123,8 +126,17 @@ export async function PUT(request: Request) {
         image: true,
       },
     })
+    
+    // Return signed URL for the new image so UI updates immediately
+    let returnedImage = updatedUser.image
+    if (updatedUser.image && updatedUser.image.startsWith('avatars/')) {
+       returnedImage = await generatePresignedDownloadUrl(updatedUser.image, 'avatar.png', 3600)
+    }
 
-    return NextResponse.json(updatedUser)
+    return NextResponse.json({
+        ...updatedUser,
+        image: returnedImage
+    })
   } catch (error) {
     console.error('Error updating profile:', error)
     return NextResponse.json({ error: 'Erro ao atualizar perfil' }, { status: 500 })

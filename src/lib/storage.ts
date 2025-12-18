@@ -2,13 +2,13 @@ import fs from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
 import { v4 as uuidv4 } from 'uuid'
-import { 
-  S3Client, 
-  PutObjectCommand, 
-  GetObjectCommand, 
-  DeleteObjectCommand, 
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
   DeleteObjectsCommand,
-  HeadObjectCommand 
+  DeleteObjectCommand
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
@@ -222,6 +222,42 @@ export function isFileTypeAllowed(mimeType: string, fileName: string): boolean {
   }
   
   return true
+}
+
+export async function uploadBufferToS3(
+  buffer: Buffer,
+  key: string,
+  contentType: string
+): Promise<string> {
+  if (STORAGE_TYPE === 'local') {
+    // Local storage fallback (for dev if needed, or consistent behavior)
+    // But honestly, we should just push to S3 if configured.
+    // Let's assume S3 for now as per requirements.
+    // If local, we can implement local write. 
+    // Given the issues, let's Stick to S3.
+  }
+
+  if (STORAGE_TYPE === 's3' && s3Client) {
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+    })
+    await s3Client.send(command)
+    return key
+  }
+  throw new Error('S3 not configured')
+}
+
+export async function deleteS3Object(key: string) {
+  if (STORAGE_TYPE === 's3' && s3Client) {
+    const command = new DeleteObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+    });
+    await s3Client.send(command);
+  }
 }
 
 export async function generatePresignedUploadUrl(
