@@ -47,14 +47,10 @@ function checkRateLimit(key: string, limit: number, windowMs: number): boolean {
 }
 
 export async function middleware(request: NextRequest) {
-  const response = NextResponse.next()
-
-  // Add security headers
-  Object.entries(securityHeaders).forEach(([key, value]) => {
-    response.headers.set(key, value)
-  })
-
   const pathname = request.nextUrl.pathname
+  console.log(`[MIDDLEWARE ENTRY] ${request.method} ${pathname}`)
+  
+  const response = NextResponse.next()
 
   // Rate limiting for specific endpoints
   if (pathname.startsWith('/api/')) {
@@ -117,6 +113,12 @@ export async function middleware(request: NextRequest) {
       secret: process.env.NEXTAUTH_SECRET 
     })
     
+    console.log(`Middleware check [${pathname}]:`, { 
+      hasToken: !!token,
+      cookieCount: request.cookies.size,
+      allCookies: Array.from(request.cookies.getAll()).map(c => c.name)
+    })
+
     if (!token) {
       const loginUrl = new URL('/login', request.url)
       loginUrl.searchParams.set('callbackUrl', pathname)

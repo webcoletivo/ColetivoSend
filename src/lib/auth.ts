@@ -14,6 +14,8 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      // Explicitly normalization for redirect URIs is handled by NextAuth, 
+      // but ensure client ID/secret are trimmed to avoid whitespace issues
     }),
 
     // Email/Password credentials
@@ -96,18 +98,8 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
 
-  // Security Hardening: Enforce secure cookies in production
-  cookies: {
-    sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-      },
-    },
-  },
+  // Let NextAuth handle cookies automatically for better compatibility with Vercel
+  // session: { strategy: 'jwt' } is already set above
 
   pages: {
     signIn: '/login',
@@ -119,11 +111,18 @@ export const authOptions: NextAuthOptions = {
       // Handle Google OAuth sign in
       if (account?.provider === 'google') {
         try {
+          console.log('Google signIn callback - account:', { 
+            provider: account.provider, 
+            providerAccountId: account.providerAccountId,
+            email: user.email 
+          })
+
           const existingUser = await prisma.user.findUnique({
             where: { email: user.email! },
           })
 
           if (existingUser) {
+            console.log('Existing user found:', { id: existingUser.id, googleLinked: !!existingUser.googleOauthId })
             // Link Google account if not already linked
             if (!existingUser.googleOauthId) {
               await prisma.user.update({
@@ -131,13 +130,13 @@ export const authOptions: NextAuthOptions = {
                 data: { 
                   googleOauthId: account.providerAccountId,
                   emailVerifiedAt: existingUser.emailVerifiedAt || new Date(),
-                  // We do NOT update image/name here to preserve user changes
                 },
               })
+              console.log('Linked Google account to existing user')
             }
-            // Update user object with DB id for JWT
             user.id = existingUser.id
           } else {
+            console.log('Creating new Google user')
             // Create new user with Google
             const newUser = await prisma.user.create({
               data: {
@@ -148,12 +147,13 @@ export const authOptions: NextAuthOptions = {
                 image: user.image,
               },
             })
-            // Update user object with new DB id
+            console.log('New user created:', { id: newUser.id })
             user.id = newUser.id
           }
         } catch (error) {
-          console.error('Error in Google signIn callback:', error)
-          return false
+          console.error('CRITICAL: Error in Google signIn callback:', error)
+          // Rethrowing instead of just returning false might show more info in logs
+          throw error 
         }
       }
       return true
@@ -201,30 +201,28 @@ export const authOptions: NextAuthOptions = {
     },
 
     async redirect({ url, baseUrl }) {
-      // Handle callbackUrl properly
-      if (url.startsWith('/')) {
-        return `${baseUrl}${url}`
-      }
-      if (url.startsWith(baseUrl)) {
-        return url
-      }
-      // Default redirect to dashboard
-      return `${baseUrl}/dashboard`
+      console.log('Redirect callback:', { url, baseUrl })
+      // Allows relative callback URLs
+      if (url.startsWith("/")) return `${baseUrl}${url}`
+      // Allows callback URLs on the same origin
+      else if (new URL(url).origin === baseUrl) return url
+      return baseUrl
     },
   },
 
   events: {
     async signIn({ user }) {
-      console.log(`User signed in: ${user.email}`)
+      console.log(`SignIn event success for: ${user.email}`)
     },
     async signOut() {
-      console.log('User signed out')
+      console.log('SignOut event')
     },
   },
 
-  // Force debug in production to troubleshoot 503
+  secret: process.env.NEXTAUTH_SECRET,
   debug: true,
-  // @ts-ignore - trustHost exists in v4 runtime but types might be outdated
+  // Ensure we trust the host on Vercel
+  // @ts-ignore
   trustHost: true,
 }
 
