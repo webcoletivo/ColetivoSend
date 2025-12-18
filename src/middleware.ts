@@ -11,7 +11,7 @@ const securityHeaders = {
   'X-XSS-Protection': '1; mode=block',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://lh3.googleusercontent.com https://*.amazonaws.com; font-src 'self'; connect-src 'self' https://*.amazonaws.com; frame-ancestors 'none';",
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.amazonaws.com; font-src 'self'; connect-src 'self' https://*.amazonaws.com; frame-ancestors 'none';",
   'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload'
 }
 
@@ -64,17 +64,25 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    // Transfer creation
-    if (pathname === '/api/transfer' && request.method === 'POST') {
-      const key = getRateLimitKey(request, 'transfer')
-      if (!checkRateLimit(key, 20, 60 * 1000)) {
-        return withSecurityHeaders(NextResponse.json({ error: 'Limite de criação atingido.' }, { status: 429 }), request)
+    // 2FA Verification
+    if (pathname.includes('/api/auth/2fa/verify')) {
+      const key = getRateLimitKey(request, '2fa')
+      if (!checkRateLimit(key, 5, 60 * 1000)) { // 5 attempts per minute
+        return withSecurityHeaders(NextResponse.json({ error: 'Muitas tentativas. Aguarde.' }, { status: 429 }), request)
       }
     }
 
-    // Password verification
+    // Transfer creation (Finalize & Presign)
+    if (pathname === '/api/transfers/finalize' || pathname === '/api/upload/presign') {
+      const key = getRateLimitKey(request, 'transfer_create')
+      if (!checkRateLimit(key, 10, 60 * 1000)) {
+        return withSecurityHeaders(NextResponse.json({ error: 'Limite de criação rápida atingido.' }, { status: 429 }), request)
+      }
+    }
+
+    // Password verification (for downloads)
     if (pathname.includes('/transfer/') && pathname.includes('/password') && request.method === 'POST') {
-      const key = getRateLimitKey(request, 'password')
+      const key = getRateLimitKey(request, 'password_verify')
       if (!checkRateLimit(key, 5, 60 * 1000)) {
         return withSecurityHeaders(NextResponse.json({ error: 'Muitas tentativas de senha.' }, { status: 429 }), request)
       }

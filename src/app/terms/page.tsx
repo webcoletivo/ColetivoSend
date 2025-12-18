@@ -127,14 +127,20 @@ export default function TermsPage() {
               <section id="limits" className="mb-12">
                 <h2>4. Planos e Limites</h2>
                 <p>
-                  O ColetivoSend oferece modalidades de uso gratuita e autenticada, com limites distintos:
+                  O ColetivoSend opera atualmente sob um plano gratuito unificado (Free), que exige cadastro para garantir a segurança e a rastreabilidade dos envios. Os limites são:
                 </p>
                 <ul>
                   <li>
-                    <strong>Visitantes (Guest):</strong> Limite de 50MB por envio e 10 arquivos. Retenção básica.
+                    <strong>Tamanho por Transferência:</strong> Até 10 GB (total dos arquivos).
                   </li>
                   <li>
-                    <strong>Usuários Cadastrados:</strong> Limite de 1GB por envio, 20 arquivos, proteção por senha e gerenciamento de validade.
+                    <strong>Quantidade de Arquivos:</strong> Ilimitada, respeitando o tamanho total máximo.
+                  </li>
+                  <li>
+                    <strong>Limite de Uso:</strong> Máximo de 15 transferências a cada 30 dias (rolling window).
+                  </li>
+                  <li>
+                    <strong>Validade dos Links:</strong> Opções de 1 hora, 1 dia, 7 dias ou 30 dias.
                   </li>
                 </ul>
                 <p>Reservamo-nos o direito de alterar estes limites a qualquer momento, visando a sustentabilidade do serviço.</p>

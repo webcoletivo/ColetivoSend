@@ -104,7 +104,7 @@ export default function SignupPage() {
           <p className="text-sm font-medium text-primary-700 mb-2">Com uma conta você pode:</p>
           <ul className="space-y-1 text-sm text-primary-600">
             <li className="flex items-center gap-2">
-              <Check className="w-4 h-4" /> Enviar até 1GB por transfer
+              <Check className="w-4 h-4" /> Enviar até 10GB por transfer
             </li>
             <li className="flex items-center gap-2">
               <Check className="w-4 h-4" /> Escolher a expiração do link

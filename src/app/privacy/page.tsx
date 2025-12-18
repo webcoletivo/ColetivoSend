@@ -129,13 +129,13 @@ export default function PrivacyPage() {
               <section id="storage" className="mb-12">
                 <h2>4. Armazenamento e Retenção</h2>
                 <p>
-                  Os arquivos enviados são armazenados temporariamente em nossos servidores seguros.
-                  <strong> Todos os arquivos possuem uma data de expiração automática</strong>, definida pelo usuário ou pelo limite do plano.
+                  Os arquivos enviados são armazenados temporariamente em nossa infraestrutura segura (AWS S3).
+                  <strong> Todos os arquivos possuem uma data de expiração automática</strong>, escolhida por você no momento do envio (1h, 1d, 7d ou 30d).
                 </p>
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 my-4 not-prose">
                   <h4 className="font-semibold text-amber-900 mb-1">Deleção Automática</h4>
                   <p className="text-sm text-amber-800">
-                    Após a data de expiração, os arquivos são <strong>permanentemente excluídos</strong> de nosso armazenamento físico e não podem ser recuperados. Metadados básicos do envio podem ser mantidos no histórico do usuário para consulta.
+                    Após a data de expiração ou quando você exclui o envio manualmente pelo painel, os arquivos são <strong>automaticamente e irreversivelmente deletados</strong> do armazenamento. Não mantemos cópias ocultas (shadow copies) dos arquivos após a expiração.
                   </p>
                 </div>
               </section>

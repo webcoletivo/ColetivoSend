@@ -12,18 +12,19 @@ import { Button } from '@/components/ui/Button'
 import { UserMenu } from '@/components/ui/UserMenu'
 import { formatBytes } from '@/lib/utils'
 
-// Guest limits
-const GUEST_MAX_FILES = 10
-const GUEST_MAX_SIZE = 50 * 1024 * 1024 // 50MB
+// Guest limits (Legacy/Display only)
+const GUEST_MAX_FILES = 2000
+const GUEST_MAX_SIZE = 10 * 1024 * 1024 * 1024 // 10GB
 // Logged user limits
-const USER_MAX_FILES = 20
-const USER_MAX_SIZE = 1024 * 1024 * 1024 // 1GB
+const USER_MAX_FILES = 2000
+const USER_MAX_SIZE = 10 * 1024 * 1024 * 1024 // 10GB
 
 export default function HomePage() {
   const { data: session, status } = useSession()
   const [files, setFiles] = useState<FileItem[]>([])
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'processing' | 'complete' | 'error'>('idle')
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadMessage, setUploadMessage] = useState('')
   
   const isLoggedIn = !!session?.user
   const isLoading = status === 'loading'
@@ -124,6 +125,9 @@ export default function HomePage() {
         if (!presigned) {
           throw new Error(`Erro ao obter URL para ${item.file.name}`)
         }
+
+        // Update status message
+        setUploadMessage(`Enviando ${i + 1} de ${files.length}: ${item.file.name}`)
 
         // Perform PUT upload to S3
         const uploadRes = await fetch(presigned.url, {
@@ -308,6 +312,7 @@ export default function HomePage() {
               <ProgressBar
                 progress={uploadProgress}
                 status={uploadStatus}
+                message={uploadMessage}
               />
             )}
 
@@ -319,9 +324,9 @@ export default function HomePage() {
                     <span className="badge badge-info">Conta Premium</span>
                   ) : (
                     <span>
-                      Limite: {GUEST_MAX_FILES} arquivos, {formatBytes(GUEST_MAX_SIZE)}
-                      <a href="/signup" className="ml-2 text-primary-500 hover:underline">
-                        Criar conta para mais
+                      Limite gratuito de 10 GB.
+                      <a href="/login" className="ml-2 text-primary-500 hover:underline">
+                        Faça login para enviar
                       </a>
                     </span>
                   )}

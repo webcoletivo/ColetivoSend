@@ -120,14 +120,14 @@ export function UploadDropzone({
         </div>
 
         {/* Limits info */}
-        <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-surface-400">
-          <span className="flex items-center gap-1.5">
-            <FileUp className="w-4 h-4" />
-            Até {remainingFiles} arquivo{remainingFiles !== 1 ? 's' : ''}
+        <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-surface-400 font-medium">
+          <span className="flex items-center gap-1.5 px-3 py-1 bg-surface-100 dark:bg-surface-800 rounded-full">
+            <FileUp className="w-3.5 h-3.5" />
+            Arquivos ilimitados
           </span>
-          <span className="w-1 h-1 rounded-full bg-surface-300" />
-          <span>
-            Máx. {formatBytes(remainingSize)}
+          <span className="flex items-center gap-1.5 px-3 py-1 bg-surface-100 dark:bg-surface-800 rounded-full">
+             <Cloud className="w-3.5 h-3.5" />
+             Máx. 10 GB
           </span>
         </div>
 

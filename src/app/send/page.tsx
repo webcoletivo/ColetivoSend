@@ -204,11 +204,7 @@ export default function SendPage() {
                  <span>Conta Autenticada</span>
                </div>
             )}
-            {!isLoggedIn && (
-               <div className="hidden sm:block px-3 py-1 bg-surface-100 text-surface-600 rounded-full text-xs font-medium border border-surface-200">
-                 Visitante
-               </div>
-            )}
+            {/* Removed Guest logic */}
           </div>
 
           {/* Form */}
@@ -292,17 +288,6 @@ export default function SendPage() {
             </div>
 
             {/* Limits info for guests */}
-            {!isLoggedIn && (
-              <div className="flex items-start gap-3 p-4 bg-primary-50 rounded-xl border border-primary-100">
-                <Lock className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-medium text-primary-700">Quer mais recursos?</p>
-                  <p className="text-primary-600 mt-1">
-                    <a href="/login?callbackUrl=/send" className="underline font-medium hover:text-primary-800">Faça login</a> para escolher a expiração, proteger com senha e ver o histórico de envios.
-                  </p>
-                </div>
-              </div>
-            )}
 
             {/* Error message */}
             {errors.submit && (
