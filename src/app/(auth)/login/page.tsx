@@ -11,7 +11,8 @@ import { OTPInput } from '@/components/ui/OTPInput'
 
 type LoginStep = 'credentials' | '2fa'
 
-export default function LoginPage() {
+function LoginForm() {
+
   // Step management
   const [step, setStep] = useState<LoginStep>('credentials')
   const searchParams = useSearchParams()
@@ -404,5 +405,17 @@ export default function LoginPage() {
         </AnimatePresence>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <React.Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+      </div>
+    }>
+      <LoginForm />
+    </React.Suspense>
   )
 }
