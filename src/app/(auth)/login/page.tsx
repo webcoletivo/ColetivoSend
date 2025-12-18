@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import { signIn } from 'next-auth/react'
+import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Lock, Eye, EyeOff, Sparkles, ArrowRight, ArrowLeft, Shield, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -13,6 +14,8 @@ type LoginStep = 'credentials' | '2fa'
 export default function LoginPage() {
   // Step management
   const [step, setStep] = useState<LoginStep>('credentials')
+  const searchParams = useSearchParams()
+  const redirectUrl = searchParams.get('callbackUrl') || '/dashboard'
   
   // Credentials state
   const [email, setEmail] = useState('')

@@ -24,7 +24,18 @@ export default function ForgotPasswordPage() {
     setError('')
     
     try {
-      await new Promise(r => setTimeout(r, 1500))
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+
+      // We always show success message for security (user enumeration prevention)
+      // unless it's a server error (500)
+      if (res.status === 500) {
+        throw new Error('Erro interno do servidor')
+      }
+
       setIsSent(true)
     } catch (error) {
       setError('Erro ao enviar e-mail. Tente novamente.')
@@ -48,7 +59,7 @@ export default function ForgotPasswordPage() {
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-bold text-surface-900">
-              Flow<span className="text-primary-500">Send</span>
+              Coletivo<span className="text-primary-500">Send</span>
             </span>
           </a>
         </div>
