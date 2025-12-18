@@ -107,7 +107,7 @@ function VerifyEmailContent() {
           <Sparkles className="w-6 h-6 text-white" />
         </div>
         <span className="text-2xl font-bold text-surface-900">
-          Flow<span className="text-primary-500">Send</span>
+          Coletivo<span className="text-primary-500">Send</span>
         </span>
       </a>
 

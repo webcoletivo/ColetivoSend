@@ -13,6 +13,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  
+  // 2FA State
+  const [requires2FA, setRequires2FA] = useState(false)
+  const [totpCode, setTotpCode] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -21,6 +25,11 @@ export default function LoginPage() {
     const newErrors: Record<string, string> = {}
     if (!email) newErrors.email = 'E-mail é obrigatório'
     if (!password) newErrors.password = 'Senha é obrigatória'
+    
+    // If 2FA is required, validate OTP
+    if (requires2FA && !totpCode) {
+      newErrors.totpCode = 'Código de verificação é obrigatório'
+    }
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
@@ -34,16 +43,22 @@ export default function LoginPage() {
       const result = await signIn('credentials', {
         email,
         password,
+        totpCode: requires2FA ? totpCode : undefined,
         redirect: false,
       })
       
       if (result?.error) {
-        if (result.error.includes('verifique seu email')) {
+        // Check if 2FA is required
+        if (result.error === '2FA_REQUIRED' || result.error.includes('2FA_REQUIRED')) {
+          setRequires2FA(true)
+          setErrors({})
+        } else if (result.error.includes('verifique seu email')) {
           setErrors({ submit: result.error })
-          // Optionally redirect after a short delay
           setTimeout(() => {
             window.location.href = `/verify-email?email=${encodeURIComponent(email)}`
           }, 2000)
+        } else if (result.error.includes('2FA inválido')) {
+          setErrors({ totpCode: result.error })
         } else {
           setErrors({ submit: result.error })
         }
@@ -129,6 +144,29 @@ export default function LoginPage() {
                 )}
               </button>
             </div>
+
+            {/* 2FA OTP Input - shown when required */}
+            {requires2FA && (
+              <div className="space-y-2">
+                <div className="p-3 bg-primary-50 text-primary-700 rounded-lg border border-primary-200 text-sm mb-3">
+                  <strong>Autenticação de dois fatores ativa.</strong>
+                  <br />
+                  Digite o código do seu aplicativo autenticador.
+                </div>
+                <Input
+                  label="Código de verificação (6 dígitos)"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={totpCode}
+                  onChange={e => setTotpCode(e.target.value.replace(/\D/g, ''))}
+                  error={errors.totpCode}
+                  autoFocus
+                />
+              </div>
+            )}
 
             {/* Forgot password */}
             <div className="text-right">
