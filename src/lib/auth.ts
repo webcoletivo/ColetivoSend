@@ -36,7 +36,7 @@ export const authOptions: NextAuthOptions = {
         })
 
         if (!user || !user.passwordHash) {
-          throw new Error('Email ou senha incorretos')
+          throw new Error('Conta não encontrada. Crie uma conta para continuar.')
         }
 
         const isPasswordValid = await bcrypt.compare(
@@ -45,7 +45,7 @@ export const authOptions: NextAuthOptions = {
         )
 
         if (!isPasswordValid) {
-          throw new Error('Email ou senha incorretos')
+          throw new Error('Conta não encontrada. Crie uma conta para continuar.')
         }
 
         // Check if email is verified

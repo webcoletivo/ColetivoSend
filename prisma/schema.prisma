@@ -46,7 +46,7 @@ model VerificationToken {
 model Transfer {
   id              String   @id @default(cuid())
   ownerUserId     String?
-  owner           User?    @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+  owner           User?    @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
   senderName      String
   recipientEmail  String?
   message         String?

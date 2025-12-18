@@ -11,7 +11,11 @@ import {
   Lock,
   Eye,
   EyeOff,
+  AlertTriangle,
+  X,
 } from 'lucide-react'
+import { signOut } from 'next-auth/react'
+import { AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/Toast'
@@ -35,6 +39,12 @@ export default function ProfilePage() {
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [isChangingPassword, setIsChangingPassword] = useState(false)
   const [hasPassword, setHasPassword] = useState(true)
+
+  // Account deletion state
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirmation, setDeleteConfirmation] = useState('')
+  const [deletePassword, setDeletePassword] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -153,6 +163,46 @@ export default function ProfilePage() {
       showToast('Erro ao alterar senha', 'error')
     } finally {
       setIsChangingPassword(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmation !== 'DELETE' && deleteConfirmation !== 'EXCLUIR') {
+      showToast('Digite a palavra de confirmação corretamente', 'error')
+      return
+    }
+
+    if (hasPassword && !deletePassword) {
+      showToast('Sua senha é necessária', 'error')
+      return
+    }
+
+    setIsDeleting(true)
+
+    try {
+      const res = await fetch('/api/user/account/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: deletePassword,
+          confirmation: deleteConfirmation,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        showToast('Conta excluída com sucesso', 'success')
+        // Give a small delay for the toast to be seen? 
+        // Or just signOut immediately as requested
+        await signOut({ callbackUrl: '/' })
+      } else {
+        showToast(data.error || 'Erro ao excluir conta', 'error')
+        setIsDeleting(false)
+      }
+    } catch (error) {
+      showToast('Erro ao excluir conta', 'error')
+      setIsDeleting(false)
     }
   }
 
@@ -358,6 +408,121 @@ export default function ProfilePage() {
           </motion.form>
         )}
       </div>
+
+      {/* Danger Zone Card */}
+      <div className="card p-6 border-red-100 bg-red-50/30">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-red-900">Zona de Perigo</h2>
+            <p className="text-sm text-red-600">Ações irreversíveis que afetam sua conta</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white rounded-xl border border-red-100">
+          <div>
+            <p className="font-semibold text-surface-900">Excluir conta</p>
+            <p className="text-sm text-surface-500 max-w-md">
+              Ao excluir sua conta, todos os seus dados, envios e arquivos serão removidos permanentemente. Esta ação não pode ser desfeita.
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            onClick={() => setShowDeleteModal(true)}
+            className="border-red-200 text-red-600 hover:bg-red-50"
+          >
+            Excluir minha conta
+          </Button>
+        </div>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-surface-900/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-6 sm:p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+                    <AlertTriangle className="w-6 h-6" />
+                  </div>
+                  <button
+                    onClick={() => !isDeleting && setShowDeleteModal(false)}
+                    className="p-2 text-surface-400 hover:text-surface-600 rounded-lg hover:bg-surface-50 transition-colors"
+                    disabled={isDeleting}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <h3 className="text-xl font-bold text-surface-900 mb-2">
+                  Deseja mesmo excluir sua conta?
+                </h3>
+                <p className="text-surface-500 mb-6">
+                  Esta ação é <strong>irreversível</strong>. Você perderá acesso a todos os seus transfers e arquivos enviados.
+                </p>
+
+                <div className="space-y-4">
+                  <div className="p-4 bg-red-50 rounded-xl border border-red-100">
+                    <p className="text-sm text-red-700 font-medium mb-2">
+                      Para confirmar, digite <strong>EXCLUIR</strong> abaixo:
+                    </p>
+                    <input
+                      type="text"
+                      value={deleteConfirmation}
+                      onChange={(e) => setDeleteConfirmation(e.target.value.toUpperCase())}
+                      placeholder="EXCLUIR"
+                      className="w-full px-4 py-2 rounded-lg border border-red-200 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                    />
+                  </div>
+
+                  {hasPassword && (
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-surface-700">
+                        Sua senha atual
+                      </label>
+                      <input
+                        type="password"
+                        value={deletePassword}
+                        onChange={(e) => setDeletePassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full px-4 py-2 rounded-lg border border-surface-200 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-8 flex gap-3">
+                  <Button
+                    variant="ghost"
+                    className="flex-1"
+                    onClick={() => setShowDeleteModal(false)}
+                    disabled={isDeleting}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant="primary"
+                    className="flex-1 bg-red-600 hover:bg-red-700 border-red-600 shadow-red-500/20"
+                    onClick={handleDeleteAccount}
+                    loading={isDeleting}
+                    disabled={deleteConfirmation !== 'EXCLUIR' && deleteConfirmation !== 'DELETE'}
+                  >
+                    Excluir conta
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
