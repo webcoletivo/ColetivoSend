@@ -28,7 +28,70 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // ...
+  // Handle credentials submission
+  const handleCredentialsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    // Validate
+    const newErrors: Record<string, string> = {}
+    if (!email) newErrors.email = 'E-mail é obrigatório'
+    if (!password) newErrors.password = 'Senha é obrigatória'
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+
+    setIsLoading(true)
+    setErrors({})
+    
+    try {
+      // Call the challenge endpoint first
+      const challengeRes = await fetch('/api/auth/login-challenge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      
+      const challengeData = await challengeRes.json()
+      
+      if (!challengeRes.ok) {
+        if (challengeData.error?.includes('verifique seu e-mail')) {
+          setErrors({ submit: challengeData.error })
+          setTimeout(() => {
+            window.location.href = `/verify-email?email=${encodeURIComponent(email)}`
+          }, 2000)
+        } else {
+          setErrors({ submit: challengeData.error || 'Erro ao fazer login' })
+        }
+        return
+      }
+      
+      if (challengeData.requires2FA) {
+        // 2FA is required - go to step 2
+        setChallengeId(challengeData.challengeId)
+        setStep('2fa')
+        setOtpCode('')
+      } else {
+        // No 2FA - complete login via NextAuth
+        const result = await signIn('credentials', {
+          email,
+          password,
+          redirect: false,
+        })
+        
+        if (result?.error) {
+          setErrors({ submit: result.error })
+        } else if (result?.ok) {
+          window.location.href = '/dashboard'
+        }
+      }
+    } catch (error) {
+      setErrors({ submit: 'Erro ao fazer login. Tente novamente.' })
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   // Handle OTP verification (auto-triggered when 6 digits entered)
   const handleOTPComplete = async (code: string) => {

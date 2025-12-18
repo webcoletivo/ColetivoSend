@@ -107,11 +107,24 @@ export async function POST(request: Request) {
     // OTP is valid
 
     // Handle "Remember Device"
+    // Create response object first
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        image: user.image,
+      }
+    })
+
+    // Handle "Remember Device"
     if (rememberDevice) {
       const token = crypto.randomBytes(32).toString('hex')
       const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
       const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
 
+      // @ts-ignore
       await prisma.trustedDevice.create({
         data: {
           userId: user.id,
@@ -121,8 +134,8 @@ export async function POST(request: Request) {
         }
       })
 
-      // Set cookie
-      cookies().set('trusted_device', token, {
+      // Set cookie on the response
+      response.cookies.set('trusted_device', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -131,16 +144,7 @@ export async function POST(request: Request) {
       })
     }
     
-    // Return success with user info for client-side NextAuth login
-    return NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        image: user.image,
-      }
-    })
+    return response
   } catch (error) {
     console.error('2FA verification error:', error)
     return NextResponse.json(

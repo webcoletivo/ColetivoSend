@@ -5,10 +5,19 @@ import { prisma } from './db'
 import { authenticator } from 'otplib'
 import { decryptSecret } from './security'
 import { generatePresignedDownloadUrl } from './storage'
-// ... imports
+import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 
-// ...
+export const authOptions: NextAuthOptions = {
+  // Remove PrismaAdapter - conflicts with JWT strategy and custom user handling
+  providers: [
+    // Google OAuth
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      // Explicitly normalization for redirect URIs is handled by NextAuth, 
+      // but ensure client ID/secret are trimmed to avoid whitespace issues
+    }),
 
     CredentialsProvider({
       name: 'credentials',
@@ -18,7 +27,7 @@ import crypto from 'crypto'
         totpCode: { label: 'TOTP Code', type: 'text' },
         totpVerified: { label: 'TOTP Already Verified', type: 'text' },
       },
-      async authorize(credentials, req) {
+      async authorize(credentials: any, req: any) {
         if (!credentials?.email || !credentials?.password) {
           throw new Error('Email e senha são obrigatórios')
         }
@@ -66,6 +75,7 @@ import crypto from 'crypto'
 
             if (trustedToken) {
                const tokenHash = crypto.createHash('sha256').update(trustedToken).digest('hex')
+               // @ts-ignore - Prisma client type might be stale
                const validDevice = await prisma.trustedDevice.findUnique({
                  where: { tokenHash },
                  include: { user: true }

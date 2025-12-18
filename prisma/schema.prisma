@@ -25,6 +25,7 @@ model User {
   updatedAt         DateTime   @updatedAt
   transfers         Transfer[]
   sessions          Session[]
+  trustedDevices    TrustedDevice[]
 }
 
 model Session {
@@ -40,7 +41,6 @@ model VerificationToken {
   token      String   @unique
   expires    DateTime
 
-  @@unique([identifier, token])
   @@unique([identifier, token])
 }
 
