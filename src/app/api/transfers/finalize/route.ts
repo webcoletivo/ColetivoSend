@@ -52,15 +52,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Upload incompleto. Por favor, tente novamente.' }, { status: 400 })
     }
 
-    // 2. Determine expiration
-    const validExpirationDays = isLoggedIn 
-      ? (USER_LIMITS.expirationOptions.includes(expirationDays) ? expirationDays : 7)
-      : GUEST_LIMITS.expirationDays
+    // 2. Validate rolling window limit for transfer creation (Free Plan)
+    // "15 transfers in last 30 days"
+    if (userId) { // Apply to all users now since Free is the standard
+       const thirtyDaysAgo = new Date()
+       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+       const recentTransfersCount = await prisma.transfer.count({
+           where: {
+               ownerUserId: userId,
+               createdAt: {
+                   gte: thirtyDaysAgo
+               }
+           }
+       })
+
+       if (recentTransfersCount >= 15) { // 15 limit
+           return NextResponse.json({ 
+             error: 'Limite de 15 transferências nos últimos 30 dias atingido.' 
+           }, { status: 403 })
+       }
+    }
+    
+    // 3. Determine expiration & Validate
+    const validExpirationDays = USER_LIMITS.expirationOptions.includes(expirationDays) 
+      ? expirationDays 
+      : 7 // Default if invalid option sent
 
     const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + validExpirationDays)
+    // handle fractional days (like 0.0416 for 1 hour)
+    // Add minutes if < 1 day, otherwise Add days
+    if (validExpirationDays < 1) {
+        expiresAt.setMinutes(expiresAt.getMinutes() + Math.round(validExpirationDays * 24 * 60))
+    } else {
+        expiresAt.setDate(expiresAt.getDate() + validExpirationDays)
+    }
 
-    // 3. Generate Share Token
+    // 4. Generate Share Token
     let shareToken = generateShareToken()
     let tokenExists = await prisma.transfer.findUnique({ where: { shareToken } })
     while (tokenExists) {

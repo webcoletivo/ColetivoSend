@@ -88,19 +88,28 @@ export function createRateLimitKey(identifier: string, action: string): string {
   return `${action}:${identifier}`
 }
 
-// Guest limits
+// Free Plan Limits (Standard User)
+export const FREE_LIMITS = {
+  maxFiles: parseInt(process.env.UPLOAD_MAX_FILES || '50'), // Increased default since size is the main limit
+  maxSizeMB: 10240, // 10 GB
+  expirationOptions: [
+    0.0416, // 1 hour (1/24)
+    1,      // 1 day
+    7,      // 7 days
+    30      // 30 days
+  ],
+  maxTransfersPer30Days: 15
+}
+
+// Keeping these for backward compatibility or if we have Premium later
 export const GUEST_LIMITS = {
-  maxTransfers: parseInt(process.env.GUEST_MAX_TRANSFERS || '5'),
-  maxFiles: parseInt(process.env.GUEST_MAX_FILES || '10'),
-  maxSizeMB: parseInt(process.env.GUEST_MAX_SIZE_MB || '50'),
+  maxTransfers: 5,
+  maxFiles: 10,
+  maxSizeMB: 50,
   expirationDays: 7,
 }
 
-export const USER_LIMITS = {
-  maxFiles: parseInt(process.env.UPLOAD_MAX_FILES || '20'),
-  maxSizeMB: parseInt(process.env.UPLOAD_MAX_SIZE_MB || '1024'),
-  expirationOptions: [1, 7, 30],
-}
+export const USER_LIMITS = FREE_LIMITS // Alias for now
 
 export function validateFileSize(sizeBytes: number, isLoggedIn: boolean): boolean {
   const maxBytes = (isLoggedIn ? USER_LIMITS.maxSizeMB : GUEST_LIMITS.maxSizeMB) * 1024 * 1024

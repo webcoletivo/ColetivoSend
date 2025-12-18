@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Shield, Zap, Link2, Sparkles } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
 import { UploadDropzone } from '@/components/upload/UploadDropzone'
@@ -48,8 +48,45 @@ export default function HomePage() {
     setFiles(prev => prev.filter(f => f.id !== id))
   }, [])
 
+  // Draft restoration
+  useEffect(() => {
+    if (isLoggedIn) {
+      const draft = sessionStorage.getItem('pending_upload_draft')
+      if (draft) {
+        try {
+          const { files: draftFiles } = JSON.parse(draft)
+          if (draftFiles && draftFiles.length > 0) {
+            // We can't restore File objects, but we can show metadata and ask for re-selection
+            // For now, simpler approach: Just show a message or valid metadata if we implement full restoration UI
+            // But requirement says "Manter pelo menos o draft (campos + lista/metadados) e pedir re-seleção"
+            // So we will trigger a state that shows "Pending transfer" modal
+            setRestoringDraft(draftFiles)
+          }
+        } catch (e) {
+          console.error('Failed to parse draft', e)
+        }
+        sessionStorage.removeItem('pending_upload_draft')
+      }
+    }
+  }, [isLoggedIn])
+
+  const [restoringDraft, setRestoringDraft] = useState<any[] | null>(null)
+
   const handleContinue = async () => {
     if (files.length === 0) return
+
+    // Mandatory Login Check
+    if (!isLoggedIn) {
+      // Save draft metadata (we can't save actual File objects)
+      const draft = {
+        files: files.map(f => ({ name: f.file.name, size: f.file.size, type: f.file.type }))
+      }
+      sessionStorage.setItem('pending_upload_draft', JSON.stringify(draft))
+      
+      // Redirect to login
+      window.location.href = '/login?callbackUrl=/'
+      return
+    }
 
     setUploadStatus('uploading')
     setUploadProgress(0)
@@ -145,8 +182,42 @@ export default function HomePage() {
   const canContinue = files.length > 0 && totalSize <= maxSize && totalCount <= maxFiles
   const isUploading = uploadStatus !== 'idle' && uploadStatus !== 'error'
 
+  // Close restoration prompt
+  const dismissDraft = () => setRestoringDraft(null)
+
   return (
     <div className="min-h-screen">
+      {/* Draft Restoration Prompt */}
+      <AnimatePresence>
+        {restoringDraft && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-24 left-0 right-0 z-40 px-4 pointer-events-none"
+          >
+            <div className="max-w-md mx-auto bg-white dark:bg-surface-800 p-4 rounded-xl shadow-xl border border-primary-100 pointer-events-auto flex gap-4 items-start">
+              <div className="p-2 bg-primary-50 rounded-lg shrink-0">
+                <Sparkles className="w-5 h-5 text-primary-600" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-surface-900 dark:text-surface-50">Continuar envio anterior?</h4>
+                <p className="text-sm text-surface-500 mt-1">
+                  Você iniciou um envio de {restoringDraft.length} arquivos. Por segurança, selecione-os novamente abaixo para continuar.
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <Button size="sm" onClick={dismissDraft}>Entendi</Button>
+                </div>
+              </div>
+              <button onClick={dismissDraft} className="text-surface-400 hover:text-surface-600">
+                 <span className="sr-only">Fechar</span>
+                 ×
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 px-6 py-4">
         <nav className="max-w-6xl mx-auto flex items-center justify-between">

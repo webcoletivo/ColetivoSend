@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { deleteMultipleFiles } from '@/lib/storage'
 
 // DELETE - Soft delete (or permanent if requested)
 export async function DELETE(
@@ -19,17 +20,24 @@ export async function DELETE(
     const userId = session.user.id
     const transferId = params.id
 
-    // Verify ownership
+    // Verify ownership and get files for cleanup
     const transfer = await prisma.transfer.findUnique({
       where: { id: transferId },
-      select: { ownerUserId: true }
+      select: { 
+        ownerUserId: true,
+        files: { select: { storageKey: true } }
+      }
     })
 
     if (!transfer || transfer.ownerUserId !== userId) {
       return NextResponse.json({ error: 'Transfer não encontrado' }, { status: 404 })
     }
 
-    // Delete transfer (cascade will delete files and S3 objects cleanup should happen via webhook/cron)
+    // Delete S3 objects
+    const storageKeys = transfer.files.map(f => f.storageKey)
+    await deleteMultipleFiles(storageKeys)
+
+    // Delete transfer (cascade will delete files records)
     await prisma.transfer.delete({
       where: { id: transferId }
     })

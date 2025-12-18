@@ -244,23 +244,23 @@ export default function SendPage() {
             />
 
             {/* Expiration select */}
-            <Select
-              label="Expiração do link"
-              value={expirationDays}
-              onChange={e => setExpirationDays(e.target.value)}
-              options={
-                isLoggedIn 
-                  ? [
-                      { value: '1', label: '1 dia' },
-                      { value: '7', label: '7 dias' },
-                      { value: '30', label: '30 dias' },
-                    ]
-                  : [
-                      { value: '7', label: '7 dias (padrão para visitantes)' },
-                    ]
-              }
-              disabled={!isLoggedIn}
-            />
+            <div>
+              <label htmlFor="expirationDays" className="block text-sm font-medium text-surface-700 mb-1">
+                Expiração do link
+              </label>
+              <select
+                id="expirationDays"
+                value={expirationDays}
+                onChange={(e) => setExpirationDays(e.target.value)}
+                className="w-full bg-surface-50 border border-surface-200 rounded-lg px-4 py-2 text-surface-900 focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                disabled={!isLoggedIn}
+              >
+                <option value="0.0416">1 hora</option>
+                <option value="1">1 dia</option>
+                <option value="7">7 dias</option>
+                <option value="30">30 dias</option>
+              </select>
+            </div>
 
             {/* Password protection */}
             <div className="space-y-3">
