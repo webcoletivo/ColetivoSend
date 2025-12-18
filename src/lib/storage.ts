@@ -73,7 +73,7 @@ export async function getFile(storageKey: string): Promise<Buffer | null> {
         Bucket: BUCKET_NAME,
         Key: storageKey,
       }))
-      const byteArray = await response.Body?.transformToUint8Array()
+      const byteArray = await response.Body?.transformToByteArray()
       return byteArray ? Buffer.from(byteArray) : null
     } else {
       const filePath = path.join(UPLOAD_DIR, storageKey)
