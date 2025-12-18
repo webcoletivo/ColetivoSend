@@ -118,30 +118,36 @@ export async function POST(request: Request) {
       }
     })
 
-    // Handle "Remember Device"
+    // Handle "Remember Device" - Wrapped in try/catch to ensure login success even if DB/Cookie fails
     if (rememberDevice) {
-      const token = crypto.randomBytes(32).toString('hex')
-      const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
-      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+      try {
+        const token = crypto.randomBytes(32).toString('hex')
+        const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+        const userAgent = request.headers.get('user-agent') || 'Unknown'
 
-      // @ts-ignore
-      await prisma.trustedDevice.create({
-        data: {
-          userId: user.id,
-          tokenHash,
-          expiresAt,
-          userAgent: request.headers.get('user-agent'),
-        }
-      })
+        // @ts-ignore - Prisma types might be stale
+        await prisma.trustedDevice.create({
+          data: {
+            userId: user.id,
+            tokenHash,
+            expiresAt,
+            userAgent,
+          }
+        })
 
-      // Set cookie on the response
-      response.cookies.set('trusted_device', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        expires: expiresAt,
-        path: '/',
-      })
+        // Set cookie on the response
+        response.cookies.set('trusted_device', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          expires: expiresAt,
+          path: '/',
+        })
+      } catch (rememberError) {
+        // Log error but don't fail the request
+        console.error('[2FA] Failed to set trusted device:', rememberError)
+      }
     }
     
     return response

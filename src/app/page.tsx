@@ -37,12 +37,43 @@ export default function HomePage() {
   const totalCount = files.length
 
   const handleFilesAdded = useCallback((newFiles: File[]) => {
-    const fileItems: FileItem[] = newFiles.map(file => ({
-      id: uuidv4(),
-      file,
-      status: 'pending',
-    }))
-    setFiles(prev => [...prev, ...fileItems])
+    setFiles(prev => {
+      // Create a copy of previous files
+      const updatedFiles = [...prev]
+      // Keep track of which new files are not used to replace waiting ones
+      const remainingNewFiles = [...newFiles]
+      
+      // Try to match new files with "waiting" files
+      // We iterate through existing files and check if any waiting file matches a new file
+      for (let i = 0; i < updatedFiles.length; i++) {
+        if (updatedFiles[i].status === 'waiting') {
+          // Find a match by name and size
+          const matchIndex = remainingNewFiles.findIndex(
+            f => f.name === updatedFiles[i].file.name && f.size === updatedFiles[i].file.size
+          )
+          
+          if (matchIndex !== -1) {
+            // Found a match! Replace the placeholder with the real file
+            updatedFiles[i] = {
+              ...updatedFiles[i],
+              file: remainingNewFiles[matchIndex],
+              status: 'pending'
+            }
+            // Remove from remaining list so we don't add it again
+            remainingNewFiles.splice(matchIndex, 1)
+          }
+        }
+      }
+      
+      // Create items for any completely new files
+      const newItems: FileItem[] = remainingNewFiles.map(file => ({
+        id: uuidv4(),
+        file,
+        status: 'pending',
+      }))
+      
+      return [...updatedFiles, ...newItems]
+    })
   }, [])
 
   const handleRemoveFile = useCallback((id: string) => {
@@ -57,11 +88,15 @@ export default function HomePage() {
         try {
           const { files: draftFiles } = JSON.parse(draft)
           if (draftFiles && draftFiles.length > 0) {
-            // We can't restore File objects, but we can show metadata and ask for re-selection
-            // For now, simpler approach: Just show a message or valid metadata if we implement full restoration UI
-            // But requirement says "Manter pelo menos o draft (campos + lista/metadados) e pedir re-seleção"
-            // So we will trigger a state that shows "Pending transfer" modal
-            setRestoringDraft(draftFiles)
+            // Restore as "waiting" items
+            // We use a type assertion for the mock file since we don't have the full File object yet
+            const placeholders = draftFiles.map((f: any) => ({
+              id: uuidv4(),
+              file: { name: f.name, size: f.size, type: f.type } as unknown as File,
+              status: 'waiting',
+            })) as FileItem[]
+            
+            setFiles(placeholders)
           }
         } catch (e) {
           console.error('Failed to parse draft', e)
@@ -70,8 +105,6 @@ export default function HomePage() {
       }
     }
   }, [isLoggedIn])
-
-  const [restoringDraft, setRestoringDraft] = useState<any[] | null>(null)
 
   const handleContinue = async () => {
     if (files.length === 0) return
@@ -186,41 +219,9 @@ export default function HomePage() {
   const canContinue = files.length > 0 && totalSize <= maxSize && totalCount <= maxFiles
   const isUploading = uploadStatus !== 'idle' && uploadStatus !== 'error'
 
-  // Close restoration prompt
-  const dismissDraft = () => setRestoringDraft(null)
-
   return (
     <div className="min-h-screen">
       {/* Draft Restoration Prompt */}
-      <AnimatePresence>
-        {restoringDraft && (
-          <motion.div
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            className="fixed top-24 left-0 right-0 z-40 px-4 pointer-events-none"
-          >
-            <div className="max-w-md mx-auto bg-white dark:bg-surface-800 p-4 rounded-xl shadow-xl border border-primary-100 pointer-events-auto flex gap-4 items-start">
-              <div className="p-2 bg-primary-50 rounded-lg shrink-0">
-                <Sparkles className="w-5 h-5 text-primary-600" />
-              </div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-surface-900 dark:text-surface-50">Continuar envio anterior?</h4>
-                <p className="text-sm text-surface-500 mt-1">
-                  Você iniciou um envio de {restoringDraft.length} arquivos. Por segurança, selecione-os novamente abaixo para continuar.
-                </p>
-                <div className="mt-3 flex gap-2">
-                  <Button size="sm" onClick={dismissDraft}>Entendi</Button>
-                </div>
-              </div>
-              <button onClick={dismissDraft} className="text-surface-400 hover:text-surface-600">
-                 <span className="sr-only">Fechar</span>
-                 ×
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 px-6 py-4">

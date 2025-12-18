@@ -10,7 +10,7 @@ export interface FileItem {
   id: string
   file: File
   progress?: number
-  status: 'pending' | 'uploading' | 'complete' | 'error'
+  status: 'pending' | 'uploading' | 'complete' | 'error' | 'waiting'
   error?: string
 }
 
@@ -31,7 +31,9 @@ function getFileIconComponent(mimeType: string) {
   return File
 }
 
-function getIconColor(mimeType: string) {
+function getIconColor(mimeType: string, status: FileItem['status']) {
+  if (status === 'waiting') return 'text-amber-500 bg-amber-100 border-dashed border-amber-300'
+  
   if (mimeType.startsWith('image/')) return 'text-pink-500 bg-pink-100'
   if (mimeType.startsWith('video/')) return 'text-purple-500 bg-purple-100'
   if (mimeType.startsWith('audio/')) return 'text-emerald-500 bg-emerald-100'
@@ -87,7 +89,7 @@ export function FileList({ files, onRemove, maxFiles, maxSize, readonly = false 
         <AnimatePresence mode="popLayout">
           {files.map((item, index) => {
             const IconComponent = getFileIconComponent(item.file.type)
-            const iconClass = getIconColor(item.file.type)
+            const iconClass = getIconColor(item.file.type, item.status)
 
             return (
               <motion.div
@@ -102,7 +104,11 @@ export function FileList({ files, onRemove, maxFiles, maxSize, readonly = false 
                   stiffness: 300,
                   damping: 25
                 }}
-                className="group flex items-center gap-3 p-3 bg-white rounded-xl border border-surface-100 hover:border-surface-200 transition-colors dark:bg-surface-800 dark:border-surface-700"
+                className={`group flex items-center gap-3 p-3 bg-white rounded-xl border transition-colors dark:bg-surface-800 dark:border-surface-700 ${
+                  item.status === 'waiting' 
+                    ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700/50' 
+                    : 'border-surface-100 hover:border-surface-200'
+                }`}
               >
                 {/* File icon */}
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${iconClass}`}>
@@ -126,6 +132,9 @@ export function FileList({ files, onRemove, maxFiles, maxSize, readonly = false 
                     )}
                     {item.status === 'complete' && (
                       <span className="ml-2 text-emerald-500">• Enviado</span>
+                    )}
+                    {item.status === 'waiting' && (
+                      <span className="ml-2 text-amber-600 font-medium">• Re-selecione este arquivo</span>
                     )}
                   </p>
                 </div>
