@@ -41,6 +41,21 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+  @@unique([identifier, token])
+}
+
+model TrustedDevice {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  userAgent String?
+  ipAddress String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
 }
 
 model Transfer {

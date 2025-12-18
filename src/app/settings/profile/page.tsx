@@ -111,8 +111,9 @@ export default function ProfilePage() {
 
       if (res.ok) {
         showToast('Perfil atualizado com sucesso!', 'success')
-        const imageUrl = data.image ? `${data.image}?v=${Date.now()}` : null
-        await update({ name, image: imageUrl })
+        // Update session with RAW key (if available) so the server can sign it on subsequent requests
+        // fallback to data.image (which might be null or signed URL, but preferably raw key)
+        await update({ name, image: data.imageKey || data.image })
       } else {
         showToast(data.error || 'Erro ao atualizar perfil', 'error')
       }

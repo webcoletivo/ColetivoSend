@@ -5,21 +5,11 @@ import { prisma } from './db'
 import { authenticator } from 'otplib'
 import { decryptSecret } from './security'
 import { generatePresignedDownloadUrl } from './storage'
-import bcrypt from 'bcryptjs'
+// ... imports
+import crypto from 'crypto'
 
+// ...
 
-export const authOptions: NextAuthOptions = {
-  // Remove PrismaAdapter - conflicts with JWT strategy and custom user handling
-  providers: [
-    // Google OAuth
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-      // Explicitly normalization for redirect URIs is handled by NextAuth, 
-      // but ensure client ID/secret are trimmed to avoid whitespace issues
-    }),
-
-    // Email/Password credentials
     CredentialsProvider({
       name: 'credentials',
       credentials: {
@@ -28,7 +18,7 @@ export const authOptions: NextAuthOptions = {
         totpCode: { label: 'TOTP Code', type: 'text' },
         totpVerified: { label: 'TOTP Already Verified', type: 'text' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
           throw new Error('Email e senha são obrigatórios')
         }
@@ -57,9 +47,42 @@ export const authOptions: NextAuthOptions = {
 
         // Check 2FA if enabled
         if (user.twoFactorEnabled) {
-          // If totpVerified is set, the OTP was already validated by /api/auth/2fa/verify
-          // Skip re-validation to avoid timing race conditions
-          if (credentials.totpVerified === 'true') {
+          let isTrustedDevice = false
+          
+          // Check for trusted device cookie
+          // Note: accessing cookies in NextAuth authorize can be tricky depending on adapter/version
+          // We'll try to get it from the request headers
+          try {
+            // @ts-ignore - req type definition might vary
+            const cookies = req?.headers?.cookie || req?.cookies
+            let trustedToken = null
+            
+            if (typeof cookies === 'string') {
+               const match = cookies.match(/trusted_device=([^;]+)/)
+               if (match) trustedToken = match[1]
+            } else if (cookies?.trusted_device) {
+               trustedToken = cookies.trusted_device
+            }
+
+            if (trustedToken) {
+               const tokenHash = crypto.createHash('sha256').update(trustedToken).digest('hex')
+               const validDevice = await prisma.trustedDevice.findUnique({
+                 where: { tokenHash },
+                 include: { user: true }
+               })
+
+               if (validDevice && validDevice.userId === user.id && validDevice.expiresAt > new Date()) {
+                  isTrustedDevice = true
+                  console.log('[Auth] Trusted device detected, skipping 2FA')
+               }
+            }
+          } catch (e) {
+            console.error('[Auth] Error checking trusted device:', e)
+          }
+
+          if (isTrustedDevice) {
+             // Skip 2FA
+          } else if (credentials.totpVerified === 'true') {
             console.log('[Auth] 2FA already verified via challenge endpoint, skipping re-validation')
           } else if (!credentials.totpCode) {
             throw new Error('2FA_REQUIRED')
@@ -103,7 +126,7 @@ export const authOptions: NextAuthOptions = {
 
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 7 * 24 * 60 * 60, // 7 days (as requested)
   },
 
   // Let NextAuth handle cookies automatically for better compatibility with Vercel

@@ -25,6 +25,13 @@ const sizeClasses = {
 }
 
 export function UserAvatar({ user, size = 'md', className, priority = false }: UserAvatarProps) {
+  const [hasError, setHasError] = React.useState(false)
+  
+  // Reset error state when user image changes
+  React.useEffect(() => {
+    setHasError(false)
+  }, [user?.image])
+
   const imageUrl = user?.image
   const initials = user?.name
     ? user.name.split(' ').map(n => n?.[0]).join('').toUpperCase().slice(0, 2)
@@ -34,7 +41,7 @@ export function UserAvatar({ user, size = 'md', className, priority = false }: U
   // and to simplify external URL handling.
   // We also use key={imageUrl} to force re-render if URL changes (e.g. update profile)
   
-  if (imageUrl) {
+  if (imageUrl && !hasError) {
     return (
       <div className={cn(
         'relative rounded-full overflow-hidden bg-surface-100 flex-shrink-0',
@@ -49,6 +56,7 @@ export function UserAvatar({ user, size = 'md', className, priority = false }: U
           loading={priority ? 'eager' : 'lazy'}
           decoding="async"
           referrerPolicy="no-referrer"
+          onError={() => setHasError(true)}
         />
       </div>
     )

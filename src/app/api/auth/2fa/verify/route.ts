@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db'
 import { authenticator } from 'otplib'
 import { decryptSecret } from '@/lib/security'
 import jwt from 'jsonwebtoken'
+import { cookies } from 'next/headers'
+import crypto from 'crypto'
 
 const CHALLENGE_SECRET = process.env.NEXTAUTH_SECRET || 'fallback-secret'
 
@@ -14,7 +16,7 @@ interface ChallengePayload {
 
 export async function POST(request: Request) {
   try {
-    const { challengeId, otpCode } = await request.json()
+    const { challengeId, otpCode, rememberDevice } = await request.json()
 
     if (!challengeId || !otpCode) {
       return NextResponse.json(
@@ -102,7 +104,34 @@ export async function POST(request: Request) {
       )
     }
 
-    // OTP is valid - return success with user info for client-side NextAuth login
+    // OTP is valid
+
+    // Handle "Remember Device"
+    if (rememberDevice) {
+      const token = crypto.randomBytes(32).toString('hex')
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+
+      await prisma.trustedDevice.create({
+        data: {
+          userId: user.id,
+          tokenHash,
+          expiresAt,
+          userAgent: request.headers.get('user-agent'),
+        }
+      })
+
+      // Set cookie
+      cookies().set('trusted_device', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        expires: expiresAt,
+        path: '/',
+      })
+    }
+    
+    // Return success with user info for client-side NextAuth login
     return NextResponse.json({
       success: true,
       user: {

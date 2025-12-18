@@ -135,7 +135,8 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({
         ...updatedUser,
-        image: returnedImage
+        image: returnedImage,
+        imageKey: updatedUser.image // Return raw key for session updates
     })
   } catch (error) {
     console.error('Error updating profile:', error)
