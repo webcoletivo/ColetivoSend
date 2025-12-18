@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { deleteTransferFiles } from '@/lib/storage'
+import { deleteMultipleFiles } from '@/lib/storage'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,7 +42,9 @@ export async function GET(request: Request) {
       
       try {
         // 1. Delete files from storage
-        const storageDeleted = await deleteTransferFiles(transfer.id)
+        // Gather all storage keys
+        const storageKeys = transfer.files.map(f => f.storageKey)
+        const storageDeleted = await deleteMultipleFiles(storageKeys)
         
         if (!storageDeleted) {
             console.warn(`Failed to delete storage for transfer ${transfer.id}`)

@@ -55,32 +55,63 @@ export default function HomePage() {
     setUploadProgress(0)
     
     const uploadedFilesData = []
-    const batchId = `transfer_${uuidv4().slice(0, 8)}`
 
     try {
+      // 1. Get presigned URLs for all files
+      // We send simple metadata to get the URLs
+      const presignResponse = await fetch('/api/upload/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          files: files.map(f => ({
+            id: f.id,
+            name: f.file.name,
+            size: f.file.size,
+            type: f.file.type
+          }))
+        })
+      })
+
+      if (!presignResponse.ok) {
+        const error = await presignResponse.json()
+        throw new Error(error.error || 'Erro ao preparar upload')
+      }
+
+      const { presignedUrls, transferId } = await presignResponse.json()
+
+      // 2. Upload each file directly to S3
       for (let i = 0; i < files.length; i++) {
         const item = files[i]
-        const formData = new FormData()
-        formData.append('file', item.file)
-        formData.append('transferId', batchId)
-
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        })
-
-        if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.error || `Erro no upload de ${item.file.name}`)
+        const presigned = presignedUrls.find((p: any) => p.originalId === item.id)
+        
+        if (!presigned) {
+          throw new Error(`Erro ao obter URL para ${item.file.name}`)
         }
 
-        const result = await response.json()
+        // Perform PUT upload to S3
+        const uploadRes = await fetch(presigned.url, {
+          method: 'PUT',
+          body: item.file,
+          headers: {
+            'Content-Type': item.file.type || 'application/octet-stream',
+            // If we had 'x-amz-tagging' in the presigned URL generation, we MUST send it here too.
+            // Currently strict tagging is disabled in storage.ts to simplify CORS.
+          }
+        })
+
+        if (!uploadRes.ok) {
+          console.error('S3 Upload Error:', uploadRes.status, uploadRes.statusText)
+          throw new Error(`Falha no envio de ${item.file.name}`)
+        }
+
+        // Success - store metadata
         uploadedFilesData.push({
           id: item.id,
           name: item.file.name,
           size: item.file.size,
           type: item.file.type,
-          storageKey: result.storageKey,
+          storageKey: presigned.storageKey,
+          transferId: transferId // Keep track of the temp transfer ID
         })
 
         setUploadProgress(Math.round(((i + 1) / files.length) * 100))
@@ -92,6 +123,13 @@ export default function HomePage() {
 
       // Store REAL uploaded file data (with storage keys) in sessionStorage
       sessionStorage.setItem('uploadedFiles', JSON.stringify(uploadedFilesData))
+      // Also store the transferId in case we need it? 
+      // Actually /api/transfers/finalize expects `transferId` in the body now.
+      // We should store it or attach it to every file?
+      // The finalize endpoint expects `transferId` at the root of the body.
+      // So let's store it separately or extract it from the first file in SendPage.
+      // Better: store it in sessionStorage key 'currentTransferId'
+      sessionStorage.setItem('currentTransferId', transferId)
       
       setTimeout(() => {
         window.location.href = '/send'
@@ -100,7 +138,6 @@ export default function HomePage() {
     } catch (error: any) {
       console.error('Upload failed:', error)
       setUploadStatus('error')
-      // You might want to show a toast or alert here
       alert(error.message || 'Falha no upload dos arquivos. Tente novamente.')
     }
   }

@@ -95,20 +95,22 @@ export default function SendPage() {
     setIsLoading(true)
 
     try {
+      // Retrieve keys from sessionStorage
+      const storedTransferId = sessionStorage.getItem('currentTransferId')
+      if (!storedTransferId) throw new Error('Sessão de upload inválida')
+
       // Prepare payload
       const payload = {
+        transferId: storedTransferId,
         senderName,
         recipientEmail,
         message,
         files,
         expirationDays: parseInt(expirationDays),
         password: hasPassword ? password : null,
-        // In a real scenario you might want to send a fingerprint here if you have one, 
-        // but for now relying on IP/session is fine for the simplified scope.
-        // If fingerprint logic exists in frontend, add it here.
       }
 
-      const res = await fetch('/api/transfer', {
+      const res = await fetch('/api/transfers/finalize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
