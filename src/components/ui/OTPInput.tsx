@@ -23,6 +23,7 @@ export function OTPInput({
   autoFocus = true,
 }: OTPInputProps) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+  const hasCompletedRef = useRef(false)
 
   // Initialize refs array
   useEffect(() => {
@@ -36,9 +37,17 @@ export function OTPInput({
     }
   }, [autoFocus])
 
-  // Handle value change and auto-complete
+  // Reset completion flag when value is cleared
   useEffect(() => {
-    if (value.length === length && onComplete) {
+    if (value.length < length) {
+      hasCompletedRef.current = false
+    }
+  }, [value, length])
+
+  // Handle value change and auto-complete (with single-flight guard)
+  useEffect(() => {
+    if (value.length === length && onComplete && !hasCompletedRef.current) {
+      hasCompletedRef.current = true
       onComplete(value)
     }
   }, [value, length, onComplete])

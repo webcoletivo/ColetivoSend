@@ -70,13 +70,22 @@ export async function POST(request: Request) {
       )
     }
 
-    // Decrypt and validate TOTP
+    // Decrypt and validate TOTP with window tolerance
     try {
       const secret = decryptSecret(user.twoFactorSecret)
+      
+      // Configure authenticator with window tolerance (accepts codes from ±1 window)
+      authenticator.options = { 
+        window: 1,  // Accept codes from 30 seconds before/after
+        step: 30    // Standard TOTP step
+      }
+      
       const isValid = authenticator.verify({
         token: otpCode,
         secret: secret
       })
+
+      console.log(`[2FA] OTP validation for user ${payload.userId}: ${isValid ? 'SUCCESS' : 'FAILED'}`)
 
       if (!isValid) {
         return NextResponse.json(
@@ -85,10 +94,11 @@ export async function POST(request: Request) {
         )
       }
     } catch (totpError) {
-      console.error('TOTP validation error:', totpError)
+      console.error('[2FA] TOTP validation error:', totpError)
+      // Return 401 for TOTP errors, not 500 - this is an expected failure case
       return NextResponse.json(
-        { error: 'Erro ao validar código' },
-        { status: 500 }
+        { error: 'Código inválido ou expirado. Tente novamente.' },
+        { status: 401 }
       )
     }
 

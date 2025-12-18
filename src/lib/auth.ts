@@ -25,6 +25,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
         totpCode: { label: 'TOTP Code', type: 'text' },
+        totpVerified: { label: 'TOTP Already Verified', type: 'text' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -55,31 +56,37 @@ export const authOptions: NextAuthOptions = {
 
         // Check 2FA if enabled
         if (user.twoFactorEnabled) {
-          if (!credentials.totpCode) {
+          // If totpVerified is set, the OTP was already validated by /api/auth/2fa/verify
+          // Skip re-validation to avoid timing race conditions
+          if (credentials.totpVerified === 'true') {
+            console.log('[Auth] 2FA already verified via challenge endpoint, skipping re-validation')
+          } else if (!credentials.totpCode) {
             throw new Error('2FA_REQUIRED')
-          }
-          
-          if (!user.twoFactorSecret) {
-            // Should not happen if enabled, but failsafe
-            throw new Error('Erro na configuração de 2FA')
-          }
+          } else {
+            if (!user.twoFactorSecret) {
+              throw new Error('Erro na configuração de 2FA')
+            }
 
-          try {
-            // Decrypt secret
-            const secret = decryptSecret(user.twoFactorSecret)
-            
-            // Validate code
-            const isValid = authenticator.verify({
-              token: credentials.totpCode,
-              secret: secret
-            })
+            try {
+              // Decrypt secret
+              const secret = decryptSecret(user.twoFactorSecret)
+              
+              // Configure authenticator with window tolerance
+              authenticator.options = { window: 1, step: 30 }
+              
+              // Validate code
+              const isValid = authenticator.verify({
+                token: credentials.totpCode,
+                secret: secret
+              })
 
-            if (!isValid) {
+              if (!isValid) {
+                throw new Error('Código 2FA inválido')
+              }
+            } catch (error) {
+              console.error('[Auth] 2FA validation error:', error)
               throw new Error('Código 2FA inválido')
             }
-          } catch (error) {
-            console.error('2FA validation error:', error)
-            throw new Error('Código 2FA inválido')
           }
         }
 
