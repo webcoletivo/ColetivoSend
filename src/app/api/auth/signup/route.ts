@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
+import crypto from 'crypto'
+import { sendVerificationEmail } from '@/lib/email'
 
 const signupSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -22,11 +24,13 @@ export async function POST(request: Request) {
       )
     }
     
-    const { name, email, password } = validationResult.data
+    const normalizedEmail = validationResult.data.email.toLowerCase().trim()
+    const { name, password } = validationResult.data
+    const origin = request.headers.get('origin') || process.env.NEXTAUTH_URL
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     })
 
     if (existingUser) {
@@ -43,13 +47,35 @@ export async function POST(request: Request) {
     const user = await prisma.user.create({
       data: {
         name,
-        email,
+        email: normalizedEmail,
         passwordHash,
       },
     })
 
-    // TODO: Send verification email
-    // await sendVerificationEmail(user.email, user.id)
+    // Generate verification token
+    const token = crypto.randomBytes(32).toString('hex')
+    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+
+    await prisma.verificationToken.create({
+      data: {
+        identifier: normalizedEmail,
+        token,
+        expires,
+      },
+    })
+
+    // Send verification email
+    try {
+      console.log(`Sending verification email to ${normalizedEmail} with origin ${origin}`)
+      const sent = await sendVerificationEmail(normalizedEmail, token, origin || undefined)
+      if (sent) {
+        console.log('Verification email sent successfully')
+      } else {
+        console.error('sendVerificationEmail returned false')
+      }
+    } catch (error) {
+      console.error('Failed to send verification email:', error)
+    }
 
     return NextResponse.json(
       { 

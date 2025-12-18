@@ -38,7 +38,15 @@ export default function LoginPage() {
       })
       
       if (result?.error) {
-        setErrors({ submit: result.error })
+        if (result.error.includes('verifique seu email')) {
+          setErrors({ submit: result.error })
+          // Optionally redirect after a short delay
+          setTimeout(() => {
+            window.location.href = `/verify-email?email=${encodeURIComponent(email)}`
+          }, 2000)
+        } else {
+          setErrors({ submit: result.error })
+        }
       } else if (result?.ok) {
         // Redirect to dashboard on success
         window.location.href = '/dashboard'

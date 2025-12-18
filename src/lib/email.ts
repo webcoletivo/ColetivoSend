@@ -142,9 +142,11 @@ Enviado via ColetivoSend
 
 export async function sendVerificationEmail(
   email: string,
-  token: string
+  token: string,
+  origin?: string
 ): Promise<boolean> {
-  const verifyUrl = `${process.env.NEXTAUTH_URL}/verify-email?token=${token}`
+  const baseUrl = origin || process.env.NEXTAUTH_URL || ''
+  const verifyUrl = `${baseUrl}/verify-email?token=${token}&email=${encodeURIComponent(email)}`
   
   const html = `
 <!DOCTYPE html>
@@ -197,9 +199,11 @@ export async function sendVerificationEmail(
 
 export async function sendPasswordResetEmail(
   email: string,
-  token: string
+  token: string,
+  origin?: string
 ): Promise<boolean> {
-  const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${token}`
+  const baseUrl = origin || process.env.NEXTAUTH_URL || ''
+  const resetUrl = `${baseUrl}/reset-password?token=${token}`
   
   const html = `
 <!DOCTYPE html>
