@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getFile, verifyDownloadSignature } from '@/lib/storage'
+import { getFile, verifyDownloadSignature, generatePresignedDownloadUrl } from '@/lib/storage'
 
 // Serve file download with signed URL
 export async function GET(request: NextRequest) {
@@ -25,7 +25,14 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get file from storage
+    const storageType = process.env.STORAGE_TYPE || 'local'
+
+    if (storageType === 's3') {
+      const downloadUrl = await generatePresignedDownloadUrl(storageKey, fileName)
+      return NextResponse.redirect(downloadUrl)
+    }
+
+    // Local storage: Read file and return buffer
     const fileBuffer = await getFile(storageKey)
 
     if (!fileBuffer) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { verifyPassword } from '@/lib/security'
+import { generatePresignedDownloadUrl } from '@/lib/storage'
 
 export async function POST(
   request: NextRequest, 
@@ -24,6 +25,7 @@ export async function POST(
             originalName: true,
             sizeBytes: true,
             mimeType: true,
+            storageKey: true,
           }
         }
       }
@@ -44,6 +46,14 @@ export async function POST(
       }
     }
 
+    const filesWithUrls = await Promise.all(
+      transfer.files.map(async (file) => ({
+        ...file,
+        downloadUrl: await generatePresignedDownloadUrl(file.storageKey, file.originalName),
+        storageKey: undefined,
+      }))
+    )
+
     return NextResponse.json({
       id: transfer.id,
       senderName: transfer.senderName,
@@ -51,7 +61,7 @@ export async function POST(
       expiresAt: transfer.expiresAt,
       viewCount: transfer.viewCount,
       downloadCount: transfer.downloadCount,
-      files: transfer.files,
+      files: filesWithUrls,
       hasPassword: false // Unlocked
     })
 

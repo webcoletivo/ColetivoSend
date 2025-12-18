@@ -1,0 +1,5 @@
+# Hostinger Shared Hosting - Configuração de Variáveis de Ambiente
+# IMPORTANTE: Use um ESPAÇO entre DATABASE_URL e as aspas.
+# IMPORTANTE: Use o IP PÚBLICO ou Domínio do seu servidor Easypanel.
+
+SetEnv DATABASE_URL "postgres://coletivosend:7d73b0ea751ace7d69e8@31.97.246.229:5432/coletivosendpostgres?sslmode=disable"

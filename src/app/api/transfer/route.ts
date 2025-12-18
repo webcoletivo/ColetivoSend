@@ -220,8 +220,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Get user from NextAuth session
-    const userId = null
+    const session = await getServerSession(authOptions)
+    const userId = session?.user?.id
 
     if (!userId) {
       return NextResponse.json(

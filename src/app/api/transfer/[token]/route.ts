@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { generatePresignedDownloadUrl } from '@/lib/storage'
 
 export async function GET(
   request: NextRequest, 
@@ -22,6 +23,7 @@ export async function GET(
             originalName: true,
             sizeBytes: true,
             mimeType: true,
+            storageKey: true,
           }
         }
       }
@@ -72,6 +74,14 @@ export async function GET(
     }
 
     // If public/verified, return full data
+    const filesWithUrls = await Promise.all(
+      transfer.files.map(async (file) => ({
+        ...file,
+        downloadUrl: await generatePresignedDownloadUrl(file.storageKey, file.originalName),
+        storageKey: undefined, // Hide real storage key from client
+      }))
+    )
+
     return NextResponse.json({
       id: transfer.id,
       senderName: transfer.senderName,
@@ -79,7 +89,7 @@ export async function GET(
       expiresAt: transfer.expiresAt,
       viewCount: transfer.viewCount,
       downloadCount: transfer.downloadCount,
-      files: transfer.files,
+      files: filesWithUrls,
       hasPassword: false
     })
 

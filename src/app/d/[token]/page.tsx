@@ -18,6 +18,7 @@ interface TransferFile {
   originalName: string
   sizeBytes: number
   mimeType: string
+  downloadUrl: string
 }
 
 interface TransferData {
@@ -146,19 +147,23 @@ export default function DownloadPage() {
   }
 
   const handleDownloadAll = async () => {
+    if (!transfer) return
     setDownloadingAll(true)
-    // Simulate download for now
-    await new Promise(r => setTimeout(r, 2000))
+    
+    // In a real app, we might bundle them or just trigger all
+    // For now, trigger them one by one (or just the first few)
+    for (const file of transfer.files) {
+      window.open(file.downloadUrl, '_blank')
+      await new Promise(r => setTimeout(r, 500)) // Slight delay between bubbles
+    }
+    
     setDownloadingAll(false)
-    alert('Download será iniciado quando o armazenamento estiver configurado.')
   }
 
-  const handleDownloadFile = async (fileId: string) => {
-    setDownloadingFile(fileId)
-    // Simulate download for now
-    await new Promise(r => setTimeout(r, 1000))
-    setDownloadingFile(null)
-    alert('Download será iniciado quando o armazenamento estiver configurado.')
+  const handleDownloadFile = async (file: TransferFile) => {
+    setDownloadingFile(file.id)
+    window.open(file.downloadUrl, '_blank')
+    setTimeout(() => setDownloadingFile(null), 500)
   }
 
   const totalSize = transfer?.files?.reduce((acc, f) => acc + f.sizeBytes, 0) || 0
@@ -350,7 +355,7 @@ export default function DownloadPage() {
                     variant="ghost"
                     size="sm"
                     loading={isDownloading}
-                    onClick={() => handleDownloadFile(file.id)}
+                    onClick={() => handleDownloadFile(file)}
                     icon={<Download className="w-4 h-4" />}
                     className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                   >
