@@ -33,13 +33,19 @@ export async function POST(
     }
 
     // 1. Create or Update Email Log
-    let emailLog = await prisma.emailLog.create({
-      data: {
-        transferId,
-        recipientEmail,
-        status: 'queued',
-      }
-    })
+    let emailLog: any = null
+    try {
+      emailLog = await prisma.emailLog.create({
+        data: {
+          transferId,
+          recipientEmail,
+          status: 'queued',
+        }
+      })
+    } catch (logError) {
+      console.error('Failed to create initial email log:', logError)
+      // We continue even if logging fails, to ensure email delivery isn't blocked by DB issues.
+    }
 
     try {
       // 2. Send Email
@@ -52,26 +58,34 @@ export async function POST(
         formatBytes(totalSizeBytes)
       )
       if (result.success) {
-        await prisma.emailLog.update({
-          where: { id: emailLog.id },
-          data: {
-            status: 'sent',
-            sentAt: new Date(),
-            providerResponse: result.messageId,
-          }
-        })
+        if (emailLog) {
+          try {
+            await prisma.emailLog.update({
+              where: { id: emailLog.id },
+              data: {
+                status: 'sent',
+                sentAt: new Date(),
+                providerResponse: result.messageId,
+              }
+            })
+          } catch (e) { console.error('Silent log error:', e) }
+        }
         return NextResponse.json({ success: true, message: 'E-mail enviado com sucesso' })
       } else {
         // Detailed log of failure
-        await prisma.emailLog.update({
-          where: { id: emailLog.id },
-          data: {
-            status: 'failed',
-            errorMessage: result.error,
-            providerResponse: result.code, // Store the SMTP error code if available
-            retryCount: { increment: 1 }
-          }
-        })
+        if (emailLog) {
+          try {
+            await prisma.emailLog.update({
+              where: { id: emailLog.id },
+              data: {
+                status: 'failed',
+                errorMessage: result.error,
+                providerResponse: result.code, // Store the SMTP error code if available
+                retryCount: { increment: 1 }
+              }
+            })
+          } catch (e) { console.error('Silent log error:', e) }
+        }
 
         // Determine status code based on error
         let status = 502 // Bad Gateway by default for SMTP issues
@@ -94,23 +108,35 @@ export async function POST(
     } catch (emailError: any) {
       console.error('Critical email route error:', emailError)
       
-      await prisma.emailLog.update({
-        where: { id: emailLog.id },
-        data: {
-          status: 'failed',
-          errorMessage: emailError.message,
-          retryCount: { increment: 1 }
+      // Attempt to log the critical error if emailLog was created
+      if (emailLog) {
+        try {
+          await prisma.emailLog.update({
+            where: { id: emailLog.id },
+            data: {
+              status: 'failed',
+              errorMessage: `CRITICAL: ${emailError.message}`,
+              retryCount: { increment: 1 }
+            }
+          })
+        } catch (logError) {
+          console.error('Failed to log critical email error to DB:', logError)
         }
-      })
+      }
 
       return NextResponse.json({ 
-        error: 'Erro interno ao processar e-mail',
-        details: emailError.message 
+        error: `DEBUG: Erro ao processar e-mail: ${emailError.message}`,
+        details: emailError.stack,
+        code: 'CRITICAL_ERROR'
       }, { status: 500 })
     }
 
   } catch (error: any) {
-    console.error('Email route error:', error)
-    return NextResponse.json({ error: 'Erro interno ao processar e-mail' }, { status: 500 })
+    console.error('Outer email route error:', error)
+    return NextResponse.json({ 
+      error: `DEBUG: Erro interno no servidor de e-mail: ${error.message}`,
+      details: error.stack,
+      code: 'INTERNAL_SERVER_ERROR'
+    }, { status: 500 })
   }
 }

@@ -90,7 +90,12 @@ export default function SendPage() {
       })
       const data = await res.json()
 
-      if (!res.ok) throw new Error(data.error || 'Falha ao enviar e-mail')
+      if (!res.ok) {
+        const error = new Error(data.error || 'Falha ao enviar e-mail') as any
+        error.details = data.details
+        error.code = data.code
+        throw error
+      }
 
       setEmailStatus('success')
       showToast('E-mail enviado com sucesso!', 'success')
@@ -105,7 +110,13 @@ export default function SendPage() {
       setEmailStatus('error')
       // Extract specific error message if available
       const errorMsg = err.message || 'Erro ao enviar e-mail'
-      setErrors(prev => ({ ...prev, email: errorMsg }))
+      // Try to parse details if it's a JSON string (not likely here, but for robustness)
+      setErrors(prev => ({ 
+        ...prev, 
+        email: errorMsg,
+        emailDetails: err.details || '',
+        emailCode: err.code || ''
+      }))
       showToast(errorMsg, 'error')
     }
   }
@@ -332,9 +343,19 @@ export default function SendPage() {
                   <span>{errors.email || errors.submit || 'O link foi criado, mas houve um erro ao enviar o e-mail.'}</span>
                 </div>
                 {emailStatus === 'error' && (
-                  <p className="text-xs opacity-80">
-                    {errors.email ? 'Verifique as configurações ou tente novamente.' : 'O destinatário pode não receber a notificação, mas você ainda pode copiar o link no dashboard.'}
-                  </p>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-xs opacity-80">
+                      {errors.email ? 'Verifique as configurações ou tente novamente.' : 'O destinatário pode não receber a notificação, mas você ainda pode copiar o link no dashboard.'}
+                    </p>
+                    {errors.emailCode && (
+                      <p className="text-[10px] font-mono opacity-60">Code: {errors.emailCode}</p>
+                    )}
+                    {errors.emailDetails && (
+                      <pre className="text-[10px] bg-black/20 p-2 rounded mt-1 overflow-auto max-h-32 font-mono">
+                        {errors.emailDetails}
+                      </pre>
+                    )}
+                  </div>
                 )}
               </div>
             )}
