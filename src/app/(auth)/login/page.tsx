@@ -8,6 +8,7 @@ import { Mail, Lock, Eye, EyeOff, Sparkles, ArrowRight, ArrowLeft, Shield, Loade
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { OTPInput } from '@/components/ui/OTPInput'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 type LoginStep = 'credentials' | '2fa'
 
@@ -167,9 +168,13 @@ function LoginForm() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-12">
       {/* Background decoration */}
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+
       <div className="fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary-400/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent-400/10 rounded-full blur-3xl" />
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl opacity-50 dark:opacity-20" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl opacity-50 dark:opacity-20" />
       </div>
 
       <div className="w-full max-w-md">
@@ -184,7 +189,7 @@ function LoginForm() {
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-surface-900">
+            <span className="text-2xl font-bold text-foreground">
               Coletivo<span className="text-primary-500">Send</span>
             </span>
           </a>
@@ -201,10 +206,10 @@ function LoginForm() {
               transition={{ duration: 0.3 }}
             >
               <div className="text-center mb-6">
-                <h1 className="text-2xl font-bold text-surface-900 mb-2">
+                <h1 className="text-2xl font-bold text-foreground mb-2">
                   Bem-vindo de volta
                 </h1>
-                <p className="text-surface-500">
+                <p className="text-muted-foreground">
                   Entre para gerenciar seus envios
                 </p>
               </div>
@@ -234,7 +239,7 @@ function LoginForm() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-9 text-surface-400 hover:text-surface-600 transition-colors"
+                      className="absolute right-3 top-9 text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {showPassword ? (
                         <EyeOff className="w-5 h-5" />
@@ -256,7 +261,7 @@ function LoginForm() {
 
                   {/* Error message */}
                   {errors.submit && (
-                    <div className="p-4 bg-red-50 text-red-600 rounded-xl border border-red-200 text-sm">
+                    <div className="p-4 bg-destructive/10 text-destructive rounded-xl border border-destructive/20 text-sm">
                       {errors.submit}
                     </div>
                   )}
@@ -276,10 +281,10 @@ function LoginForm() {
                 {/* Divider */}
                 <div className="relative my-6">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-surface-200" />
+                    <div className="w-full border-t border-border" />
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-white text-surface-400">ou</span>
+                    <span className="px-4 bg-card text-muted-foreground">ou</span>
                   </div>
                 </div>
 
@@ -311,7 +316,7 @@ function LoginForm() {
                 </Button>
 
                 {/* Sign up link */}
-                <p className="text-center text-sm text-surface-500 mt-6">
+                <p className="text-center text-sm text-muted-foreground mt-6">
                   Não tem uma conta?{' '}
                   <a href="/signup" className="text-primary-500 font-medium hover:text-primary-600 transition-colors">
                     Criar conta
@@ -328,13 +333,13 @@ function LoginForm() {
               transition={{ duration: 0.3 }}
             >
               <div className="text-center mb-6">
-                <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-4">
-                  <Shield className="w-8 h-8 text-primary-600" />
+                <div className="w-16 h-16 rounded-full bg-primary-500/10 flex items-center justify-center mx-auto mb-4">
+                  <Shield className="w-8 h-8 text-primary-500" />
                 </div>
-                <h1 className="text-2xl font-bold text-surface-900 mb-2">
+                <h1 className="text-2xl font-bold text-foreground mb-2">
                   Autenticação em dois fatores
                 </h1>
-                <p className="text-surface-500">
+                <p className="text-muted-foreground">
                   Abra seu app autenticador e digite o código de 6 dígitos
                 </p>
               </div>
@@ -363,10 +368,10 @@ function LoginForm() {
                       />
                     </div>
                     <label htmlFor="rememberDevice" className="text-sm cursor-pointer select-none">
-                      <span className="font-medium text-surface-900 block mb-0.5">
+                      <span className="font-medium text-foreground block mb-0.5">
                         Lembrar este dispositivo por 30 dias
                       </span>
-                      <span className="text-surface-500 leading-tight block text-xs">
+                      <span className="text-muted-foreground leading-tight block text-xs">
                         Durante 30 dias, não pediremos o código neste dispositivo.
                       </span>
                     </label>
@@ -385,14 +390,14 @@ function LoginForm() {
                     type="button"
                     onClick={handleBackToCredentials}
                     disabled={isLoading}
-                    className="w-full flex items-center justify-center gap-2 text-surface-500 hover:text-surface-700 transition-colors disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                   >
                     <ArrowLeft className="w-4 h-4" />
                     <span className="text-sm">Voltar para o login</span>
                   </button>
 
                   {/* Help text */}
-                  <p className="text-center text-xs text-surface-400">
+                  <p className="text-center text-xs text-muted-foreground">
                     Problemas com o 2FA?{' '}
                     <a href="/forgot-password" className="text-primary-500 hover:underline">
                       Recuperar acesso

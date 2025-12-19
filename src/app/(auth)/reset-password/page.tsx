@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { Lock, ArrowRight, Eye, EyeOff, Sparkles, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams()
@@ -68,6 +69,14 @@ function ResetPasswordForm() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-12">
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl opacity-50 dark:opacity-20" />
+        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl opacity-50 dark:opacity-20" />
+      </div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -80,7 +89,7 @@ function ResetPasswordForm() {
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-surface-900">
+            <span className="text-2xl font-bold text-foreground">
               Coletivo<span className="text-primary-500">Send</span>
             </span>
           </a>
@@ -89,13 +98,13 @@ function ResetPasswordForm() {
         <div className="card p-8">
           {status === 'success' ? (
             <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
                 <CheckCircle2 className="w-8 h-8 text-emerald-500" />
               </div>
-              <h2 className="text-xl font-bold text-surface-900 mb-2">
+              <h2 className="text-xl font-bold text-foreground mb-2">
                 Senha redefinida!
               </h2>
-              <p className="text-surface-500 mb-6">
+              <p className="text-muted-foreground mb-6">
                 Sua senha foi alterada com sucesso. Você já pode fazer login.
               </p>
               <a href="/login">
@@ -107,19 +116,19 @@ function ResetPasswordForm() {
           ) : (
             <>
               <div className="text-center mb-6">
-                <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 rounded-full bg-primary-500/10 flex items-center justify-center mx-auto mb-4">
                   <Lock className="w-8 h-8 text-primary-500" />
                 </div>
-                <h1 className="text-2xl font-bold text-surface-900 mb-2">
+                <h1 className="text-2xl font-bold text-foreground mb-2">
                   Nova Senha
                 </h1>
-                <p className="text-surface-500">
+                <p className="text-muted-foreground">
                   Crie uma senha forte para sua conta.
                 </p>
               </div>
 
               {status === 'error' && errorMessage && (
-                 <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl border border-red-200 flex items-center gap-2 text-sm">
+                 <div className="mb-6 p-4 bg-destructive/10 text-destructive rounded-xl border border-destructive/20 flex items-center gap-2 text-sm">
                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
                    <span>{errorMessage}</span>
                  </div>
@@ -139,7 +148,7 @@ function ResetPasswordForm() {
                      <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-9 text-surface-400 hover:text-surface-600 transition-colors"
+                        className="absolute right-3 top-9 text-muted-foreground hover:text-foreground transition-colors"
                       >
                         {showPassword ? (
                           <EyeOff className="w-5 h-5" />

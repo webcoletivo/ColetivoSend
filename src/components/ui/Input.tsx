@@ -32,14 +32,15 @@ export function Input({
       <input
         id={inputId}
         className={cn(
-          'w-full px-4 py-3 rounded-xl border bg-white text-surface-900 placeholder:text-surface-400',
+          'w-full px-4 py-3 rounded-xl border bg-background text-foreground placeholder:text-muted-foreground',
           'transition-all duration-200',
           'focus:outline-none focus:ring-4',
           error 
             ? 'border-red-500 focus:border-red-500 focus:ring-red-500/10' 
-            : 'border-surface-200 focus:border-primary-500 focus:ring-primary-500/10',
-          'disabled:bg-surface-100 disabled:cursor-not-allowed',
-          'dark:bg-surface-800 dark:border-surface-700 dark:text-surface-100',
+            : 'border-input focus:border-primary-500 focus:ring-primary-500/10',
+          'disabled:bg-muted disabled:cursor-not-allowed',
+          // Dark mode specific adjustments for premium feel (slightly lighter background for inputs)
+          'dark:bg-secondary/20 dark:border-input dark:text-foreground',
           className
         )}
         {...props}
@@ -88,14 +89,14 @@ export function Textarea({
       <textarea
         id={inputId}
         className={cn(
-          'w-full px-4 py-3 rounded-xl border bg-white text-surface-900 placeholder:text-surface-400',
+          'w-full px-4 py-3 rounded-xl border bg-background text-foreground placeholder:text-muted-foreground',
           'transition-all duration-200 resize-none',
           'focus:outline-none focus:ring-4',
           error 
             ? 'border-red-500 focus:border-red-500 focus:ring-red-500/10' 
-            : 'border-surface-200 focus:border-primary-500 focus:ring-primary-500/10',
-          'disabled:bg-surface-100 disabled:cursor-not-allowed',
-          'dark:bg-surface-800 dark:border-surface-700 dark:text-surface-100',
+            : 'border-input focus:border-primary-500 focus:ring-primary-500/10',
+          'disabled:bg-muted disabled:cursor-not-allowed',
+          'dark:bg-secondary/20 dark:border-input dark:text-foreground',
           className
         )}
         {...props}
@@ -139,13 +140,13 @@ export function Select({
       <select
         id={inputId}
         className={cn(
-          'w-full px-4 py-3 rounded-xl border bg-white text-surface-900',
+          'w-full px-4 py-3 rounded-xl border bg-background text-foreground',
           'transition-all duration-200 appearance-none cursor-pointer',
           'focus:outline-none focus:ring-4',
           error 
             ? 'border-red-500 focus:border-red-500 focus:ring-red-500/10' 
-            : 'border-surface-200 focus:border-primary-500 focus:ring-primary-500/10',
-          'dark:bg-surface-800 dark:border-surface-700 dark:text-surface-100',
+            : 'border-input focus:border-primary-500 focus:ring-primary-500/10',
+          'dark:bg-secondary/20 dark:border-input dark:text-foreground',
           className
         )}
         style={{
@@ -187,7 +188,7 @@ export function Checkbox({ label, className, id, ...props }: CheckboxProps) {
           type="checkbox"
           id={inputId}
           className={cn(
-            'peer w-5 h-5 rounded-md border-2 border-surface-300 bg-white',
+            'peer w-5 h-5 rounded-md border-2 border-input bg-background',
             'transition-all duration-200 cursor-pointer appearance-none',
             'checked:bg-primary-500 checked:border-primary-500',
             'focus:outline-none focus:ring-4 focus:ring-primary-500/20',
@@ -206,7 +207,7 @@ export function Checkbox({ label, className, id, ...props }: CheckboxProps) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
       </div>
-      <span className="text-sm text-surface-700 group-hover:text-surface-900 dark:text-surface-300">
+      <span className="text-sm text-muted-foreground group-hover:text-foreground dark:text-muted-foreground">
         {label}
       </span>
     </label>

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/Toast'
 import Link from 'next/link'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams()
@@ -106,7 +107,7 @@ function VerifyEmailContent() {
         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
           <Sparkles className="w-6 h-6 text-white" />
         </div>
-        <span className="text-2xl font-bold text-surface-900">
+        <span className="text-2xl font-bold text-foreground">
           Coletivo<span className="text-primary-500">Send</span>
         </span>
       </a>
@@ -118,13 +119,13 @@ function VerifyEmailContent() {
             animate={{ scale: 1 }}
             className="text-center"
           >
-            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-10 h-10 text-green-500" />
+            <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-6">
+              <CheckCircle className="w-10 h-10 text-emerald-500" />
             </div>
-            <h1 className="text-2xl font-bold text-surface-900 mb-3">
+            <h1 className="text-2xl font-bold text-foreground mb-3">
               E-mail Verificado!
             </h1>
-            <p className="text-surface-500 mb-8">
+            <p className="text-muted-foreground mb-8">
               Sua conta foi ativada com sucesso. Você será redirecionado para o login em instantes.
             </p>
             <Button onClick={() => router.push('/login')} className="w-full">
@@ -133,30 +134,30 @@ function VerifyEmailContent() {
           </motion.div>
         ) : verificationStatus === 'error' ? (
           <div className="text-center">
-            <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
-              <AlertCircle className="w-10 h-10 text-red-500" />
+            <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-6">
+              <AlertCircle className="w-10 h-10 text-destructive" />
             </div>
-            <h1 className="text-2xl font-bold text-surface-900 mb-3">
+            <h1 className="text-2xl font-bold text-foreground mb-3">
               Falha na Verificação
             </h1>
-            <p className="text-surface-500 mb-8">{error}</p>
+            <p className="text-muted-foreground mb-8">{error}</p>
             <div className="space-y-3">
               <Button onClick={() => router.push('/signup')} variant="secondary" className="w-full">
                 Criar nova conta
               </Button>
-              <Link href="/" className="text-sm text-surface-400 hover:text-surface-600">
+              <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
                 Voltar ao Início
               </Link>
             </div>
           </div>
         ) : (
           <>
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', delay: 0.2 }}
-              className="w-20 h-20 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-6"
-            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', delay: 0.2 }}
+                className="w-20 h-20 rounded-full bg-primary-500/10 flex items-center justify-center mx-auto mb-6"
+              >
               {isVerifying ? (
                 <Loader2 className="w-10 h-10 text-primary-500 animate-spin" />
               ) : (
@@ -164,15 +165,15 @@ function VerifyEmailContent() {
               )}
             </motion.div>
 
-            <h1 className="text-2xl font-bold text-surface-900 mb-3">
+            <h1 className="text-2xl font-bold text-foreground mb-3">
               {isVerifying ? 'Verificando...' : 'Verifique seu e-mail'}
             </h1>
-            <p className="text-surface-500 mb-6">
+            <p className="text-muted-foreground mb-6">
               {email ? (
                 <>
                   Enviamos um link de verificação para
                   <br />
-                  <strong className="text-surface-700">{email}</strong>
+                  <strong className="text-foreground">{email}</strong>
                 </>
               ) : (
                 'Procure pelo e-mail de verificação que enviamos para você.'
@@ -180,7 +181,7 @@ function VerifyEmailContent() {
             </p>
 
             <div className="space-y-4">
-              <p className="text-sm text-surface-400">
+              <p className="text-sm text-muted-foreground">
                 Clique no link do e-mail para ativar sua conta.
               </p>
               
@@ -196,7 +197,7 @@ function VerifyEmailContent() {
               </Button>
             </div>
 
-            <p className="text-xs text-surface-400 mt-6">
+            <p className="text-xs text-muted-foreground mt-6">
               Não recebeu? Verifique a pasta de spam.
             </p>
           </>
@@ -209,6 +210,15 @@ function VerifyEmailContent() {
 export default function VerifyEmailPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-12">
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl opacity-50 dark:opacity-20" />
+        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl opacity-50 dark:opacity-20" />
+      </div>
+
       <Suspense fallback={
         <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
       }>

@@ -8,35 +8,51 @@ const config: Config = {
   ],
   darkMode: 'class',
   theme: {
+    container: {
+      center: true,
+      padding: "2rem",
+      screens: {
+        "2xl": "1400px",
+      },
+    },
     extend: {
       colors: {
-        // Premium color palette
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
         primary: {
-          50: '#f0f4ff',
-          100: '#e0e9ff',
-          200: '#c7d6fe',
-          300: '#a4b9fc',
-          400: '#8093f8',
-          500: '#6366f1',
-          600: '#5045e5',
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81',
-          950: '#1e1b4b',
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+          500: "hsl(247 74% 65%)",
+          600: "hsl(247 74% 55%)",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
         },
         accent: {
-          50: '#fff1f3',
-          100: '#ffe0e5',
-          200: '#ffc7d1',
-          300: '#ffa0b0',
-          400: '#ff6b84',
-          500: '#f83b5c',
-          600: '#e51945',
-          700: '#c20f38',
-          800: '#a11034',
-          900: '#891332',
-          950: '#4c0517',
+          DEFAULT: "hsl(var(--accent))", // Mapping accent to the variable we defined
+          foreground: "hsl(var(--accent-foreground))",
         },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+        // Alias 'surface' to slate for backward compatibility and premium feel
         surface: {
           50: '#f8fafc',
           100: '#f1f5f9',
@@ -50,6 +66,11 @@ const config: Config = {
           900: '#0f172a',
           950: '#020617',
         },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

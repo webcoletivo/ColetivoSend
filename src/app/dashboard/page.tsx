@@ -14,6 +14,7 @@ import { SkeletonTable, SkeletonStatCard } from '@/components/ui/Skeleton'
 import { formatBytes, formatDate } from '@/lib/utils'
 import { UserMenu } from '@/components/ui/UserMenu'
 import { useToast } from '@/components/ui/Toast'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 interface Transfer {
   id: string
@@ -156,20 +157,23 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-50">
+    <div className="min-h-screen bg-muted/30 dark:bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-surface-200">
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-surface-900">
+            <span className="text-xl font-bold text-foreground">
               Coletivo<span className="text-primary-500">Send</span>
             </span>
           </a>
           
-          <UserMenu />
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <UserMenu />
+          </div>
         </div>
       </header>
 
@@ -177,8 +181,8 @@ export default function DashboardPage() {
         {/* Page header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-surface-900">Meus envios</h1>
-            <p className="text-surface-500">Gerencie todos os seus transfers</p>
+            <h1 className="text-2xl font-bold text-foreground">Meus envios</h1>
+            <p className="text-muted-foreground">Gerencie todos os seus transfers</p>
           </div>
           
           <a href="/">
@@ -203,12 +207,12 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="card p-4 flex items-center gap-4"
               >
-                <div className="w-12 h-12 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-primary-500/10 text-primary-500 flex items-center justify-center">
                   <FileIcon className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-sm text-surface-500">Total de envios</p>
-                  <p className="text-2xl font-bold text-surface-900">{stats.total}</p>
+                  <p className="text-sm text-muted-foreground">Total de envios</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.total}</p>
                 </div>
               </motion.div>
 
@@ -218,12 +222,12 @@ export default function DashboardPage() {
                 transition={{ delay: 0.1 }}
                 className="card p-4 flex items-center gap-4"
               >
-                <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
                   <CheckCircle className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-sm text-surface-500">Ativos</p>
-                  <p className="text-2xl font-bold text-surface-900">{stats.active}</p>
+                  <p className="text-sm text-muted-foreground">Ativos</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.active}</p>
                 </div>
               </motion.div>
 
@@ -233,12 +237,12 @@ export default function DashboardPage() {
                 transition={{ delay: 0.2 }}
                 className="card p-4 flex items-center gap-4"
               >
-                <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
                   <Clock className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-sm text-surface-500">Expirados</p>
-                  <p className="text-2xl font-bold text-surface-900">{stats.expired}</p>
+                  <p className="text-sm text-muted-foreground">Expirados</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.expired}</p>
                 </div>
               </motion.div>
             </>
@@ -254,13 +258,13 @@ export default function DashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             className="card p-12 text-center"
           >
-            <div className="w-20 h-20 rounded-full bg-surface-100 flex items-center justify-center mx-auto mb-6">
-              <FileIcon className="w-10 h-10 text-surface-300" />
+            <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-6">
+              <FileIcon className="w-10 h-10 text-muted-foreground/30" />
             </div>
-            <h3 className="text-lg font-semibold text-surface-900 mb-2">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               Você ainda não tem envios
             </h3>
-            <p className="text-surface-500 mb-6">
+            <p className="text-muted-foreground mb-6">
               Compartilhe arquivos e gerencie tudo por aqui
             </p>
             <a href="/">
@@ -272,7 +276,7 @@ export default function DashboardPage() {
         ) : (
           <div className="space-y-3">
             {/* Table header (desktop) */}
-            <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-sm font-medium text-surface-500">
+            <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-sm font-medium text-muted-foreground">
               <div className="col-span-4">Envio</div>
               <div className="col-span-2">Arquivos</div>
               <div className="col-span-2">Status</div>
@@ -294,26 +298,26 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                   {/* Info */}
                   <div className="md:col-span-4">
-                    <p className="font-medium text-surface-900 truncate">
+                    <p className="font-medium text-foreground truncate">
                       {transfer.recipientEmail || `Envio de ${transfer.senderName}`}
                     </p>
-                    <p className="text-sm text-surface-400">
+                    <p className="text-sm text-muted-foreground">
                       {formatDate(transfer.createdAt)}
                     </p>
                   </div>
 
                   {/* Files */}
                   <div className="md:col-span-2">
-                    <p className="text-sm text-surface-600">
+                    <p className="text-sm text-foreground">
                       {transfer.fileCount} arquivo{transfer.fileCount !== 1 ? 's' : ''}
                     </p>
-                    <p className="text-xs text-surface-400">{formatBytes(transfer.totalSizeBytes)}</p>
+                    <p className="text-xs text-muted-foreground">{formatBytes(transfer.totalSizeBytes)}</p>
                   </div>
 
                   {/* Status */}
                   <div className="md:col-span-2">
                     {getStatusBadge(transfer.status)}
-                    <p className="text-xs text-surface-400 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {transfer.status === 'active' 
                         ? `Expira ${formatDate(transfer.expiresAt)}`
                         : transfer.status === 'expired' 
@@ -325,12 +329,12 @@ export default function DashboardPage() {
                   {/* Metrics */}
                   <div className="md:col-span-2 flex gap-4">
                     <div className="text-center">
-                      <p className="text-lg font-semibold text-surface-900">{transfer.viewCount}</p>
-                      <p className="text-xs text-surface-400">Views</p>
+                      <p className="text-lg font-semibold text-foreground">{transfer.viewCount}</p>
+                      <p className="text-xs text-muted-foreground">Views</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-lg font-semibold text-surface-900">{transfer.downloadCount}</p>
-                      <p className="text-xs text-surface-400">Downloads</p>
+                      <p className="text-lg font-semibold text-foreground">{transfer.downloadCount}</p>
+                      <p className="text-xs text-muted-foreground">Downloads</p>
                     </div>
                   </div>
 
@@ -342,7 +346,7 @@ export default function DashboardPage() {
                       onClick={() => handleCopyLink(transfer)}
                       icon={copiedId === transfer.id ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                       disabled={transfer.status !== 'active'}
-                      className={copiedId === transfer.id ? 'bg-emerald-50 text-emerald-600' : ''}
+                      className={copiedId === transfer.id ? 'bg-emerald-500/10 text-emerald-500' : ''}
                     >
                       {copiedId === transfer.id ? 'Copiado' : 'Copiar'}
                     </Button>
@@ -359,13 +363,13 @@ export default function DashboardPage() {
                         <motion.div
                           initial={{ opacity: 0, scale: 0.95 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-surface-200 py-2 z-10"
+                          className="absolute right-0 top-full mt-1 w-48 bg-card rounded-xl shadow-lg border border-border py-2 z-10"
                         >
                           <a
                             href={`/d/${transfer.shareToken}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-2 px-4 py-2 text-sm text-surface-600 hover:bg-surface-50"
+                            className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:bg-accent/5 hover:text-foreground transition-colors"
                           >
                             <ExternalLink className="w-4 h-4" />
                             Abrir link
@@ -373,7 +377,7 @@ export default function DashboardPage() {
                           {transfer.status === 'active' && (
                             <button
                               onClick={() => handleRevoke(transfer.id)}
-                              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-amber-600 hover:bg-amber-50"
+                              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-amber-600 hover:bg-amber-500/10"
                             >
                               <Ban className="w-4 h-4" />
                               Revogar link
@@ -381,7 +385,7 @@ export default function DashboardPage() {
                           )}
                           <button
                             onClick={() => handleDelete(transfer.id)}
-                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-500/10"
                           >
                             <Trash2 className="w-4 h-4" />
                             Excluir

@@ -216,7 +216,7 @@ export default function ProfilePage() {
     <div className="space-y-6">
       {/* Profile Card */}
       <div className="card p-6">
-        <h2 className="text-lg font-semibold text-surface-900 mb-6">Informações do Perfil</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-6">Informações do Perfil</h2>
 
         <div className="space-y-6">
             {/* Avatar */}
@@ -225,7 +225,7 @@ export default function ProfilePage() {
                 <UserAvatar 
                   user={{ name, image: avatarPreview }} 
                   size="xl" 
-                  className="w-24 h-24 text-2xl border-4 border-white shadow-lg"
+                  className="w-24 h-24 text-2xl border-4 border-card shadow-lg"
                 />
                 <button
                   onClick={handleAvatarClick}
@@ -242,8 +242,8 @@ export default function ProfilePage() {
                 />
               </div>
             <div>
-              <p className="font-medium text-surface-900">Foto de perfil</p>
-              <p className="text-sm text-surface-500 mb-2">JPG, PNG ou GIF. Máx 2MB.</p>
+              <p className="font-medium text-foreground">Foto de perfil</p>
+              <p className="text-sm text-muted-foreground mb-2">JPG, PNG ou GIF. Máx 2MB.</p>
               <div className="flex gap-2">
                 <button 
                   onClick={handleAvatarClick}
@@ -276,7 +276,7 @@ export default function ProfilePage() {
 
           {/* Email - Read only */}
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               E-mail
             </label>
             <div className="relative">
@@ -284,13 +284,13 @@ export default function ProfilePage() {
                 type="email"
                 value={user?.email || ''}
                 disabled
-                className="w-full px-4 py-3 rounded-xl border border-surface-200 bg-surface-50 text-surface-500 cursor-not-allowed"
+                className="w-full px-4 py-3 rounded-xl border border-input bg-muted/30 text-muted-foreground cursor-not-allowed"
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <Mail className="w-5 h-5 text-surface-400" />
+                <Mail className="w-5 h-5 text-muted-foreground" />
               </div>
             </div>
-            <p className="text-xs text-surface-400 mt-1.5">
+            <p className="text-xs text-muted-foreground mt-1.5">
               O e-mail não pode ser alterado
             </p>
           </div>
@@ -312,8 +312,8 @@ export default function ProfilePage() {
       <div className="card p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-lg font-semibold text-surface-900">Senha</h2>
-            <p className="text-sm text-surface-500">
+            <h2 className="text-lg font-semibold text-foreground">Senha</h2>
+            <p className="text-sm text-muted-foreground">
               {hasPassword ? 'Altere sua senha de acesso' : 'Crie uma senha para fazer login com email'}
             </p>
           </div>
@@ -349,7 +349,7 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute right-3 top-9 text-surface-400 hover:text-surface-600"
+                  className="absolute right-3 top-9 text-muted-foreground hover:text-foreground"
                 >
                   {showCurrentPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -367,7 +367,7 @@ export default function ProfilePage() {
               <button
                 type="button"
                 onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute right-3 top-9 text-surface-400 hover:text-surface-600"
+                className="absolute right-3 top-9 text-muted-foreground hover:text-foreground"
               >
                 {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -406,28 +406,28 @@ export default function ProfilePage() {
       </div>
 
       {/* Danger Zone Card */}
-      <div className="card p-6 border-red-100 bg-red-50/30">
+      <div className="card p-6 border-destructive/20 bg-destructive/5">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center">
             <AlertTriangle className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-red-900">Zona de Perigo</h2>
-            <p className="text-sm text-red-600">Ações irreversíveis que afetam sua conta</p>
+            <h2 className="text-lg font-semibold text-destructive">Zona de Perigo</h2>
+            <p className="text-sm text-destructive/80">Ações irreversíveis que afetam sua conta</p>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white rounded-xl border border-red-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-card rounded-xl border border-destructive/20">
           <div>
-            <p className="font-semibold text-surface-900">Excluir conta</p>
-            <p className="text-sm text-surface-500 max-w-md">
+            <p className="font-semibold text-foreground">Excluir conta</p>
+            <p className="text-sm text-muted-foreground max-w-md">
               Ao excluir sua conta, todos os seus dados, envios e arquivos serão removidos permanentemente. Esta ação não pode ser desfeita.
             </p>
           </div>
           <Button
             variant="secondary"
             onClick={() => setShowDeleteModal(true)}
-            className="border-red-200 text-red-600 hover:bg-red-50"
+            className="border-destructive/30 text-destructive hover:bg-destructive/10"
           >
             Excluir minha conta
           </Button>
@@ -437,37 +437,37 @@ export default function ProfilePage() {
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {showDeleteModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-surface-900/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+              className="w-full max-w-md bg-card rounded-2xl shadow-2xl overflow-hidden"
             >
               <div className="p-6 sm:p-8">
                 <div className="flex items-center justify-between mb-6">
-                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+                  <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center text-destructive">
                     <AlertTriangle className="w-6 h-6" />
                   </div>
                   <button
                     onClick={() => !isDeleting && setShowDeleteModal(false)}
-                    className="p-2 text-surface-400 hover:text-surface-600 rounded-lg hover:bg-surface-50 transition-colors"
+                    className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent/10 transition-colors"
                     disabled={isDeleting}
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <h3 className="text-xl font-bold text-surface-900 mb-2">
+                <h3 className="text-xl font-bold text-foreground mb-2">
                   Deseja mesmo excluir sua conta?
                 </h3>
-                <p className="text-surface-500 mb-6">
+                <p className="text-muted-foreground mb-6">
                   Esta ação é <strong>irreversível</strong>. Você perderá acesso a todos os seus transfers e arquivos enviados.
                 </p>
 
                 <div className="space-y-4">
-                  <div className="p-4 bg-red-50 rounded-xl border border-red-100">
-                    <p className="text-sm text-red-700 font-medium mb-2">
+                  <div className="p-4 bg-destructive/10 rounded-xl border border-destructive/20">
+                    <p className="text-sm text-destructive font-medium mb-2">
                       Para confirmar, digite <strong>EXCLUIR</strong> abaixo:
                     </p>
                     <input
@@ -475,13 +475,13 @@ export default function ProfilePage() {
                       value={deleteConfirmation}
                       onChange={(e) => setDeleteConfirmation(e.target.value.toUpperCase())}
                       placeholder="EXCLUIR"
-                      className="w-full px-4 py-2 rounded-lg border border-red-200 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                      className="w-full px-4 py-2 rounded-lg border border-destructive/30 focus:ring-2 focus:ring-destructive focus:border-destructive outline-none bg-background text-foreground"
                     />
                   </div>
 
                   {hasPassword && (
                     <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-surface-700">
+                      <label className="text-sm font-medium text-foreground">
                         Sua senha atual
                       </label>
                       <input
@@ -489,7 +489,7 @@ export default function ProfilePage() {
                         value={deletePassword}
                         onChange={(e) => setDeletePassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full px-4 py-2 rounded-lg border border-surface-200 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                        className="w-full px-4 py-2 rounded-lg border border-input focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-background text-foreground"
                       />
                     </div>
                   )}

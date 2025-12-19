@@ -24,14 +24,14 @@ export default function TermsPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-surface-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-surface-200">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <a href="/" className="font-bold text-xl text-surface-900">
+          <a href="/" className="font-bold text-xl text-foreground">
             Coletivo<span className="text-primary-500">Send</span>
           </a>
-          <a href="/" className="text-sm font-medium text-surface-600 hover:text-surface-900 transition-colors">
+          <a href="/" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             Voltar ao início
           </a>
         </div>
@@ -49,7 +49,7 @@ export default function TermsPage() {
               <div className="w-16 h-16 rounded-2xl bg-primary-100 flex items-center justify-center mx-auto mb-6">
                 <FileText className="w-8 h-8 text-primary-500" />
               </div>
-              <h1 className="text-4xl md:text-5xl font-bold text-surface-900 mb-4">
+              <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
                 Termos de Uso
               </h1>
               <p className="text-lg text-surface-500 max-w-2xl mx-auto">
@@ -180,7 +180,7 @@ export default function TermsPage() {
                   Se você encontrar algum link hospedado no ColetivoSend que viole estes termos ou direitos autorais, por favor, denuncie imediatamente para:
                 </p>
                 <div className="not-prose mt-4">
-                  <a href="mailto:abuso@grupocoletivo.com.br" className="inline-flex items-center gap-2 px-4 py-2 bg-surface-100 hover:bg-surface-200 rounded-lg text-surface-900 transition-colors font-medium">
+                  <a href="mailto:abuso@grupocoletivo.com.br" className="inline-flex items-center gap-2 px-4 py-2 bg-muted hover:bg-accent/50 rounded-lg text-foreground transition-colors font-medium">
                     <AlertTriangle className="w-4 h-4 text-amber-600" />
                     abuso@grupocoletivo.com.br
                   </a>
@@ -212,7 +212,7 @@ export default function TermsPage() {
       </motion.button>
 
       {/* Simple Footer */}
-      <footer className="bg-white border-t border-surface-200 py-12 px-6">
+      <footer className="bg-background border-t border-border py-12 px-6">
         <div className="max-w-4xl mx-auto text-center text-surface-500 text-sm">
           <p>&copy; {new Date().getFullYear()} ColetivoSend. Todos os direitos reservados.</p>
         </div>

@@ -10,6 +10,7 @@ import { FileList, FileItem } from '@/components/upload/FileList'
 import { ProgressBar } from '@/components/upload/ProgressBar'
 import { Button } from '@/components/ui/Button'
 import { UserMenu } from '@/components/ui/UserMenu'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { formatBytes } from '@/lib/utils'
 
 // Guest limits (Legacy/Display only)
@@ -230,22 +231,24 @@ export default function HomePage() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-surface-900">
+            <span className="text-xl font-bold text-foreground">
               Coletivo<span className="text-primary-500">Send</span>
             </span>
           </a>
           
           <div className="flex items-center gap-4">
+            <ThemeToggle />
+            
             {isLoading ? (
               // Loading skeleton
-              <div className="w-24 h-10 rounded-full bg-surface-200 animate-pulse" />
+              <div className="w-24 h-10 rounded-full bg-muted animate-pulse" />
             ) : isLoggedIn ? (
               // User is logged in - show user menu
               <UserMenu />
             ) : (
               // User is not logged in - show login/signup buttons
               <>
-                <a href="/login" className="text-sm font-medium text-surface-600 hover:text-surface-900 transition-colors">
+                <a href="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
                   Entrar
                 </a>
                 <a href="/signup">
@@ -269,13 +272,13 @@ export default function HomePage() {
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             className="text-center mb-12"
           >
-            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-surface-900 mb-6 leading-tight">
+            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight">
               Compartilhe arquivos com um{' '}
               <span className="text-gradient bg-gradient-to-r from-primary-500 to-accent-500">
                 link em segundos
               </span>
             </h1>
-            <p className="text-lg md:text-xl text-surface-500 max-w-2xl mx-auto">
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
               Sem complicação. Sem cadastro obrigatório. Com segurança.
             </p>
           </motion.div>
@@ -320,7 +323,7 @@ export default function HomePage() {
             {/* Limits info */}
             {!isUploading && (
               <div className="flex items-center justify-between text-sm">
-                <div className="text-surface-400">
+                <div className="text-muted-foreground">
                   {isLoggedIn ? (
                     <span className="badge badge-info">Conta Premium</span>
                   ) : (
@@ -378,11 +381,11 @@ export default function HomePage() {
                 transition={{ duration: 0.5, delay: 0.3 + index * 0.1 }}
                 className="text-center p-6"
               >
-                <div className="w-12 h-12 rounded-xl bg-primary-100 text-primary-500 flex items-center justify-center mx-auto mb-4">
+                <div className="w-12 h-12 rounded-xl bg-primary-500/10 text-primary-500 flex items-center justify-center mx-auto mb-4">
                   <feature.icon className="w-6 h-6" />
                 </div>
-                <h3 className="font-semibold text-surface-900 mb-2">{feature.title}</h3>
-                <p className="text-sm text-surface-500">{feature.description}</p>
+                <h3 className="font-semibold text-foreground mb-2">{feature.title}</h3>
+                <p className="text-sm text-muted-foreground">{feature.description}</p>
               </motion.div>
             ))}
           </motion.div>
@@ -390,12 +393,12 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="py-8 px-6 border-t border-surface-200">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-surface-400">
+      <footer className="py-8 px-6 border-t border-border">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <p>© {new Date().getFullYear()} ColetivoSend. Compartilhamento seguro de arquivos.</p>
           <div className="flex items-center gap-6">
-            <a href="/privacy" className="hover:text-surface-600 transition-colors">Privacidade</a>
-            <a href="/terms" className="hover:text-surface-600 transition-colors">Termos</a>
+            <a href="/privacy" className="hover:text-foreground transition-colors">Privacidade</a>
+            <a href="/terms" className="hover:text-foreground transition-colors">Termos</a>
           </div>
         </div>
       </footer>

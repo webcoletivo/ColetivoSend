@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { Mail, ArrowLeft, Sparkles, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -46,6 +47,14 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-12">
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl opacity-50 dark:opacity-20" />
+        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl opacity-50 dark:opacity-20" />
+      </div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -58,7 +67,7 @@ export default function ForgotPasswordPage() {
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-surface-900">
+            <span className="text-2xl font-bold text-foreground">
               Coletivo<span className="text-primary-500">Send</span>
             </span>
           </a>
@@ -68,13 +77,13 @@ export default function ForgotPasswordPage() {
           {!isSent ? (
             <>
               <div className="text-center mb-6">
-                <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 rounded-full bg-primary-500/10 flex items-center justify-center mx-auto mb-4">
                   <Mail className="w-8 h-8 text-primary-500" />
                 </div>
-                <h1 className="text-2xl font-bold text-surface-900 mb-2">
+                <h1 className="text-2xl font-bold text-foreground mb-2">
                   Esqueceu a senha?
                 </h1>
-                <p className="text-surface-500">
+                <p className="text-muted-foreground">
                   Digite seu e-mail e enviaremos um link para redefinir.
                 </p>
               </div>
@@ -100,16 +109,16 @@ export default function ForgotPasswordPage() {
             </>
           ) : (
             <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
                 <CheckCircle2 className="w-8 h-8 text-emerald-500" />
               </div>
-              <h2 className="text-xl font-bold text-surface-900 mb-2">
+              <h2 className="text-xl font-bold text-foreground mb-2">
                 E-mail enviado!
               </h2>
-              <p className="text-surface-500 mb-6">
+              <p className="text-muted-foreground mb-6">
                 Verifique sua caixa de entrada em <strong>{email}</strong>
               </p>
-              <p className="text-sm text-surface-400">
+              <p className="text-sm text-muted-foreground">
                 Não recebeu? Verifique o spam ou{' '}
                 <button 
                   onClick={() => setIsSent(false)}
@@ -123,7 +132,7 @@ export default function ForgotPasswordPage() {
 
           <a 
             href="/login" 
-            className="flex items-center justify-center gap-2 text-sm text-surface-500 mt-6 hover:text-surface-700 transition-colors"
+            className="flex items-center justify-center gap-2 text-sm text-muted-foreground mt-6 hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Voltar para login

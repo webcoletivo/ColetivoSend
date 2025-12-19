@@ -15,37 +15,37 @@ export function ProgressBar({ progress, status, message }: ProgressBarProps) {
   const statusConfig = {
     idle: {
       icon: Upload,
-      color: 'from-surface-400 to-surface-300',
-      bgColor: 'bg-surface-100',
-      textColor: 'text-surface-500',
+      color: 'from-muted-foreground/40 to-muted-foreground/20',
+      bgColor: 'bg-muted',
+      textColor: 'text-muted-foreground',
       label: 'Pronto para enviar',
     },
     uploading: {
       icon: Loader2,
       color: 'from-primary-500 to-primary-400',
-      bgColor: 'bg-primary-50',
-      textColor: 'text-primary-600',
+      bgColor: 'bg-primary-500/10',
+      textColor: 'text-primary-500',
       label: 'Enviando...',
     },
     processing: {
       icon: Loader2,
       color: 'from-amber-500 to-amber-400',
-      bgColor: 'bg-amber-50',
-      textColor: 'text-amber-600',
+      bgColor: 'bg-amber-500/10',
+      textColor: 'text-amber-500',
       label: 'Processando...',
     },
     complete: {
       icon: CheckCircle2,
       color: 'from-emerald-500 to-emerald-400',
-      bgColor: 'bg-emerald-50',
-      textColor: 'text-emerald-600',
+      bgColor: 'bg-emerald-500/10',
+      textColor: 'text-emerald-500',
       label: 'Concluído!',
     },
     error: {
       icon: AlertCircle,
-      color: 'from-red-500 to-red-400',
-      bgColor: 'bg-red-50',
-      textColor: 'text-red-600',
+      color: 'from-destructive to-destructive/80',
+      bgColor: 'bg-destructive/10',
+      textColor: 'text-destructive',
       label: 'Erro no envio',
     },
   }
@@ -84,7 +84,7 @@ export function ProgressBar({ progress, status, message }: ProgressBarProps) {
       </div>
 
       {/* Progress bar */}
-      <div className="h-2 bg-white/50 rounded-full overflow-hidden backdrop-blur-sm">
+      <div className="h-2 bg-muted/30 rounded-full overflow-hidden backdrop-blur-sm">
         <motion.div
           className={cn('h-full rounded-full bg-gradient-to-r', config.color)}
           initial={{ width: 0 }}
@@ -134,7 +134,7 @@ export function ProgressCircle({
           fill="none"
           stroke="currentColor"
           strokeWidth={strokeWidth}
-          className="text-surface-200"
+          className="text-muted/30"
         />
         <motion.circle
           cx={size / 2}
@@ -155,7 +155,7 @@ export function ProgressCircle({
       
       {/* Center content */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-2xl font-bold text-surface-900">
+        <span className="text-2xl font-bold text-foreground">
           {Math.round(progress)}%
         </span>
       </div>

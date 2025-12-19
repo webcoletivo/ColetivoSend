@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Mail, Link2, Lock, Calendar, Send, Sparkles, Loader2, Crown } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea, Select, Checkbox } from '@/components/ui/Input'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { formatBytes } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast' // Assuming you have useToast hook
 import { siteConfig } from '@/config/site'
@@ -164,22 +165,25 @@ export default function SendPage() {
   return (
     <div className="min-h-screen py-8 px-6">
       {/* Header */}
-      <header className="max-w-2xl mx-auto mb-8">
+      <header className="max-w-2xl mx-auto mb-8 flex items-center justify-between">
         <a 
           href="/"
-          className="inline-flex items-center gap-2 text-surface-500 hover:text-surface-700 transition-colors mb-6"
+          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span className="text-sm">Voltar</span>
         </a>
         
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
-            <Sparkles className="w-5 h-5 text-white" />
+        <div className="flex items-center gap-4">
+          <ThemeToggle />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-bold text-foreground">
+              {siteConfig.name.split('Send')[0]}<span className="text-primary-500">Send</span>
+            </span>
           </div>
-          <span className="text-xl font-bold text-surface-900">
-            {siteConfig.name.split('Send')[0]}<span className="text-primary-500">Send</span>
-          </span>
         </div>
       </header>
 
@@ -193,15 +197,15 @@ export default function SendPage() {
           {/* Title */}
           <div className="mb-8 flex items-start justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-surface-900 mb-2">
+              <h1 className="text-2xl font-bold text-foreground mb-2">
                 Quase lá! Personalize o envio.
               </h1>
-              <p className="text-surface-500">
+              <p className="text-muted-foreground">
                 {files.length} arquivo{files.length !== 1 ? 's' : ''} • {formatBytes(totalSize)}
               </p>
             </div>
             {isLoggedIn && (
-               <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-primary-50 text-primary-700 rounded-full text-xs font-medium border border-primary-100">
+               <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-primary-500/10 text-primary-500 rounded-full text-xs font-medium border border-primary-500/20">
                  <Crown className="w-3 h-3" />
                  <span>Conta Autenticada</span>
                </div>
@@ -243,14 +247,14 @@ export default function SendPage() {
 
             {/* Expiration select */}
             <div>
-              <label htmlFor="expirationDays" className="block text-sm font-medium text-surface-700 mb-1">
+              <label htmlFor="expirationDays" className="block text-sm font-medium text-foreground mb-1">
                 Expiração do link
               </label>
               <select
                 id="expirationDays"
                 value={expirationDays}
                 onChange={(e) => setExpirationDays(e.target.value)}
-                className="w-full bg-surface-50 border border-surface-200 rounded-lg px-4 py-2 text-surface-900 focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                className="w-full bg-background border border-input rounded-xl px-4 py-3 text-foreground focus:ring-4 focus:border-primary-500 outline-none transition-all appearance-none cursor-pointer"
                 disabled={!isLoggedIn}
               >
                 <option value="0.0416">1 hora</option>
@@ -293,7 +297,7 @@ export default function SendPage() {
 
             {/* Error message */}
             {errors.submit && (
-              <div className="p-4 bg-red-50 text-red-600 rounded-xl border border-red-200 flex items-center gap-2">
+              <div className="p-4 bg-destructive/10 text-destructive rounded-xl border border-destructive/20 flex items-center gap-2 text-sm">
                 <span className="font-medium">Erro:</span> {errors.submit}
               </div>
             )}

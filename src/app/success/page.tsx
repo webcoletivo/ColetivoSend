@@ -64,8 +64,8 @@ export default function SuccessPage() {
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
-          <span className="text-xl font-bold text-surface-900">
-            Flow<span className="text-primary-500">Send</span>
+          <span className="text-xl font-bold text-foreground">
+            Coletivo<span className="text-primary-500">Send</span>
           </span>
         </a>
       </header>
@@ -93,10 +93,10 @@ export default function SuccessPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <h1 className="text-2xl font-bold text-surface-900 mb-2">
+            <h1 className="text-2xl font-bold text-foreground mb-2">
               Link pronto para compartilhar!
             </h1>
-            <p className="text-surface-500">
+            <p className="text-muted-foreground">
               {transfer.files.length} arquivo{transfer.files.length !== 1 ? 's' : ''} • {formatBytes(totalSize)}
             </p>
           </motion.div>
@@ -108,13 +108,13 @@ export default function SuccessPage() {
             transition={{ delay: 0.3 }}
             className="mt-8"
           >
-            <div className="flex items-center gap-2 p-4 bg-surface-50 rounded-xl border border-surface-200">
-              <Link2 className="w-5 h-5 text-surface-400 flex-shrink-0" />
+            <div className="flex items-center gap-2 p-4 bg-muted/30 rounded-xl border border-border">
+              <Link2 className="w-5 h-5 text-muted-foreground flex-shrink-0" />
               <input
                 type="text"
                 value={downloadUrl}
                 readOnly
-                className="flex-1 bg-transparent text-surface-700 text-sm truncate focus:outline-none"
+                className="flex-1 bg-transparent text-foreground text-sm truncate focus:outline-none"
               />
               <Button
                 variant="secondary"
@@ -165,13 +165,13 @@ export default function SuccessPage() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-6 p-6 bg-white rounded-xl border border-surface-200"
+              className="mt-6 p-6 bg-card rounded-xl border border-border"
             >
               {/* Placeholder QR - in real app, use qrcode library */}
-              <div className="w-48 h-48 mx-auto bg-surface-100 rounded-lg flex items-center justify-center">
-                <QrCode className="w-24 h-24 text-surface-300" />
+              <div className="w-48 h-48 mx-auto bg-muted rounded-lg flex items-center justify-center">
+                <QrCode className="w-24 h-24 text-muted-foreground/30" />
               </div>
-              <p className="text-xs text-surface-400 mt-3">
+              <p className="text-xs text-muted-foreground mt-3">
                 Escaneie para acessar os arquivos
               </p>
             </motion.div>
@@ -184,9 +184,9 @@ export default function SuccessPage() {
             transition={{ delay: 0.5 }}
             className="mt-8 grid grid-cols-2 gap-4 text-left"
           >
-            <div className="p-4 bg-surface-50 rounded-xl">
-              <p className="text-xs text-surface-400 uppercase tracking-wider">Expira em</p>
-              <p className="font-medium text-surface-900 mt-1">
+            <div className="p-4 bg-muted/30 rounded-xl">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Expira em</p>
+              <p className="font-medium text-foreground mt-1">
                 {expirationDate.toLocaleDateString('pt-BR', { 
                   day: 'numeric', 
                   month: 'short',
@@ -194,9 +194,9 @@ export default function SuccessPage() {
                 })}
               </p>
             </div>
-            <div className="p-4 bg-surface-50 rounded-xl">
-              <p className="text-xs text-surface-400 uppercase tracking-wider">Proteção</p>
-              <p className="font-medium text-surface-900 mt-1">
+            <div className="p-4 bg-muted/30 rounded-xl">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Proteção</p>
+              <p className="font-medium text-foreground mt-1">
                 {transfer.hasPassword ? 'Com senha' : 'Sem senha'}
               </p>
             </div>

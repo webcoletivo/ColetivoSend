@@ -52,27 +52,27 @@ export default function SettingsLayout({
   }
 
   return (
-    <div className="min-h-screen bg-surface-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white border-b border-surface-200 sticky top-0 z-40">
+      <header className="bg-background/80 backdrop-blur-lg border-b border-border sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/dashboard" className="flex items-center gap-2 text-surface-500 hover:text-surface-900 transition-colors">
+              <Link href="/dashboard" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
                 <ArrowLeft className="w-5 h-5" />
                 <span className="text-sm font-medium">Voltar</span>
               </Link>
-              <div className="h-6 w-px bg-surface-200" />
+              <div className="h-6 w-px bg-border" />
               <Link href="/" className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
                   <Sparkles className="w-4 h-4 text-white" />
                 </div>
-                <span className="text-lg font-bold text-surface-900">
+                <span className="text-lg font-bold text-foreground">
                   Coletivo<span className="text-primary-500">Send</span>
                 </span>
               </Link>
             </div>
-            <h1 className="text-lg font-semibold text-surface-900">Configurações</h1>
+            <h1 className="text-lg font-semibold text-foreground">Configurações</h1>
           </div>
         </div>
       </header>
@@ -90,8 +90,8 @@ export default function SettingsLayout({
                     href={item.href}
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                       isActive 
-                        ? 'bg-primary-50 text-primary-700 border border-primary-100' 
-                        : 'text-surface-600 hover:bg-surface-100'
+                        ? 'bg-primary-500/10 text-primary-500 border border-primary-500/20' 
+                        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                     }`}
                   >
                     <item.icon className={`w-5 h-5 ${isActive ? 'text-primary-500' : 'text-surface-400'}`} />

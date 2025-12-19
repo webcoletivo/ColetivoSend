@@ -32,14 +32,14 @@ function getFileIconComponent(mimeType: string) {
 }
 
 function getIconColor(mimeType: string, status: FileItem['status']) {
-  if (status === 'waiting') return 'text-amber-500 bg-amber-100 border-dashed border-amber-300'
+  if (status === 'waiting') return 'text-amber-500 bg-amber-500/10 border-dashed border-amber-500/30'
   
-  if (mimeType.startsWith('image/')) return 'text-pink-500 bg-pink-100'
-  if (mimeType.startsWith('video/')) return 'text-purple-500 bg-purple-100'
-  if (mimeType.startsWith('audio/')) return 'text-emerald-500 bg-emerald-100'
-  if (mimeType.includes('zip') || mimeType.includes('rar')) return 'text-amber-500 bg-amber-100'
-  if (mimeType.includes('pdf')) return 'text-red-500 bg-red-100'
-  return 'text-primary-500 bg-primary-100'
+  if (mimeType.startsWith('image/')) return 'text-pink-500 bg-pink-500/10'
+  if (mimeType.startsWith('video/')) return 'text-purple-500 bg-purple-500/10'
+  if (mimeType.startsWith('audio/')) return 'text-emerald-500 bg-emerald-500/10'
+  if (mimeType.includes('zip') || mimeType.includes('rar')) return 'text-amber-500 bg-amber-500/10'
+  if (mimeType.includes('pdf')) return 'text-red-500 bg-red-500/10'
+  return 'text-primary-500 bg-primary-500/10'
 }
 
 export function FileList({ files, onRemove, maxFiles, maxSize, readonly = false }: FileListProps) {
@@ -55,17 +55,17 @@ export function FileList({ files, onRemove, maxFiles, maxSize, readonly = false 
       className="space-y-4"
     >
       {/* Summary bar */}
-      <div className="flex items-center justify-between px-4 py-3 bg-surface-100 rounded-xl dark:bg-surface-800">
+      <div className="flex items-center justify-between px-4 py-3 bg-muted/30 rounded-xl">
         <div className="flex items-center gap-4 text-sm">
-          <span className="font-medium text-surface-700 dark:text-surface-300">
+          <span className="font-medium text-foreground">
             {totalCount} arquivo{totalCount !== 1 ? 's' : ''}
           </span>
-          <span className="w-1 h-1 rounded-full bg-surface-300" />
-          <span className="text-surface-500">
+          <span className="w-1 h-1 rounded-full bg-border" />
+          <span className="text-muted-foreground">
             {formatBytes(totalSize)} de {formatBytes(maxSize)}
           </span>
         </div>
-        <div className="text-xs text-surface-400">
+        <div className="text-xs text-muted-foreground">
           {maxFiles - totalCount} restante{maxFiles - totalCount !== 1 ? 's' : ''}
         </div>
       </div>
@@ -104,10 +104,10 @@ export function FileList({ files, onRemove, maxFiles, maxSize, readonly = false 
                   stiffness: 300,
                   damping: 25
                 }}
-                className={`group flex items-center gap-3 p-3 bg-white rounded-xl border transition-colors dark:bg-surface-800 dark:border-surface-700 ${
+                className={`group flex items-center gap-3 p-3 bg-card rounded-xl border border-border transition-colors hover:bg-accent/5 ${
                   item.status === 'waiting' 
-                    ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700/50' 
-                    : 'border-surface-100 hover:border-surface-200'
+                    ? 'border-amber-500/20 bg-amber-500/10' 
+                    : ''
                 }`}
               >
                 {/* File icon */}
@@ -117,10 +117,10 @@ export function FileList({ files, onRemove, maxFiles, maxSize, readonly = false 
 
                 {/* File info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-surface-900 truncate dark:text-surface-100">
+                  <p className="text-sm font-medium text-foreground truncate">
                     {item.file.name}
                   </p>
-                  <p className="text-xs text-surface-400">
+                  <p className="text-xs text-muted-foreground">
                     {formatBytes(item.file.size)}
                     {item.status === 'uploading' && item.progress !== undefined && (
                       <span className="ml-2 text-primary-500">
@@ -141,7 +141,7 @@ export function FileList({ files, onRemove, maxFiles, maxSize, readonly = false 
 
                 {/* Progress bar for uploading files */}
                 {item.status === 'uploading' && item.progress !== undefined && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-surface-200 rounded-b-xl overflow-hidden">
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-muted rounded-b-xl overflow-hidden">
                     <motion.div
                       className="h-full bg-primary-500"
                       initial={{ width: 0 }}
@@ -160,7 +160,7 @@ export function FileList({ files, onRemove, maxFiles, maxSize, readonly = false 
                     <IconButton
                       variant="ghost"
                       onClick={() => onRemove(item.id)}
-                      className="text-surface-400 hover:text-red-500 hover:bg-red-50"
+                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                     >
                       <X className="w-4 h-4" />
                     </IconButton>

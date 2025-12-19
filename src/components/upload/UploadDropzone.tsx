@@ -71,12 +71,11 @@ export function UploadDropzone({
         className={cn(
           'relative flex flex-col items-center justify-center gap-4',
           'p-8 md:p-12 lg:p-16 rounded-2xl border-2 border-dashed',
-          'bg-gradient-to-b from-surface-50 to-white',
-          'transition-all duration-300 cursor-pointer group',
-          'dark:from-surface-800 dark:to-surface-900',
-          isDragActive && !isDragReject && 'border-primary-500 bg-gradient-to-b from-primary-50 to-white dark:from-primary-950/50',
-          isDragReject && 'border-red-500 bg-red-50',
-          !isDragActive && !disabled && 'border-surface-300 hover:border-primary-400 hover:bg-gradient-to-b hover:from-primary-50/50 hover:to-white dark:border-surface-600 dark:hover:border-primary-500',
+          'bg-background transition-all duration-300 cursor-pointer group',
+          'dark:bg-secondary/10',
+          isDragActive && !isDragReject && 'border-primary-500 bg-primary-500/5',
+          isDragReject && 'border-destructive bg-destructive/5',
+          !isDragActive && !disabled && 'border-border hover:border-primary-500 hover:bg-accent/5',
           disabled && 'opacity-50 cursor-not-allowed'
         )}
       >
@@ -91,9 +90,7 @@ export function UploadDropzone({
           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           className={cn(
             'w-20 h-20 rounded-full flex items-center justify-center',
-            'bg-gradient-to-br from-primary-100 to-primary-50',
-            'group-hover:from-primary-200 group-hover:to-primary-100',
-            'dark:from-primary-900/50 dark:to-primary-800/30',
+            'bg-primary-500/10 group-hover:bg-primary-500/20',
             'transition-colors duration-300'
           )}
         >
@@ -109,23 +106,22 @@ export function UploadDropzone({
           </motion.div>
         </motion.div>
 
-        {/* Text content */}
         <div className="text-center space-y-2">
-          <h3 className="text-xl font-semibold text-surface-900 dark:text-surface-100">
+          <h3 className="text-xl font-semibold text-foreground">
             {isDragActive ? 'Solte os arquivos aqui' : 'Arraste e solte seus arquivos'}
           </h3>
-          <p className="text-surface-500 dark:text-surface-400">
+          <p className="text-muted-foreground">
             ou <span className="text-primary-500 font-medium">clique para selecionar</span>
           </p>
         </div>
 
         {/* Limits info */}
-        <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-surface-400 font-medium">
-          <span className="flex items-center gap-1.5 px-3 py-1 bg-surface-100 dark:bg-surface-800 rounded-full">
+        <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground font-medium">
+          <span className="flex items-center gap-1.5 px-3 py-1 bg-muted rounded-full">
             <FileUp className="w-3.5 h-3.5" />
             Arquivos ilimitados
           </span>
-          <span className="flex items-center gap-1.5 px-3 py-1 bg-surface-100 dark:bg-surface-800 rounded-full">
+          <span className="flex items-center gap-1.5 px-3 py-1 bg-muted rounded-full">
              <Cloud className="w-3.5 h-3.5" />
              Máx. 10 GB
           </span>
@@ -157,7 +153,7 @@ export function UploadDropzone({
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-2 px-4 py-3 bg-red-50 text-red-600 rounded-xl border border-red-200"
+            className="flex items-center gap-2 px-4 py-3 bg-destructive/10 text-destructive rounded-xl border border-destructive/20"
           >
             <AlertCircle className="w-5 h-5 flex-shrink-0" />
             <span className="text-sm font-medium">{error}</span>

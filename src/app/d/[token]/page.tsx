@@ -42,12 +42,12 @@ function getFileIconComponent(mimeType: string) {
 }
 
 function getIconColor(mimeType: string) {
-  if (mimeType.startsWith('image/')) return 'text-pink-500 bg-pink-100'
-  if (mimeType.startsWith('video/')) return 'text-purple-500 bg-purple-100'
-  if (mimeType.startsWith('audio/')) return 'text-emerald-500 bg-emerald-100'
-  if (mimeType.includes('zip') || mimeType.includes('rar')) return 'text-amber-500 bg-amber-100'
-  if (mimeType.includes('pdf')) return 'text-red-500 bg-red-100'
-  return 'text-primary-500 bg-primary-100'
+  if (mimeType.startsWith('image/')) return 'text-pink-500 bg-pink-500/10'
+  if (mimeType.startsWith('video/')) return 'text-purple-500 bg-purple-500/10'
+  if (mimeType.startsWith('audio/')) return 'text-emerald-500 bg-emerald-500/10'
+  if (mimeType.includes('zip') || mimeType.includes('rar')) return 'text-amber-500 bg-amber-500/10'
+  if (mimeType.includes('pdf')) return 'text-red-500 bg-red-500/10'
+  return 'text-primary-500 bg-primary-500/10'
 }
 
 import { useParams } from 'next/navigation'
@@ -171,10 +171,10 @@ export default function DownloadPage() {
   // Loading state
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-surface-50">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-surface-500">Carregando...</p>
+          <p className="text-muted-foreground">Carregando...</p>
         </div>
       </div>
     )
@@ -187,7 +187,7 @@ export default function DownloadPage() {
         icon: AlertCircle,
         title: 'Link não encontrado',
         description: 'Este link de download não existe ou foi removido.',
-        color: 'text-surface-400',
+        color: 'text-muted-foreground/50',
       },
       expired: {
         icon: Clock,
@@ -213,17 +213,17 @@ export default function DownloadPage() {
     const IconComponent = config.icon
 
     return (
-      <div className="min-h-screen flex items-center justify-center px-6 bg-surface-50">
+      <div className="min-h-screen flex items-center justify-center px-6 bg-background">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           className="max-w-md w-full text-center"
         >
-          <div className={`w-20 h-20 rounded-full bg-surface-100 flex items-center justify-center mx-auto mb-6`}>
+          <div className={`w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-6`}>
             <IconComponent className={`w-10 h-10 ${config.color}`} />
           </div>
-          <h1 className="text-2xl font-bold text-surface-900 mb-3">{config.title}</h1>
-          <p className="text-surface-500 mb-8">{config.description}</p>
+          <h1 className="text-2xl font-bold text-foreground mb-3">{config.title}</h1>
+          <p className="text-muted-foreground mb-8">{config.description}</p>
           <a href="/">
             <Button variant="primary">
               Ir para o início
@@ -237,20 +237,20 @@ export default function DownloadPage() {
   // Password prompt
   if (status === 'password') {
     return (
-      <div className="min-h-screen flex items-center justify-center px-6 bg-surface-50">
+      <div className="min-h-screen flex items-center justify-center px-6 bg-background">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="max-w-md w-full"
         >
           <div className="card p-8 text-center">
-            <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-6">
+            <div className="w-16 h-16 rounded-full bg-primary-500/10 flex items-center justify-center mx-auto mb-6">
               <Lock className="w-8 h-8 text-primary-500" />
             </div>
-            <h1 className="text-2xl font-bold text-surface-900 mb-2">
+            <h1 className="text-2xl font-bold text-foreground mb-2">
               Arquivos protegidos
             </h1>
-            <p className="text-surface-500 mb-6">
+            <p className="text-muted-foreground mb-6">
               Este envio está protegido por senha. Digite a senha para acessar.
             </p>
             
@@ -274,14 +274,14 @@ export default function DownloadPage() {
 
   // Ready - show files
   return (
-    <div className="min-h-screen py-12 px-6 bg-surface-50">
+    <div className="min-h-screen py-12 px-6 bg-background">
       {/* Header */}
       <header className="max-w-2xl mx-auto text-center mb-8">
         <a href="/" className="inline-flex items-center gap-2">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
-          <span className="text-xl font-bold text-surface-900">
+          <span className="text-xl font-bold text-foreground">
             Coletivo<span className="text-primary-500">Send</span>
           </span>
         </a>
@@ -313,15 +313,15 @@ export default function DownloadPage() {
           </div>
 
           {/* Info bar */}
-          <div className="px-6 md:px-8 py-4 bg-surface-50 border-b border-surface-200 flex items-center justify-between text-sm">
+          <div className="px-6 md:px-8 py-4 bg-muted/30 border-b border-border flex items-center justify-between text-sm">
             <div className="flex items-center gap-4">
-              <span className="text-surface-600">
+              <span className="text-foreground">
                 {transfer?.files.length} arquivo{transfer?.files.length !== 1 ? 's' : ''}
               </span>
-              <span className="w-1 h-1 rounded-full bg-surface-300" />
-              <span className="text-surface-600">{formatBytes(totalSize)}</span>
+              <span className="w-1 h-1 rounded-full bg-border" />
+              <span className="text-foreground">{formatBytes(totalSize)}</span>
             </div>
-            <div className="flex items-center gap-2 text-surface-400">
+            <div className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="w-4 h-4" />
               <span>Expira em {formatDate(transfer?.expiresAt || '')}</span>
             </div>
@@ -340,15 +340,15 @@ export default function DownloadPage() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="flex items-center gap-4 p-4 bg-surface-50 rounded-xl hover:bg-surface-100 transition-colors group"
+                  className="flex items-center gap-4 p-4 bg-muted/50 rounded-xl hover:bg-accent/5 transition-colors group"
                 >
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${iconClass}`}>
                     <IconComponent className="w-6 h-6" />
                   </div>
                   
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-surface-900 truncate">{file.originalName}</p>
-                    <p className="text-sm text-surface-400">{formatBytes(file.sizeBytes)}</p>
+                    <p className="font-medium text-foreground truncate">{file.originalName}</p>
+                    <p className="text-sm text-muted-foreground">{formatBytes(file.sizeBytes)}</p>
                   </div>
                   
                   <Button
@@ -381,7 +381,7 @@ export default function DownloadPage() {
         </motion.div>
 
         {/* Footer */}
-        <p className="text-center text-sm text-surface-400 mt-8">
+        <p className="text-center text-sm text-muted-foreground mt-8">
           Enviado com{' '}
           <a href="/" className="text-primary-500 hover:underline">ColetivoSend</a>
         </p>

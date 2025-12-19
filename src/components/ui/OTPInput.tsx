@@ -143,9 +143,9 @@ export function OTPInput({
               'focus:outline-none focus:ring-2 focus:ring-primary-500/50',
               'disabled:opacity-50 disabled:cursor-not-allowed',
               error
-                ? 'border-red-300 bg-red-50 text-red-600 focus:border-red-500'
-                : 'border-surface-200 bg-white text-surface-900 focus:border-primary-500',
-              value[index] && !error && 'border-primary-300 bg-primary-50'
+                ? 'border-destructive bg-destructive/10 text-destructive focus:border-destructive'
+                : 'border-input bg-background text-foreground focus:border-primary-500 hover:bg-accent/5 dark:bg-secondary/20 dark:border-input dark:text-foreground',
+              value[index] && !error && 'border-primary-500 bg-primary-500/5 text-primary-500 dark:border-primary-500 dark:bg-primary-500/20'
             )}
             aria-label={`Digit ${index + 1}`}
           />

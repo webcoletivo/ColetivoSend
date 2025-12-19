@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { Eye, EyeOff, Sparkles, ArrowRight, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export default function SignupPage() {
   const [name, setName] = useState('')
@@ -70,9 +71,13 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-12">
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+
       <div className="fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-primary-400/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-accent-400/10 rounded-full blur-3xl" />
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl opacity-50 dark:opacity-20" />
+        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl opacity-50 dark:opacity-20" />
       </div>
 
       <motion.div
@@ -87,22 +92,22 @@ export default function SignupPage() {
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-surface-900">
+            <span className="text-2xl font-bold text-foreground">
               Coletivo<span className="text-primary-500">Send</span>
             </span>
           </a>
-          <h1 className="text-2xl font-bold text-surface-900 mb-2">
+          <h1 className="text-2xl font-bold text-foreground mb-2">
             Crie sua conta
           </h1>
-          <p className="text-surface-500">
+          <p className="text-muted-foreground">
             Desbloqueie todos os recursos premium
           </p>
         </div>
 
         {/* Benefits */}
-        <div className="mb-6 p-4 bg-primary-50 rounded-xl border border-primary-100">
-          <p className="text-sm font-medium text-primary-700 mb-2">Com uma conta você pode:</p>
-          <ul className="space-y-1 text-sm text-primary-600">
+        <div className="mb-6 p-4 bg-primary-500/10 rounded-xl border border-primary-500/20">
+          <p className="text-sm font-medium text-primary-600 mb-2">Com uma conta você pode:</p>
+          <ul className="space-y-1 text-sm text-primary-600/90">
             <li className="flex items-center gap-2">
               <Check className="w-4 h-4" /> Enviar até 10GB por transfer
             </li>
@@ -151,7 +156,7 @@ export default function SignupPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-9 text-surface-400 hover:text-surface-600 transition-colors"
+                  className="absolute right-3 top-9 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -169,7 +174,7 @@ export default function SignupPage() {
                             ? passwordStrength <= 2
                               ? 'bg-amber-500'
                               : 'bg-emerald-500'
-                            : 'bg-surface-200'
+                            : 'bg-muted'
                         }`}
                       />
                     ))}
@@ -185,8 +190,8 @@ export default function SignupPage() {
                         key={check.key}
                         className={`text-xs px-2 py-1 rounded-full transition-colors ${
                           passwordChecks[check.key as keyof typeof passwordChecks]
-                            ? 'bg-emerald-100 text-emerald-600'
-                            : 'bg-surface-100 text-surface-400'
+                            ? 'bg-emerald-500/10 text-emerald-500'
+                            : 'bg-muted text-muted-foreground'
                         }`}
                       >
                         {check.label}
@@ -198,7 +203,7 @@ export default function SignupPage() {
             </div>
 
             {errors.submit && (
-              <div className="p-4 bg-red-50 text-red-600 rounded-xl border border-red-200 text-sm">
+              <div className="p-4 bg-destructive/10 text-destructive rounded-xl border border-destructive/20 text-sm">
                 {errors.submit}
               </div>
             )}
@@ -214,7 +219,7 @@ export default function SignupPage() {
             </Button>
           </form>
 
-          <p className="text-center text-xs text-surface-400 mt-4">
+          <p className="text-center text-xs text-muted-foreground mt-4">
             Ao criar uma conta, você concorda com nossos{' '}
             <a href="/terms" className="text-primary-500 hover:underline">Termos</a> e{' '}
             <a href="/privacy" className="text-primary-500 hover:underline">Política de Privacidade</a>
@@ -222,10 +227,10 @@ export default function SignupPage() {
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-surface-200" />
+              <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-surface-400">ou</span>
+              <span className="px-4 bg-card text-muted-foreground">ou</span>
             </div>
           </div>
 
@@ -239,7 +244,7 @@ export default function SignupPage() {
             Criar conta com Google
           </Button>
 
-          <p className="text-center text-sm text-surface-500 mt-6">
+          <p className="text-center text-sm text-muted-foreground mt-6">
             Já tem uma conta?{' '}
             <a href="/login" className="text-primary-500 font-medium hover:text-primary-600 transition-colors">
               Entrar

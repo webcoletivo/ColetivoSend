@@ -185,21 +185,21 @@ export default function SecurityPage() {
       {/* 2FA Card */}
       <div className="card p-6">
         <div className="flex items-start gap-4 mb-6">
-          <div className="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center">
             <Shield className="w-6 h-6 text-primary-500" />
           </div>
           <div className="flex-1">
-            <h2 className="text-lg font-semibold text-surface-900">
+            <h2 className="text-lg font-semibold text-foreground">
               Autenticação de dois fatores (2FA)
             </h2>
-            <p className="text-sm text-surface-500 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Adicione uma camada extra de segurança à sua conta usando um app autenticador.
             </p>
           </div>
           <div className={`px-3 py-1.5 rounded-full text-xs font-medium ${
             twoFactorEnabled 
-              ? 'bg-emerald-100 text-emerald-700' 
-              : 'bg-surface-100 text-surface-600'
+              ? 'bg-emerald-500/10 text-emerald-500' 
+              : 'bg-muted text-muted-foreground'
           }`}>
             {twoFactorEnabled ? 'Ativado' : 'Desativado'}
           </div>
@@ -207,7 +207,7 @@ export default function SecurityPage() {
 
         {/* Error message */}
         {error && !showSetup && !showDisable && (
-          <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-xl border border-red-200 flex items-center gap-2">
+          <div className="mb-4 p-4 bg-destructive/10 text-destructive rounded-xl border border-destructive/20 flex items-center gap-2">
             <AlertCircle className="w-5 h-5 flex-shrink-0" />
             {error}
           </div>
@@ -215,21 +215,21 @@ export default function SecurityPage() {
 
         {/* 2FA Status */}
         {!showSetup && !showDisable && (
-          <div className="flex items-center justify-between p-4 bg-surface-50 rounded-xl">
+          <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
             <div className="flex items-center gap-3">
-              <Smartphone className="w-5 h-5 text-surface-400" />
-              <span className="text-sm text-surface-600">
+              <Smartphone className="w-5 h-5 text-muted-foreground" />
+              <span className="text-sm text-foreground">
                 {twoFactorEnabled 
                   ? 'App autenticador configurado' 
                   : 'Nenhum app autenticador configurado'}
               </span>
             </div>
             {twoFactorEnabled ? (
-              <Button
+                <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowDisable(true)}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
               >
                 Desativar
               </Button>
@@ -251,15 +251,15 @@ export default function SecurityPage() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="border-t border-surface-200 mt-6 pt-6"
+              className="border-t border-border mt-6 pt-6"
             >
               {/* Step 1: QR Code */}
               {setupStep === 'qr' && (
                 <div className="space-y-4">
-                  <h3 className="font-medium text-surface-900">
+                  <h3 className="font-medium text-foreground">
                     1. Escaneie o QR code
                   </h3>
-                  <p className="text-sm text-surface-500">
+                  <p className="text-sm text-muted-foreground">
                     Use um app autenticador como Google Authenticator, Authy ou Microsoft Authenticator.
                   </p>
                   
@@ -268,19 +268,19 @@ export default function SecurityPage() {
                       <img 
                         src={qrCodeUrl} 
                         alt="QR Code" 
-                        className="w-48 h-48 rounded-lg border border-surface-200"
+                        className="w-48 h-48 rounded-lg border border-border bg-white p-2"
                       />
                     ) : (
-                      <div className="w-48 h-48 bg-surface-100 rounded-lg flex items-center justify-center">
+                      <div className="w-48 h-48 bg-muted rounded-lg flex items-center justify-center">
                         <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
                       </div>
                     )}
                   </div>
 
                   {secret && (
-                    <div className="p-3 bg-surface-100 rounded-lg">
-                      <p className="text-xs text-surface-500 mb-1">Ou digite manualmente:</p>
-                      <code className="text-sm font-mono text-surface-900 break-all">{secret}</code>
+                    <div className="p-3 bg-muted rounded-lg">
+                      <p className="text-xs text-muted-foreground mb-1">Ou digite manualmente:</p>
+                      <code className="text-sm font-mono text-foreground break-all">{secret}</code>
                     </div>
                   )}
 
@@ -304,10 +304,10 @@ export default function SecurityPage() {
               {/* Step 2: Verify */}
               {setupStep === 'verify' && (
                 <div className="space-y-4">
-                  <h3 className="font-medium text-surface-900">
+                  <h3 className="font-medium text-foreground">
                     2. Digite o código de verificação
                   </h3>
-                  <p className="text-sm text-surface-500">
+                  <p className="text-sm text-muted-foreground">
                     Insira o código de 6 dígitos do seu app autenticador.
                   </p>
 
@@ -323,7 +323,7 @@ export default function SecurityPage() {
                   </div>
 
                   {error && (
-                    <div className="p-4 bg-red-50 text-red-700 rounded-xl border border-red-200 flex items-center gap-2">
+                    <div className="p-4 bg-destructive/10 text-destructive rounded-xl border border-destructive/20 flex items-center gap-2">
                       <AlertCircle className="w-5 h-5 flex-shrink-0" />
                       {error}
                     </div>
@@ -355,23 +355,23 @@ export default function SecurityPage() {
                     <h3 className="font-medium">2FA ativado com sucesso!</h3>
                   </div>
                   
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                  <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
                     <div className="flex items-start gap-3">
-                      <Key className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <Key className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-sm font-medium text-amber-800">
+                        <p className="text-sm font-medium text-amber-600">
                           Salve seus códigos de recuperação
                         </p>
-                        <p className="text-sm text-amber-700 mt-1">
+                        <p className="text-sm text-amber-600/80 mt-1">
                           Se você perder acesso ao seu app autenticador, use um destes códigos para entrar na sua conta.
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 p-4 bg-surface-50 rounded-xl font-mono text-sm">
+                  <div className="grid grid-cols-2 gap-2 p-4 bg-muted/30 rounded-xl font-mono text-sm">
                     {recoveryCodes.map((code, i) => (
-                      <div key={i} className="p-2 bg-white rounded border border-surface-200">
+                      <div key={i} className="p-2 bg-card rounded border border-border">
                         {code}
                       </div>
                     ))}
@@ -414,12 +414,12 @@ export default function SecurityPage() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="border-t border-surface-200 mt-6 pt-6 space-y-4"
+              className="border-t border-border mt-6 pt-6 space-y-4"
             >
-              <h3 className="font-medium text-surface-900">
+              <h3 className="font-medium text-foreground">
                 Desativar autenticação de dois fatores
               </h3>
-              <p className="text-sm text-surface-500">
+              <p className="text-sm text-muted-foreground">
                 Digite sua senha para confirmar a desativação do 2FA.
               </p>
 
@@ -432,7 +432,7 @@ export default function SecurityPage() {
               />
 
               {error && (
-                <div className="p-4 bg-red-50 text-red-700 rounded-xl border border-red-200 flex items-center gap-2">
+                <div className="p-4 bg-destructive/10 text-destructive rounded-xl border border-destructive/20 flex items-center gap-2">
                   <AlertCircle className="w-5 h-5 flex-shrink-0" />
                   {error}
                 </div>
@@ -465,8 +465,8 @@ export default function SecurityPage() {
 
       {/* Additional Info */}
       <div className="card p-6">
-        <h3 className="font-medium text-surface-900 mb-4">Por que usar 2FA?</h3>
-        <ul className="space-y-3 text-sm text-surface-600">
+        <h3 className="font-medium text-foreground mb-4">Por que usar 2FA?</h3>
+        <ul className="space-y-3 text-sm text-muted-foreground">
           <li className="flex items-start gap-3">
             <Shield className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
             <span>Protege sua conta mesmo se sua senha for comprometida</span>
