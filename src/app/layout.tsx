@@ -4,6 +4,7 @@ import './globals.css'
 import { ToastProvider } from '@/components/ui/Toast'
 import { SessionProvider } from '@/components/providers/SessionProvider'
 import { siteConfig } from '@/config/site'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -54,6 +55,7 @@ export default function RootLayout({
             {children}
           </ToastProvider>
         </SessionProvider>
+        <SpeedInsights />
       </body>
     </html>
   )
