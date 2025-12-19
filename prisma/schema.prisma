@@ -73,6 +73,7 @@ model Transfer {
   viewCount       Int      @default(0)
   downloadCount   Int      @default(0)
   totalSizeBytes  Int      @default(0)
+  emailLogs       EmailLog[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   files           File[]
@@ -81,6 +82,24 @@ model Transfer {
   @@index([ownerUserId])
   @@index([status])
   @@index([expiresAt])
+}
+
+model EmailLog {
+  id               String   @id @default(cuid())
+  transferId       String
+  transfer         Transfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  recipientEmail   String
+  status           String   @default("queued") // queued, sent, failed
+  retryCount       Int      @default(0)
+  providerResponse String?
+  errorMessage     String?
+  sentAt           DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([transferId])
+  @@index([recipientEmail])
+  @@index([status])
 }
 
 model File {

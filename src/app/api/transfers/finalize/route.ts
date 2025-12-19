@@ -165,17 +165,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 7. Send Email
-    if (recipientEmail) {
-      await sendTransferEmail(
-        recipientEmail,
-        senderName,
-        shareToken,
-        message || undefined,
-        files.length,
-        formatBytes(totalSizeBytes)
-      )
-    }
+    // 7. Email Sending is now decoupled to POST /api/transfers/[id]/email
+    // The client will call it after a successful finalize.
 
     // 8. Piggyback Cleanup (Fire and Forget)
     // Run cleanup of OLD expired transfers essentially "for free"

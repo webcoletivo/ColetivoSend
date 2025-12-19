@@ -5,13 +5,25 @@ import { motion } from 'framer-motion'
 import { CheckCircle2, Loader2, AlertCircle, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+import { formatBytes } from '@/lib/utils'
+
 interface ProgressBarProps {
   progress: number // 0-100
   status: 'idle' | 'uploading' | 'processing' | 'complete' | 'error'
   message?: string
+  bytesUploaded?: number
+  totalBytes?: number
+  estimatedTime?: string // Already formatted time string
 }
 
-export function ProgressBar({ progress, status, message }: ProgressBarProps) {
+export function ProgressBar({ 
+  progress, 
+  status, 
+  message,
+  bytesUploaded,
+  totalBytes,
+  estimatedTime
+}: ProgressBarProps) {
   const statusConfig = {
     idle: {
       icon: Upload,
@@ -64,20 +76,20 @@ export function ProgressBar({ progress, status, message }: ProgressBarProps) {
     >
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 overflow-hidden">
           <IconComponent
             className={cn(
-              'w-5 h-5',
+              'w-5 h-5 shrink-0',
               config.textColor,
               (status === 'uploading' || status === 'processing') && 'animate-spin'
             )}
           />
-          <span className={cn('font-medium', config.textColor)}>
+          <span className={cn('font-medium truncate', config.textColor)}>
             {message || config.label}
           </span>
         </div>
         {status !== 'idle' && (
-          <span className={cn('text-sm font-semibold', config.textColor)}>
+          <span className={cn('text-sm font-semibold shrink-0', config.textColor)}>
             {Math.round(progress)}%
           </span>
         )}
@@ -95,6 +107,20 @@ export function ProgressBar({ progress, status, message }: ProgressBarProps) {
           }}
         />
       </div>
+
+      {/* Stats - Real progress feedback */}
+      {(status === 'uploading' || status === 'processing') && (bytesUploaded !== undefined && totalBytes !== undefined) && (
+        <div className="flex items-center justify-between text-[11px] font-medium opacity-80 uppercase tracking-wider overflow-hidden">
+          <div className={config.textColor}>
+            {formatBytes(bytesUploaded)} / {formatBytes(totalBytes)}
+          </div>
+          {estimatedTime && (
+            <div className={config.textColor}>
+              Restante: {estimatedTime}
+            </div>
+          )}
+        </div>
+      )}
     </motion.div>
   )
 }

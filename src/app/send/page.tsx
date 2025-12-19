@@ -29,6 +29,8 @@ export default function SendPage() {
 
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [createdTransferId, setCreatedTransferId] = useState<string | null>(null)
   
   // Form state
   const [senderName, setSenderName] = useState('')
@@ -59,15 +61,6 @@ export default function SendPage() {
     }
   }, [session, senderName])
 
-  // Reset expiration to premium default only when auth finishes loading and user is logged in
-  useEffect(() => {
-    if (isLoggedIn) {
-       // Only set to 7 if it was default, but allow user to change it. 
-       // Actually user might want 7. Let's stick to 7 default for everyone but allow changes for logged in.
-       // The previous default was 7.
-    }
-  }, [isLoggedIn])
-
   const totalSize = files.reduce((acc, f) => acc + f.size, 0)
 
   const validate = () => {
@@ -89,44 +82,73 @@ export default function SendPage() {
     return Object.keys(newErrors).length === 0
   }
 
+  const handleSendEmail = async (transferId: string) => {
+    setEmailStatus('loading')
+    try {
+      const res = await fetch(`/api/transfers/${transferId}/email`, {
+        method: 'POST'
+      })
+      const data = await res.json()
+
+      if (!res.ok) throw new Error(data.error || 'Falha ao enviar e-mail')
+
+      setEmailStatus('success')
+      showToast('E-mail enviado com sucesso!', 'success')
+      
+      // After email success, redirect
+      setTimeout(() => {
+        window.location.href = '/dashboard'
+        sessionStorage.removeItem('uploadedFiles')
+      }, 1500)
+    } catch (err: any) {
+      console.error('Email retry error:', err)
+      setEmailStatus('error')
+      showToast(err.message || 'Erro ao enviar e-mail', 'error')
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!validate()) return
     
+    // If we already have a transfer ID and just need to retry email
+    if (createdTransferId && emailStatus === 'error') {
+      await handleSendEmail(createdTransferId)
+      return
+    }
+
     setIsLoading(true)
+    setEmailStatus('idle')
 
     try {
       // Retrieve keys from sessionStorage
       const storedTransferId = sessionStorage.getItem('currentTransferId')
       if (!storedTransferId) throw new Error('Sessão de upload inválida')
 
-      // Prepare payload
+      // 1. Finalize Transfer (DB records)
       const payload = {
         transferId: storedTransferId,
         senderName,
         recipientEmail,
         message,
         files,
-        // CRITICAL FIX: Use parseFloat for expiration days (to handle 0.0416 for 1h)
         expirationDays: parseFloat(expirationDays),
         password: hasPassword ? password : null,
       }
 
       const res = await fetch('/api/transfers/finalize', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
 
       const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Erro ao criar envio')
-      }
+      if (!res.ok) throw new Error(data.error || 'Erro ao criar envio')
       
+      const newTransferId = data.transfer.id
+      setCreatedTransferId(newTransferId)
+
       // Store transfer info for success page
       sessionStorage.setItem('lastTransfer', JSON.stringify({
         shareToken: data.transfer.shareToken,
@@ -138,13 +160,17 @@ export default function SendPage() {
         hasPassword,
       }))
       
-      // Redirect to dashboard
-      window.location.href = '/dashboard'
-      showToast('Envio criado com sucesso!', 'success')
-      
-      // Clean up session storage
-      sessionStorage.removeItem('uploadedFiles')
-      sessionStorage.removeItem('lastTransfer')
+      // 2. If email is provided, call decoupled email endpoint
+      if (recipientEmail) {
+        await handleSendEmail(newTransferId)
+      } else {
+        showToast('Link criado com sucesso!', 'success')
+        setTimeout(() => {
+          window.location.href = '/dashboard'
+          sessionStorage.removeItem('uploadedFiles')
+        }, 1000)
+      }
+
     } catch (error: any) {
       console.error('Error creating transfer:', error)
       setErrors({ submit: error.message || 'Erro ao criar envio. Tente novamente.' })
@@ -296,9 +322,17 @@ export default function SendPage() {
             {/* Limits info for guests */}
 
             {/* Error message */}
-            {errors.submit && (
-              <div className="p-4 bg-destructive/10 text-destructive rounded-xl border border-destructive/20 flex items-center gap-2 text-sm">
-                <span className="font-medium">Erro:</span> {errors.submit}
+            {(errors.submit || emailStatus === 'error') && (
+              <div className="p-4 bg-destructive/10 text-destructive rounded-xl border border-destructive/20 flex flex-col gap-2 text-sm text-left">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold uppercase tracking-wider text-[10px]">Erro:</span> 
+                  <span>{errors.submit || 'O link foi criado, mas houve um erro ao enviar o e-mail.'}</span>
+                </div>
+                {emailStatus === 'error' && (
+                  <p className="text-xs opacity-80">
+                    O destinatário pode não receber a notificação, mas você ainda pode copiar o link no dashboard.
+                  </p>
+                )}
               </div>
             )}
 
@@ -306,11 +340,21 @@ export default function SendPage() {
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <Button
                 type="submit"
-                loading={isLoading}
-                icon={recipientEmail ? <Mail className="w-4 h-4" /> : <Link2 className="w-4 h-4" />}
+                loading={isLoading || emailStatus === 'loading'}
+                disabled={emailStatus === 'success'}
+                icon={emailStatus === 'error' ? <Send className="w-4 h-4" /> : (recipientEmail ? <Mail className="w-4 h-4" /> : <Link2 className="w-4 h-4" />)}
                 className="flex-1"
+                variant={emailStatus === 'error' ? 'secondary' : 'primary'}
               >
-                {recipientEmail ? 'Enviar por e-mail' : 'Criar link'}
+                {emailStatus === 'loading' 
+                  ? 'Enviando e-mail...' 
+                  : isLoading 
+                    ? 'Criando link...' 
+                    : emailStatus === 'error' 
+                      ? 'Tentar enviar e-mail novamente'
+                      : emailStatus === 'success'
+                        ? 'E-mail enviado!'
+                        : (recipientEmail ? 'Enviar por e-mail' : 'Criar link')}
               </Button>
             </div>
           </form>

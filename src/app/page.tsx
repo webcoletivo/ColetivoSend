@@ -107,6 +107,10 @@ export default function HomePage() {
     }
   }, [isLoggedIn])
 
+  const [bytesUploadedMap, setBytesUploadedMap] = useState<Record<string, number>>({})
+  const [startTime, setStartTime] = useState<number | null>(null)
+  const [estimatedTime, setEstimatedTime] = useState<string>('')
+
   const handleContinue = async () => {
     if (files.length === 0) return
 
@@ -125,12 +129,14 @@ export default function HomePage() {
 
     setUploadStatus('uploading')
     setUploadProgress(0)
+    setBytesUploadedMap({})
+    setStartTime(Date.now())
+    setEstimatedTime('')
     
     const uploadedFilesData = []
 
     try {
       // 1. Get presigned URLs for all files
-      // We send simple metadata to get the URLs
       const presignResponse = await fetch('/api/upload/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -151,7 +157,60 @@ export default function HomePage() {
 
       const { presignedUrls, transferId } = await presignResponse.json()
 
-      // 2. Upload each file directly to S3
+      // 2. Upload each file directly to S3 with XHR for progress
+      const uploadFile = (item: FileItem, url: string) => {
+        return new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest()
+          
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              setBytesUploadedMap(prev => {
+                const newMap = { ...prev, [item.id]: event.loaded }
+                
+                // Calculate total stats
+                const totalUploaded = Object.values(newMap).reduce((acc, bytes) => acc + bytes, 0)
+                const currentProgress = (totalUploaded / totalSize) * 100
+                setUploadProgress(currentProgress)
+
+                // Calculate estimated time remaining
+                if (startTime) {
+                  const elapsedMs = Date.now() - startTime
+                  if (elapsedMs > 1000 && totalUploaded > 0) {
+                    const bps = totalUploaded / (elapsedMs / 1000)
+                    const remainingBytes = totalSize - totalUploaded
+                    const remainingSeconds = Math.round(remainingBytes / bps)
+                    
+                    if (remainingSeconds > 60) {
+                      const minutes = Math.floor(remainingSeconds / 60)
+                      const seconds = remainingSeconds % 60
+                      setEstimatedTime(`${minutes}m ${seconds}s`)
+                    } else {
+                      setEstimatedTime(`${remainingSeconds}s`)
+                    }
+                  }
+                }
+                
+                return newMap
+              })
+            }
+          }
+
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve()
+            } else {
+              reject(new Error(`Falha no envio de ${item.file.name}: ${xhr.statusText}`))
+            }
+          }
+
+          xhr.onerror = () => reject(new Error(`Erro de rede no envio de ${item.file.name}`))
+          
+          xhr.open('PUT', url)
+          xhr.setRequestHeader('Content-Type', item.file.type || 'application/octet-stream')
+          xhr.send(item.file)
+        })
+      }
+
       for (let i = 0; i < files.length; i++) {
         const item = files[i]
         const presigned = presignedUrls.find((p: any) => p.originalId === item.id)
@@ -163,21 +222,7 @@ export default function HomePage() {
         // Update status message
         setUploadMessage(`Enviando ${i + 1} de ${files.length}: ${item.file.name}`)
 
-        // Perform PUT upload to S3
-        const uploadRes = await fetch(presigned.url, {
-          method: 'PUT',
-          body: item.file,
-          headers: {
-            'Content-Type': item.file.type || 'application/octet-stream',
-            // If we had 'x-amz-tagging' in the presigned URL generation, we MUST send it here too.
-            // Currently strict tagging is disabled in storage.ts to simplify CORS.
-          }
-        })
-
-        if (!uploadRes.ok) {
-          console.error('S3 Upload Error:', uploadRes.status, uploadRes.statusText)
-          throw new Error(`Falha no envio de ${item.file.name}`)
-        }
+        await uploadFile(item, presigned.url)
 
         // Success - store metadata
         uploadedFilesData.push({
@@ -186,24 +231,15 @@ export default function HomePage() {
           size: item.file.size,
           type: item.file.type,
           storageKey: presigned.storageKey,
-          transferId: transferId // Keep track of the temp transfer ID
+          transferId: transferId
         })
-
-        setUploadProgress(Math.round(((i + 1) / files.length) * 100))
       }
 
       setUploadStatus('processing')
       await new Promise(r => setTimeout(r, 500))
       setUploadStatus('complete')
 
-      // Store REAL uploaded file data (with storage keys) in sessionStorage
       sessionStorage.setItem('uploadedFiles', JSON.stringify(uploadedFilesData))
-      // Also store the transferId in case we need it? 
-      // Actually /api/transfers/finalize expects `transferId` in the body now.
-      // We should store it or attach it to every file?
-      // The finalize endpoint expects `transferId` at the root of the body.
-      // So let's store it separately or extract it from the first file in SendPage.
-      // Better: store it in sessionStorage key 'currentTransferId'
       sessionStorage.setItem('currentTransferId', transferId)
       
       setTimeout(() => {
@@ -216,6 +252,8 @@ export default function HomePage() {
       alert(error.message || 'Falha no upload dos arquivos. Tente novamente.')
     }
   }
+
+  const totalBytesUploaded = Object.values(bytesUploadedMap).reduce((acc, bytes) => acc + bytes, 0)
 
   const canContinue = files.length > 0 && totalSize <= maxSize && totalCount <= maxFiles
   const isUploading = uploadStatus !== 'idle' && uploadStatus !== 'error'
@@ -317,6 +355,9 @@ export default function HomePage() {
                 progress={uploadProgress}
                 status={uploadStatus}
                 message={uploadMessage}
+                bytesUploaded={totalBytesUploaded}
+                totalBytes={totalSize}
+                estimatedTime={estimatedTime}
               />
             )}
 
