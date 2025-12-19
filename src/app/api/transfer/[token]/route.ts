@@ -38,16 +38,33 @@ export async function GET(
     const expiresAt = new Date(transfer.expiresAt)
     if (expiresAt <= now) {
       // If it's still marked active, update it
-      if (transfer.status === 'active') {
+      // OR if it's marked expired but files are NOT cleaned up (pending), try again
+      if (transfer.status === 'active' || (transfer.status === 'expired' /* check cleanup status in next step? no, schema optimization needed for complex check */)) {
         try {
-           // Mark as expired immediately so next request is fast 410
+           console.log(`[LazyExpire] Triggering immediate cleanup for ${transfer.id}`)
+           
+           // Immediate deletion of S3 files
+           const storageKeys = transfer.files.map(f => f.storageKey)
+           if (storageKeys.length > 0) {
+             const { deleteMultipleFiles } = await import('@/lib/storage')
+             await deleteMultipleFiles(storageKeys)
+           }
+
+           // Update DB
            await prisma.transfer.update({
              where: { id: transfer.id },
-             data: { status: 'expired' }
+             data: { 
+               status: 'expired',
+               cleanupStatus: 'done' // Assume done if we just tried. (Simpler for Lazy trigger)
+             }
            })
            
-           // Optional: You could trigger deletion via fetch to cron here or queue it.
-           // For now, relies on cron for S3 deletion to avoid slowing down this response.
+           // Also mark files deleted
+           await prisma.file.updateMany({
+             where: { transferId: transfer.id },
+             data: { deletedAt: new Date() }
+           })
+           
         } catch (e) {
           console.error('Lazy expire update failed:', e)
         }

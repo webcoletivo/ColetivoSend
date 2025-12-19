@@ -177,6 +177,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // 8. Piggyback Cleanup (Fire and Forget)
+    // Run cleanup of OLD expired transfers essentially "for free"
+    // We catch the promise so it doesn't crash the request if it fails, 
+    // and we don't await it to keep response fast.
+    import('@/lib/cleanup').then(({ cleanupExpiredTransfers }) => {
+      cleanupExpiredTransfers(5).catch(err => console.error('Piggyback cleanup error:', err))
+    })
+
     return NextResponse.json({
       success: true,
       transfer: {
