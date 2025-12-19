@@ -43,7 +43,7 @@ export async function POST(
 
     try {
       // 2. Send Email
-      const sent = await sendTransferEmail(
+      const result = await sendTransferEmail(
         recipientEmail,
         senderName,
         shareToken,
@@ -51,21 +51,48 @@ export async function POST(
         files.length,
         formatBytes(totalSizeBytes)
       )
-
-      if (sent) {
+      if (result.success) {
         await prisma.emailLog.update({
           where: { id: emailLog.id },
           data: {
             status: 'sent',
             sentAt: new Date(),
+            providerResponse: result.messageId,
           }
         })
         return NextResponse.json({ success: true, message: 'E-mail enviado com sucesso' })
       } else {
-        throw new Error('SMTP provider failed to send email')
+        // Detailed log of failure
+        await prisma.emailLog.update({
+          where: { id: emailLog.id },
+          data: {
+            status: 'failed',
+            errorMessage: result.error,
+            providerResponse: result.code, // Store the SMTP error code if available
+            retryCount: { increment: 1 }
+          }
+        })
+
+        // Determine status code based on error
+        let status = 502 // Bad Gateway by default for SMTP issues
+        let userMessage = 'Falha ao conectar com o servidor de e-mail.'
+
+        if (result.code === 'EAUTH') {
+          status = 503
+          userMessage = 'Erro de autenticação no servidor de e-mail.'
+        } else if (result.code === 'EENVELOPE') {
+          status = 400
+          userMessage = 'E-mail do destinatário rejeitado.'
+        }
+
+        return NextResponse.json({ 
+          error: userMessage,
+          details: result.error,
+          code: result.code
+        }, { status })
       }
     } catch (emailError: any) {
-      console.error('Email send error for transfer:', transferId, emailError)
+      console.error('Critical email route error:', emailError)
       
       await prisma.emailLog.update({
         where: { id: emailLog.id },
@@ -77,7 +104,7 @@ export async function POST(
       })
 
       return NextResponse.json({ 
-        error: 'Falha ao enviar e-mail. Você pode tentar novamente.',
+        error: 'Erro interno ao processar e-mail',
         details: emailError.message 
       }, { status: 500 })
     }

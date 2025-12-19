@@ -32,19 +32,33 @@ function createTransporter() {
   })
 }
 
-export async function sendEmail(options: EmailOptions): Promise<boolean> {
+export interface EmailResult {
+  success: boolean
+  messageId?: string
+  error?: string
+  code?: string
+}
+
+export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
   try {
     const transporter = createTransporter()
     
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: process.env.SMTP_FROM || 'ColetivoSend <no-reply@grupocoletivo.com.br>',
       ...options,
     })
     
-    return true
-  } catch (error) {
+    return { 
+      success: true, 
+      messageId: (info as any).messageId 
+    }
+  } catch (error: any) {
     console.error('Email send error:', error)
-    return false
+    return { 
+      success: false, 
+      error: error.message || 'Unknown SMTP error',
+      code: error.code || 'SMTP_ERROR'
+    }
   }
 }
 
@@ -55,7 +69,7 @@ export async function sendTransferEmail(
   message?: string,
   fileCount?: number,
   totalSize?: string
-): Promise<boolean> {
+): Promise<EmailResult> {
   const downloadUrl = `${process.env.NEXTAUTH_URL}/d/${shareToken}`
   
   const html = `
@@ -144,7 +158,7 @@ export async function sendVerificationEmail(
   email: string,
   token: string,
   origin?: string
-): Promise<boolean> {
+): Promise<EmailResult> {
   const baseUrl = origin || process.env.NEXTAUTH_URL || ''
   const verifyUrl = `${baseUrl}/verify-email?token=${token}&email=${encodeURIComponent(email)}`
   
@@ -201,7 +215,7 @@ export async function sendPasswordResetEmail(
   email: string,
   token: string,
   origin?: string
-): Promise<boolean> {
+): Promise<EmailResult> {
   const baseUrl = origin || process.env.NEXTAUTH_URL || ''
   const resetUrl = `${baseUrl}/reset-password?token=${token}`
   

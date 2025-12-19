@@ -103,7 +103,10 @@ export default function SendPage() {
     } catch (err: any) {
       console.error('Email retry error:', err)
       setEmailStatus('error')
-      showToast(err.message || 'Erro ao enviar e-mail', 'error')
+      // Extract specific error message if available
+      const errorMsg = err.message || 'Erro ao enviar e-mail'
+      setErrors(prev => ({ ...prev, email: errorMsg }))
+      showToast(errorMsg, 'error')
     }
   }
 
@@ -325,12 +328,12 @@ export default function SendPage() {
             {(errors.submit || emailStatus === 'error') && (
               <div className="p-4 bg-destructive/10 text-destructive rounded-xl border border-destructive/20 flex flex-col gap-2 text-sm text-left">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold uppercase tracking-wider text-[10px]">Erro:</span> 
-                  <span>{errors.submit || 'O link foi criado, mas houve um erro ao enviar o e-mail.'}</span>
+                  <span className="font-semibold uppercase tracking-wider text-[10px]">Atenção:</span> 
+                  <span>{errors.email || errors.submit || 'O link foi criado, mas houve um erro ao enviar o e-mail.'}</span>
                 </div>
                 {emailStatus === 'error' && (
                   <p className="text-xs opacity-80">
-                    O destinatário pode não receber a notificação, mas você ainda pode copiar o link no dashboard.
+                    {errors.email ? 'Verifique as configurações ou tente novamente.' : 'O destinatário pode não receber a notificação, mas você ainda pode copiar o link no dashboard.'}
                   </p>
                 )}
               </div>
