@@ -41,17 +41,24 @@ export async function GET(request: Request) {
       results.processed++
       
       try {
+        console.log(`Processing expiration for transfer ${transfer.id} (Status: ${transfer.status})`)
+        
         // 1. Delete files from storage
         // Gather all storage keys
         const storageKeys = transfer.files.map(f => f.storageKey)
-        const storageDeleted = await deleteMultipleFiles(storageKeys)
+        let storageDeleted = false
+        
+        if (storageKeys.length > 0) {
+           storageDeleted = await deleteMultipleFiles(storageKeys)
+        } else {
+           storageDeleted = true // No files to delete
+        }
         
         if (!storageDeleted) {
             console.warn(`Failed to delete storage for transfer ${transfer.id}`)
-            // We continue to mark as expired even if storage deletion fails/is incomplete,
-            // but we might mark cleanupStatus as 'failed' to retry later if it was critical.
-            // For this requirement: "Se a exclusão do storage falhar, registrar e tentar novamente"
-            // So we should probably NOT mark 'done' if failed.
+            // We continue to mark as expired to block access, but keep cleanupStatus pending/failed
+        } else {
+            console.log(`Deleted ${storageKeys.length} files for transfer ${transfer.id}`)
         }
 
         // 2. Database updates

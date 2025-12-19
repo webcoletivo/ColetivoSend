@@ -3,6 +3,7 @@ import { Inter, Outfit } from 'next/font/google'
 import './globals.css'
 import { ToastProvider } from '@/components/ui/Toast'
 import { SessionProvider } from '@/components/providers/SessionProvider'
+import { siteConfig } from '@/config/site'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -17,13 +18,13 @@ const outfit = Outfit({
 })
 
 export const metadata: Metadata = {
-  title: 'ColetivoSend - Compartilhe arquivos com um link',
-  description: 'Envie arquivos de forma rápida e segura. Sem complicação. Sem cadastro obrigatório.',
+  title: `${siteConfig.name} - Compartilhe arquivos com um link`,
+  description: siteConfig.description,
   keywords: ['file sharing', 'transfer', 'upload', 'compartilhar arquivos'],
-  authors: [{ name: 'ColetivoSend' }],
+  authors: [{ name: siteConfig.name }],
   openGraph: {
-    title: 'ColetivoSend - Compartilhe arquivos com um link',
-    description: 'Envie arquivos de forma rápida e segura.',
+    title: `${siteConfig.name} - Compartilhe arquivos com um link`,
+    description: siteConfig.description,
     type: 'website',
     locale: 'pt_BR',
   },

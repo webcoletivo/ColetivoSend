@@ -35,15 +35,19 @@ export async function GET(
 
     // Check expiration (Lazy Expire)
     const now = new Date()
-    if (new Date(transfer.expiresAt) <= now) {
+    const expiresAt = new Date(transfer.expiresAt)
+    if (expiresAt <= now) {
       // If it's still marked active, update it
       if (transfer.status === 'active') {
         try {
-           // Fire and forget update
+           // Mark as expired immediately so next request is fast 410
            await prisma.transfer.update({
              where: { id: transfer.id },
              data: { status: 'expired' }
            })
+           
+           // Optional: You could trigger deletion via fetch to cron here or queue it.
+           // For now, relies on cron for S3 deletion to avoid slowing down this response.
         } catch (e) {
           console.error('Lazy expire update failed:', e)
         }

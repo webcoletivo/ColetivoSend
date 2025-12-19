@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Input, Textarea, Select, Checkbox } from '@/components/ui/Input'
 import { formatBytes } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast' // Assuming you have useToast hook
+import { siteConfig } from '@/config/site'
 
 interface UploadedFile {
   id: string
@@ -106,7 +107,8 @@ export default function SendPage() {
         recipientEmail,
         message,
         files,
-        expirationDays: parseInt(expirationDays),
+        // CRITICAL FIX: Use parseFloat for expiration days (to handle 0.0416 for 1h)
+        expirationDays: parseFloat(expirationDays),
         password: hasPassword ? password : null,
       }
 
@@ -131,7 +133,7 @@ export default function SendPage() {
         recipientEmail,
         message,
         files,
-        expirationDays: parseInt(expirationDays),
+        expirationDays: parseFloat(expirationDays),
         hasPassword,
       }))
       
@@ -176,7 +178,7 @@ export default function SendPage() {
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold text-surface-900">
-            Flow<span className="text-primary-500">Send</span>
+            {siteConfig.name.split('Send')[0]}<span className="text-primary-500">Send</span>
           </span>
         </div>
       </header>
