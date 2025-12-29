@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter, Outfit } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { ToastProvider } from '@/components/ui/Toast'
 import { SessionProvider } from '@/components/providers/SessionProvider'
@@ -61,6 +62,7 @@ export default function RootLayout({
               {children}
             </ToastProvider>
           </SessionProvider>
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>
