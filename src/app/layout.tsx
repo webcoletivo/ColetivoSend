@@ -23,6 +23,9 @@ export const metadata: Metadata = {
   description: siteConfig.description,
   keywords: ['file sharing', 'transfer', 'upload', 'compartilhar arquivos'],
   authors: [{ name: siteConfig.name }],
+  icons: {
+    icon: 'http://seguru.online/coletivo/coletivo/img/favicongrupocoletivo.png',
+  },
   openGraph: {
     title: `${siteConfig.name} - Compartilhe arquivos com um link`,
     description: siteConfig.description,
