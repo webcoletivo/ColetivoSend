@@ -11,7 +11,7 @@ const securityHeaders = {
   'X-XSS-Protection': '1; mode=block',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.amazonaws.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.amazonaws.com; frame-ancestors 'none';",
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.amazonaws.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.amazonaws.com; frame-ancestors 'none';",
   'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload'
 }
 
@@ -22,9 +22,9 @@ const rateLimit = new LRUCache<string, { count: number; resetAt: number }>({
 })
 
 function getRateLimitKey(request: NextRequest, action: string): string {
-  const ip = request.headers.get('x-forwarded-for') || 
-              request.headers.get('x-real-ip') || 
-              'unknown'
+  const ip = request.headers.get('x-forwarded-for') ||
+    request.headers.get('x-real-ip') ||
+    'unknown'
   return `${action}:${ip}`
 }
 
@@ -48,14 +48,14 @@ function checkRateLimit(key: string, limit: number, windowMs: number): boolean {
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
-  
+
   // 1. Rate limiting checks
   if (pathname.startsWith('/api/')) {
-    const isNextAuthCallback = pathname.includes('/api/auth/callback') || 
-                                pathname.includes('/api/auth/session') ||
-                                pathname.includes('/api/auth/providers') ||
-                                pathname.includes('/api/auth/csrf')
-    
+    const isNextAuthCallback = pathname.includes('/api/auth/callback') ||
+      pathname.includes('/api/auth/session') ||
+      pathname.includes('/api/auth/providers') ||
+      pathname.includes('/api/auth/csrf')
+
     // Auth attempts
     if (!isNextAuthCallback && (pathname === '/api/auth/signup' || pathname.includes('/api/auth/signin'))) {
       const key = getRateLimitKey(request, 'auth')

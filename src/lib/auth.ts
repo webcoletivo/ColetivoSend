@@ -7,6 +7,8 @@ import { decryptSecret } from './security'
 import { generatePresignedDownloadUrl } from './storage'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
+import jwt from 'jsonwebtoken'
+import { logger } from './logger'
 
 export const authOptions: NextAuthOptions = {
   // Remove PrismaAdapter - conflicts with JWT strategy and custom user handling
@@ -57,7 +59,7 @@ export const authOptions: NextAuthOptions = {
         // Check 2FA if enabled
         if (user.twoFactorEnabled) {
           let isTrustedDevice = false
-          
+
           // Check for trusted device cookie
           // Note: accessing cookies in NextAuth authorize can be tricky depending on adapter/version
           // We'll try to get it from the request headers
@@ -65,35 +67,52 @@ export const authOptions: NextAuthOptions = {
             // @ts-ignore - req type definition might vary
             const cookies = req?.headers?.cookie || req?.cookies
             let trustedToken = null
-            
+
             if (typeof cookies === 'string') {
-               const match = cookies.match(/trusted_device=([^;]+)/)
-               if (match) trustedToken = match[1]
+              const match = cookies.match(/trusted_device=([^;]+)/)
+              if (match) trustedToken = match[1]
             } else if (cookies?.trusted_device) {
-               trustedToken = cookies.trusted_device
+              trustedToken = cookies.trusted_device
             }
 
             if (trustedToken) {
-               const tokenHash = crypto.createHash('sha256').update(trustedToken).digest('hex')
-               // @ts-ignore - Prisma client type might be stale
-               const validDevice = await prisma.trustedDevice.findUnique({
-                 where: { tokenHash },
-                 include: { user: true }
-               })
+              const tokenHash = crypto.createHash('sha256').update(trustedToken).digest('hex')
+              // @ts-ignore - Prisma client type might be stale
+              const validDevice = await prisma.trustedDevice.findUnique({
+                where: { tokenHash },
+                include: { user: true }
+              })
 
-               if (validDevice && validDevice.userId === user.id && validDevice.expiresAt > new Date()) {
-                  isTrustedDevice = true
-                  console.log('[Auth] Trusted device detected, skipping 2FA')
-               }
+              if (validDevice && validDevice.userId === user.id && validDevice.expiresAt > new Date()) {
+                isTrustedDevice = true
+                logger.info('[Auth] Trusted device detected, skipping 2FA', { userId: user.id })
+              }
             }
           } catch (e) {
-            console.error('[Auth] Error checking trusted device:', e)
+            logger.error('[Auth] Error checking trusted device:', e)
           }
 
           if (isTrustedDevice) {
-             // Skip 2FA
-          } else if (credentials.totpVerified === 'true') {
-            console.log('[Auth] 2FA already verified via challenge endpoint, skipping re-validation')
+            // Skip 2FA
+          } else if (credentials.totpVerified && credentials.totpVerified !== 'true') {
+            // Verify signed 2FA token
+            try {
+              // Ensure secret exists
+              if (!process.env.NEXTAUTH_SECRET) throw new Error('Missing NEXTAUTH_SECRET')
+
+              const payload = jwt.verify(credentials.totpVerified, process.env.NEXTAUTH_SECRET) as any
+
+              // Check payload claims
+              if (payload.type === '2fa_verified' && payload.userId === user.id) {
+                logger.info('[Auth] 2FA verified via signed token', { userId: user.id })
+                // Success - flow continues
+              } else {
+                throw new Error('Invalid 2FA token type or user')
+              }
+            } catch (err) {
+              logger.error('[Auth] 2FA token verification failed:', err, { userId: user.id })
+              throw new Error('2FA_REQUIRED')
+            }
           } else if (!credentials.totpCode) {
             throw new Error('2FA_REQUIRED')
           } else {
@@ -104,10 +123,10 @@ export const authOptions: NextAuthOptions = {
             try {
               // Decrypt secret
               const secret = decryptSecret(user.twoFactorSecret)
-              
+
               // Configure authenticator with window tolerance
               authenticator.options = { window: 1, step: 30 }
-              
+
               // Validate code
               const isValid = authenticator.verify({
                 token: credentials.totpCode,
@@ -118,7 +137,7 @@ export const authOptions: NextAuthOptions = {
                 throw new Error('Código 2FA inválido')
               }
             } catch (error) {
-              console.error('[Auth] 2FA validation error:', error)
+              logger.error('[Auth] 2FA validation error:', error, { userId: user.id })
               throw new Error('Código 2FA inválido')
             }
           }
@@ -161,7 +180,7 @@ export const authOptions: NextAuthOptions = {
             if (!existingUser.googleOauthId) {
               await prisma.user.update({
                 where: { id: existingUser.id },
-                data: { 
+                data: {
                   googleOauthId: account.providerAccountId,
                   emailVerifiedAt: existingUser.emailVerifiedAt || new Date(),
                 },
@@ -182,7 +201,7 @@ export const authOptions: NextAuthOptions = {
             user.id = newUser.id
           }
         } catch (error) {
-          console.error('Error in Google signIn callback:', error)
+          logger.error('Error in Google signIn callback:', error, { email: user.email })
           return false
         }
       }
@@ -225,16 +244,16 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string
         session.user.email = token.email as string
         session.user.name = token.name as string
-        
+
         // Sign avatar URL if it's an S3 key
         let imageUrl = token.picture as string | undefined
         if (imageUrl && imageUrl.startsWith('avatars/')) {
-           try {
-             // Generate a short-lived URL (e.g. 1 hour) for the session
-             imageUrl = await generatePresignedDownloadUrl(imageUrl, 'avatar.png', 3600)
-           } catch (e) {
-             console.error('Failed to sign avatar URL in session:', e)
-           }
+          try {
+            // Generate a short-lived URL (e.g. 1 hour) for the session
+            imageUrl = await generatePresignedDownloadUrl(imageUrl, 'avatar.png', 3600)
+          } catch (e) {
+            console.error('Failed to sign avatar URL in session:', e)
+          }
         }
         session.user.image = imageUrl
       }

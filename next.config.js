@@ -2,6 +2,7 @@ require('dotenv').config()
 /** @type {import('next').NextConfig} */
 
 const nextConfig = {
+  productionBrowserSourceMaps: false,
   // output: 'standalone', // Disabled primarily to debug 404s
   images: {
     remotePatterns: [

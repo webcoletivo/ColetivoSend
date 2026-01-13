@@ -6,7 +6,11 @@ import jwt from 'jsonwebtoken'
 import { cookies } from 'next/headers'
 import crypto from 'crypto'
 
-const CHALLENGE_SECRET = process.env.NEXTAUTH_SECRET || 'fallback-secret'
+const CHALLENGE_SECRET = process.env.NEXTAUTH_SECRET
+
+if (!CHALLENGE_SECRET) {
+  throw new Error('NEXTAUTH_SECRET is not defined')
+}
 
 interface ChallengePayload {
   userId: string
@@ -36,7 +40,7 @@ export async function POST(request: Request) {
     // Verify and decode challenge token
     let payload: ChallengePayload
     try {
-      payload = jwt.verify(challengeId, CHALLENGE_SECRET) as ChallengePayload
+      payload = jwt.verify(challengeId, CHALLENGE_SECRET!) as ChallengePayload
     } catch (jwtError) {
       console.error('JWT verification failed:', jwtError)
       return NextResponse.json(
@@ -75,13 +79,13 @@ export async function POST(request: Request) {
     // Decrypt and validate TOTP with window tolerance
     try {
       const secret = decryptSecret(user.twoFactorSecret)
-      
+
       // Configure authenticator with window tolerance (accepts codes from ±1 window)
-      authenticator.options = { 
+      authenticator.options = {
         window: 1,  // Accept codes from 30 seconds before/after
         step: 30    // Standard TOTP step
       }
-      
+
       const isValid = authenticator.verify({
         token: otpCode,
         secret: secret
@@ -106,10 +110,22 @@ export async function POST(request: Request) {
 
     // OTP is valid
 
+    // Generate Pre-Auth Token for signIn
+    const authToken = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        type: '2fa_verified'
+      },
+      CHALLENGE_SECRET!,
+      { expiresIn: '5m' } // Short lived token just for the second step
+    )
+
     // Handle "Remember Device"
     // Create response object first
     const response = NextResponse.json({
       success: true,
+      token: authToken, // Return the token to be sent to signIn
       user: {
         id: user.id,
         email: user.email,
@@ -149,7 +165,7 @@ export async function POST(request: Request) {
         console.error('[2FA] Failed to set trusted device:', rememberError)
       }
     }
-    
+
     return response
   } catch (error) {
     console.error('2FA verification error:', error)

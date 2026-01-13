@@ -6,21 +6,30 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 
+import { presignUploadSchema } from '@/lib/schemas'
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     const userId = session?.user?.id
-    const body = await request.json()
-    const { files, fingerprint } = body as { files: any[], fingerprint?: string }
+    const rawBody = await request.json()
 
-    if (!files || !Array.isArray(files) || files.length === 0) {
-      return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 })
+    // Zod Validation
+    const validationResult = presignUploadSchema.safeParse(rawBody)
+
+    if (!validationResult.success) {
+      return NextResponse.json({
+        error: 'Dados inválidos',
+        details: validationResult.error.flatten()
+      }, { status: 400 })
     }
+
+    const { files, fingerprint } = validationResult.data
 
     // Determine limits
     const isLoggedIn = !!userId
     const limits = isLoggedIn ? USER_LIMITS : GUEST_LIMITS
-    
+
     // Validate count
     if (files.length > limits.maxFiles) {
       return NextResponse.json({ error: `Máximo de ${limits.maxFiles} arquivos permitidos` }, { status: 400 })
@@ -36,32 +45,32 @@ export async function POST(request: NextRequest) {
     // Validate guest limits (usage count)
     if (!isLoggedIn) {
       // Check existing usage if fingerprint provided
-       if (fingerprint) {
-         const fingerprintHash = hashFingerprint(fingerprint)
-         const ipHash = hashIP(request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown')
-         
-         const usage = await prisma.guestUsage.findFirst({
-           where: { OR: [{ fingerprintHash }, { ipHash }] }
-         })
-         
-         
-         if (usage && usage.transfersCreatedCount >= GUEST_LIMITS.maxTransfers) {
-           return NextResponse.json({ 
-             error: 'Limite de envios gratuitos atingido',
-             limitReached: true 
-           }, { status: 403 })
-         }
-       }
+      if (fingerprint) {
+        const fingerprintHash = hashFingerprint(fingerprint)
+        const ipHash = hashIP(request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown')
+
+        const usage = await prisma.guestUsage.findFirst({
+          where: { OR: [{ fingerprintHash }, { ipHash }] }
+        })
+
+
+        if (usage && usage.transfersCreatedCount >= GUEST_LIMITS.maxTransfers) {
+          return NextResponse.json({
+            error: 'Limite de envios gratuitos atingido',
+            limitReached: true
+          }, { status: 403 })
+        }
+      }
     }
 
     const transferId = uuidv4() // Temporary ID for storage organization
-    
+
     const presignedUrls = []
-    
+
     for (const file of files) {
       // Validate type
       if (!isFileTypeAllowed(file.type || '', file.name)) {
-         return NextResponse.json({ error: `Tipo de arquivo não permitido: ${file.name}` }, { status: 400 })
+        return NextResponse.json({ error: `Tipo de arquivo não permitido: ${file.name}` }, { status: 400 })
       }
 
       const fileId = uuidv4()

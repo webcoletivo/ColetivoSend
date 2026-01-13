@@ -11,24 +11,32 @@ import pLimit from 'p-limit'
 // Limit concurrency for S3 checks
 const limit = pLimit(5)
 
+import { finalizeTransferSchema } from '@/lib/schemas'
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { 
-      transferId, // Note: this is the temp ID from presign step, used for storage paths
-      senderName, 
-      recipientEmail, 
-      message, 
-      files, 
-      expirationDays = 7,
+    const rawBody = await request.json()
+
+    // Zod Validation
+    const validationResult = finalizeTransferSchema.safeParse(rawBody)
+
+    if (!validationResult.success) {
+      return NextResponse.json({
+        error: 'Dados inválidos',
+        details: validationResult.error.flatten()
+      }, { status: 400 })
+    }
+
+    const {
+      transferId,
+      senderName,
+      recipientEmail,
+      message,
+      files,
+      expirationDays,
       password,
       fingerprint,
-    } = body
-
-    // Basic validation
-    if (!senderName || !files || !Array.isArray(files) || files.length === 0) {
-      return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
-    }
+    } = validationResult.data
 
     const session = await getServerSession(authOptions)
     const userId = session?.user?.id
@@ -55,37 +63,37 @@ export async function POST(request: NextRequest) {
     // 2. Validate rolling window limit for transfer creation (Free Plan)
     // "15 transfers in last 30 days"
     if (userId) { // Apply to all users now since Free is the standard
-       const thirtyDaysAgo = new Date()
-       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-       const recentTransfersCount = await prisma.transfer.count({
-           where: {
-               ownerUserId: userId,
-               createdAt: {
-                   gte: thirtyDaysAgo
-               }
-           }
-       })
+      const recentTransfersCount = await prisma.transfer.count({
+        where: {
+          ownerUserId: userId,
+          createdAt: {
+            gte: thirtyDaysAgo
+          }
+        }
+      })
 
-       if (recentTransfersCount >= 15) { // 15 limit
-           return NextResponse.json({ 
-             error: 'Limite de 15 transferências nos últimos 30 dias atingido.' 
-           }, { status: 403 })
-       }
+      if (recentTransfersCount >= 15) { // 15 limit
+        return NextResponse.json({
+          error: 'Limite de 15 transferências nos últimos 30 dias atingido.'
+        }, { status: 403 })
+      }
     }
-    
+
     // 3. Determine expiration & Validate
-    const validExpirationDays = USER_LIMITS.expirationOptions.includes(expirationDays) 
-      ? expirationDays 
+    const validExpirationDays = USER_LIMITS.expirationOptions.includes(expirationDays)
+      ? expirationDays
       : 7 // Default if invalid option sent
 
     const expiresAt = new Date()
     // handle fractional days (like 0.0416 for 1 hour)
     // Add minutes if < 1 day, otherwise Add days
     if (validExpirationDays < 1) {
-        expiresAt.setMinutes(expiresAt.getMinutes() + Math.round(validExpirationDays * 24 * 60))
+      expiresAt.setMinutes(expiresAt.getMinutes() + Math.round(validExpirationDays * 24 * 60))
     } else {
-        expiresAt.setDate(expiresAt.getDate() + validExpirationDays)
+      expiresAt.setDate(expiresAt.getDate() + validExpirationDays)
     }
 
     // 4. Generate Share Token
@@ -135,13 +143,13 @@ export async function POST(request: NextRequest) {
     if (!isLoggedIn && fingerprint) {
       const fingerprintHash = hashFingerprint(fingerprint)
       const ipHash = hashIP(request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown')
-      
+
       // Try to find existing usage record by fingerprint OR IP
       // Note: In `api/upload/presign` we checked limits. Here we assume we can increment.
       // But we should double check if strictly required? 
       // Theoretically user could have started multiple transfers in parallel.
       // We'll just increment here.
-      
+
       try {
         await prisma.guestUsage.upsert({
           where: { fingerprintHash },
@@ -168,13 +176,7 @@ export async function POST(request: NextRequest) {
     // 7. Email Sending is now decoupled to POST /api/transfers/[id]/email
     // The client will call it after a successful finalize.
 
-    // 8. Piggyback Cleanup (Fire and Forget)
-    // Run cleanup of OLD expired transfers essentially "for free"
-    // We catch the promise so it doesn't crash the request if it fails, 
-    // and we don't await it to keep response fast.
-    import('@/lib/cleanup').then(({ cleanupExpiredTransfers }) => {
-      cleanupExpiredTransfers(5).catch(err => console.error('Piggyback cleanup error:', err))
-    })
+    // Cleanup is now handled by Vercel Cron (/api/cron/cleanup)
 
     return NextResponse.json({
       success: true,

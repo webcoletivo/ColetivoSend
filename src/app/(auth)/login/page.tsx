@@ -18,17 +18,17 @@ function LoginForm() {
   const [step, setStep] = useState<LoginStep>('credentials')
   const searchParams = useSearchParams()
   const redirectUrl = searchParams.get('callbackUrl') || '/dashboard'
-  
+
   // Credentials state
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  
+
   // 2FA state
   const [challengeId, setChallengeId] = useState('')
   const [otpCode, setOtpCode] = useState('')
   const [rememberDevice, setRememberDevice] = useState(false)
-  
+
   // UI state
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -36,12 +36,12 @@ function LoginForm() {
   // Handle credentials submission
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Validate
     const newErrors: Record<string, string> = {}
     if (!email) newErrors.email = 'E-mail é obrigatório'
     if (!password) newErrors.password = 'Senha é obrigatória'
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       return
@@ -49,7 +49,7 @@ function LoginForm() {
 
     setIsLoading(true)
     setErrors({})
-    
+
     try {
       // Call the challenge endpoint first
       const challengeRes = await fetch('/api/auth/login-challenge', {
@@ -57,9 +57,9 @@ function LoginForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
-      
+
       const challengeData = await challengeRes.json()
-      
+
       if (!challengeRes.ok) {
         if (challengeData.error?.includes('verifique seu e-mail')) {
           setErrors({ submit: challengeData.error })
@@ -71,7 +71,7 @@ function LoginForm() {
         }
         return
       }
-      
+
       if (challengeData.requires2FA) {
         // 2FA is required - go to step 2
         setChallengeId(challengeData.challengeId)
@@ -84,7 +84,7 @@ function LoginForm() {
           password,
           redirect: false,
         })
-        
+
         if (result?.error) {
           setErrors({ submit: result.error })
         } else if (result?.ok) {
@@ -101,10 +101,10 @@ function LoginForm() {
   // Handle OTP verification (auto-triggered when 6 digits entered)
   const handleOTPComplete = async (code: string) => {
     if (code.length !== 6 || isLoading) return
-    
+
     setIsLoading(true)
     setErrors({})
-    
+
     try {
       // Verify the OTP via our dedicated endpoint
       const verifyRes = await fetch('/api/auth/2fa/verify', {
@@ -112,26 +112,26 @@ function LoginForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ challengeId, otpCode: code, rememberDevice }),
       })
-      
+
       const verifyData = await verifyRes.json()
-      
+
       if (!verifyRes.ok) {
         setErrors({ otp: verifyData.error || 'Código inválido' })
         setOtpCode('')
         setIsLoading(false)
         return
       }
-      
+
       // OTP verified successfully - now complete login via NextAuth
-      // Pass a special flag to skip TOTP re-validation since we already verified it
+      // Pass the token to valid 2FA session
       const result = await signIn('credentials', {
         email,
         password,
         totpCode: code,
-        totpVerified: 'true', // Flag to indicate OTP was already verified
+        totpVerified: verifyData.token, // Send signed JWT token
         redirect: false,
       })
-      
+
       if (result?.error) {
         // If NextAuth still returns an error, show it but don't show 500
         if (result.error.includes('2FA') || result.error.includes('Código')) {
@@ -179,7 +179,7 @@ function LoginForm() {
 
       <div className="w-full max-w-md">
         {/* Logo */}
-        <motion.div 
+        <motion.div
           className="text-center mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -251,8 +251,8 @@ function LoginForm() {
 
                   {/* Forgot password */}
                   <div className="text-right">
-                    <a 
-                      href="/forgot-password" 
+                    <a
+                      href="/forgot-password"
                       className="text-sm text-primary-500 hover:text-primary-600 transition-colors"
                     >
                       Esqueceu a senha?

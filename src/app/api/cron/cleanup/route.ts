@@ -1,19 +1,28 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { cleanupExpiredTransfers } from '@/lib/cleanup'
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic' // Ensure it's not cached
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    // Optional: Add auth check if needed
-    
-    console.log('[Cron] Starting cleanup job...')
-    const results = await cleanupExpiredTransfers(50) // Process up to 50 items
-    console.log('[Cron] Cleanup finished:', results)
+    const authHeader = request.headers.get('authorization')
 
-    return NextResponse.json({ success: true, results })
+    // Check for Vercel Cron secret using Bearer token standard
+    if (
+      process.env.CRON_SECRET &&
+      authHeader !== `Bearer ${process.env.CRON_SECRET}`
+    ) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const result = await cleanupExpiredTransfers(50)
+
+    return NextResponse.json({
+      success: true,
+      result
+    })
   } catch (error) {
-    console.error('Cron job error:', error)
+    console.error('Cron Cleanup Error:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

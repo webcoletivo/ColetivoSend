@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    env:
+      NEXTAUTH_SECRET: 'super-secret-ci-key'
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/coletivosend' # Placeholder for CI service
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Lint
+      run: npm run lint
+
+    - name: Type Check (Build)
+      # Build checks types and Next.js validity
+      run: npm run build
+      env:
+        # Skip checking env vars during build time if using runtime validations
+        SKIP_ENV_VALIDATION: true 
+
+    - name: Unit Tests
+      run: npm run test
+
+    # Optional: Run E2E in headless mode
+    # - name: Install Playwright Browsers
+    #   run: npx playwright install --with-deps
+    # - name: Run E2E Tests
+    #   run: npx playwright test
