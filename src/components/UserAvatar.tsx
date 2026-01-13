@@ -4,6 +4,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { User } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import Image from 'next/image'
 
 interface UserAvatarProps {
   user?: {
@@ -26,7 +27,7 @@ const sizeClasses = {
 
 export function UserAvatar({ user, size = 'md', className, priority = false }: UserAvatarProps) {
   const [hasError, setHasError] = React.useState(false)
-  
+
   // Reset error state when user image changes
   React.useEffect(() => {
     setHasError(false)
@@ -40,7 +41,7 @@ export function UserAvatar({ user, size = 'md', className, priority = false }: U
   // If it's a GIF or generic image, we use standard <img> to avoid Next/Image interfering with animation
   // and to simplify external URL handling.
   // We also use key={imageUrl} to force re-render if URL changes (e.g. update profile)
-  
+
   if (imageUrl && !hasError) {
     return (
       <div className={cn(
@@ -48,15 +49,16 @@ export function UserAvatar({ user, size = 'md', className, priority = false }: U
         sizeClasses[size],
         className
       )}>
-        <img
-          key={imageUrl} 
+        <Image
+          key={imageUrl}
           src={imageUrl}
           alt={user?.name || 'Avatar'}
-          className="w-full h-full object-cover"
-          loading={priority ? 'eager' : 'lazy'}
-          decoding="async"
+          fill
+          className="object-cover"
+          priority={priority}
           referrerPolicy="no-referrer"
           onError={() => setHasError(true)}
+          unoptimized // To maintain the original behavior of not interfering with animations/external URLs
         />
       </div>
     )

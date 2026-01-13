@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { 
-  Download, Lock, Calendar, User, FileIcon, 
-  AlertCircle, Clock, Ban, Sparkles, FileImage, 
+import {
+  Download, Lock, Calendar, User, FileIcon,
+  AlertCircle, Clock, Ban, Sparkles, FileImage,
   FileVideo, FileAudio, FileArchive, FileText, File
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -98,7 +98,7 @@ export default function DownloadPage() {
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (password.length < 1) {
       setPasswordError('Digite a senha')
       return
@@ -125,15 +125,15 @@ export default function DownloadPage() {
       // Actually, let's just use the `unlock` endpoint if we made one, or assume the verify 
       // endpoint could return data.
       // Reviewing previous step: I created `unlock` endpoint.
-      
+
       const unlockRes = await fetch(`/api/transfer/${params.token}/unlock`, {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ password })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
       })
-      
+
       const data = await unlockRes.json()
-      
+
       if (unlockRes.ok) {
         setTransfer(data)
         setStatus('ready')
@@ -142,21 +142,21 @@ export default function DownloadPage() {
       }
 
     } catch (error) {
-       setPasswordError('Erro de conexão')
+      setPasswordError('Erro de conexão')
     }
   }
 
   const handleDownloadAll = async () => {
     if (!transfer) return
     setDownloadingAll(true)
-    
+
     // In a real app, we might bundle them or just trigger all
     // For now, trigger them one by one (or just the first few)
     for (const file of transfer.files) {
       window.open(file.downloadUrl, '_blank')
       await new Promise(r => setTimeout(r, 500)) // Slight delay between bubbles
     }
-    
+
     setDownloadingAll(false)
   }
 
@@ -253,7 +253,7 @@ export default function DownloadPage() {
             <p className="text-muted-foreground mb-6">
               Este envio está protegido por senha. Digite a senha para acessar.
             </p>
-            
+
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               <Input
                 type="password"
@@ -304,10 +304,10 @@ export default function DownloadPage() {
                 <p className="font-semibold text-lg">{transfer?.senderName}</p>
               </div>
             </div>
-            
+
             {transfer?.message && (
               <div className="p-4 bg-white/10 rounded-xl backdrop-blur-sm">
-                <p className="text-white/90 text-sm italic">"{transfer.message}"</p>
+                <p className="text-white/90 text-sm italic">&quot;{transfer.message}&quot;</p>
               </div>
             )}
           </div>
@@ -345,12 +345,12 @@ export default function DownloadPage() {
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${iconClass}`}>
                     <IconComponent className="w-6 h-6" />
                   </div>
-                  
+
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-foreground truncate">{file.originalName}</p>
                     <p className="text-sm text-muted-foreground">{formatBytes(file.sizeBytes)}</p>
                   </div>
-                  
+
                   <Button
                     variant="ghost"
                     size="sm"

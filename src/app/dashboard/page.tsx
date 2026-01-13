@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Plus, Copy, Trash2, MoreHorizontal, 
+import {
+  Plus, Copy, Trash2, MoreHorizontal,
   ExternalLink, FileIcon, Ban,
   Sparkles, Settings, LogOut, CheckCircle2, Loader2,
   Clock, CheckCircle, XCircle, AlertCircle
@@ -39,7 +39,7 @@ interface DashboardStats {
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const { showToast } = useToast()
-  
+
   const [transfers, setTransfers] = useState<Transfer[]>([])
   const [stats, setStats] = useState<DashboardStats>({ total: 0, active: 0, expired: 0 })
   const [isLoading, setIsLoading] = useState(true)
@@ -48,10 +48,10 @@ export default function DashboardPage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Fetch data
-  const fetchData = async () => {
+  const fetchData = React.useCallback(async () => {
     try {
       setIsRefreshing(true)
-      
+
       const [statsRes, transfersRes] = await Promise.all([
         fetch('/api/dashboard/stats'),
         fetch('/api/transfers?limit=50') // Initial limit
@@ -60,7 +60,7 @@ export default function DashboardPage() {
       if (statsRes.ok && transfersRes.ok) {
         const statsData = await statsRes.json()
         const transfersData = await transfersRes.json()
-        
+
         setStats(statsData)
         setTransfers(transfersData.transfers)
       }
@@ -71,13 +71,13 @@ export default function DashboardPage() {
       setIsLoading(false)
       setIsRefreshing(false)
     }
-  }
+  }, [showToast])
 
   useEffect(() => {
     if (session?.user) {
       fetchData()
     }
-  }, [session])
+  }, [session, fetchData])
 
   // Auth check
   if (status === 'loading') {
@@ -169,7 +169,7 @@ export default function DashboardPage() {
               Coletivo<span className="text-primary-500">Send</span>
             </span>
           </a>
-          
+
           <div className="flex items-center gap-4">
             <ThemeToggle />
             <UserMenu />
@@ -184,7 +184,7 @@ export default function DashboardPage() {
             <h1 className="text-2xl font-bold text-foreground">Meus envios</h1>
             <p className="text-muted-foreground">Gerencie todos os seus transfers</p>
           </div>
-          
+
           <a href="/">
             <Button icon={<Plus className="w-4 h-4" />}>
               Novo envio
@@ -286,117 +286,117 @@ export default function DashboardPage() {
 
             {/* Transfer rows */}
             <AnimatePresence>
-            {transfers.map((transfer, index) => (
-              <motion.div
-                key={transfer.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="card p-4 hover:shadow-md transition-shadow"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                  {/* Info */}
-                  <div className="md:col-span-4">
-                    <p className="font-medium text-foreground truncate">
-                      {transfer.recipientEmail || `Envio de ${transfer.senderName}`}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(transfer.createdAt)}
-                    </p>
-                  </div>
-
-                  {/* Files */}
-                  <div className="md:col-span-2">
-                    <p className="text-sm text-foreground">
-                      {transfer.fileCount} arquivo{transfer.fileCount !== 1 ? 's' : ''}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{formatBytes(transfer.totalSizeBytes)}</p>
-                  </div>
-
-                  {/* Status */}
-                  <div className="md:col-span-2">
-                    {getStatusBadge(transfer.status)}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {transfer.status === 'active' 
-                        ? `Expira ${formatDate(transfer.expiresAt)}`
-                        : transfer.status === 'expired' 
-                        ? `Expirou ${formatDate(transfer.expiresAt)}`
-                        : 'Link desativado'}
-                    </p>
-                  </div>
-
-                  {/* Metrics */}
-                  <div className="md:col-span-2 flex gap-4">
-                    <div className="text-center">
-                      <p className="text-lg font-semibold text-foreground">{transfer.viewCount}</p>
-                      <p className="text-xs text-muted-foreground">Views</p>
+              {transfers.map((transfer, index) => (
+                <motion.div
+                  key={transfer.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="card p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                    {/* Info */}
+                    <div className="md:col-span-4">
+                      <p className="font-medium text-foreground truncate">
+                        {transfer.recipientEmail || `Envio de ${transfer.senderName}`}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {formatDate(transfer.createdAt)}
+                      </p>
                     </div>
-                    <div className="text-center">
-                      <p className="text-lg font-semibold text-foreground">{transfer.downloadCount}</p>
-                      <p className="text-xs text-muted-foreground">Downloads</p>
-                    </div>
-                  </div>
 
-                  {/* Actions */}
-                  <div className="md:col-span-2 flex justify-end gap-2 relative">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleCopyLink(transfer)}
-                      icon={copiedId === transfer.id ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      disabled={transfer.status !== 'active'}
-                      className={copiedId === transfer.id ? 'bg-emerald-500/10 text-emerald-500' : ''}
-                    >
-                      {copiedId === transfer.id ? 'Copiado' : 'Copiar'}
-                    </Button>
-                    
-                    <div className="relative">
-                      <IconButton
-                        variant="ghost"
-                        onClick={() => setActiveMenu(activeMenu === transfer.id ? null : transfer.id)}
+                    {/* Files */}
+                    <div className="md:col-span-2">
+                      <p className="text-sm text-foreground">
+                        {transfer.fileCount} arquivo{transfer.fileCount !== 1 ? 's' : ''}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{formatBytes(transfer.totalSizeBytes)}</p>
+                    </div>
+
+                    {/* Status */}
+                    <div className="md:col-span-2">
+                      {getStatusBadge(transfer.status)}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {transfer.status === 'active'
+                          ? `Expira ${formatDate(transfer.expiresAt)}`
+                          : transfer.status === 'expired'
+                            ? `Expirou ${formatDate(transfer.expiresAt)}`
+                            : 'Link desativado'}
+                      </p>
+                    </div>
+
+                    {/* Metrics */}
+                    <div className="md:col-span-2 flex gap-4">
+                      <div className="text-center">
+                        <p className="text-lg font-semibold text-foreground">{transfer.viewCount}</p>
+                        <p className="text-xs text-muted-foreground">Views</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-semibold text-foreground">{transfer.downloadCount}</p>
+                        <p className="text-xs text-muted-foreground">Downloads</p>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="md:col-span-2 flex justify-end gap-2 relative">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleCopyLink(transfer)}
+                        icon={copiedId === transfer.id ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        disabled={transfer.status !== 'active'}
+                        className={copiedId === transfer.id ? 'bg-emerald-500/10 text-emerald-500' : ''}
                       >
-                        <MoreHorizontal className="w-5 h-5" />
-                      </IconButton>
-                      
-                      {activeMenu === transfer.id && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="absolute right-0 top-full mt-1 w-48 bg-card rounded-xl shadow-lg border border-border py-2 z-10"
+                        {copiedId === transfer.id ? 'Copiado' : 'Copiar'}
+                      </Button>
+
+                      <div className="relative">
+                        <IconButton
+                          variant="ghost"
+                          onClick={() => setActiveMenu(activeMenu === transfer.id ? null : transfer.id)}
                         >
-                          <a
-                            href={`/d/${transfer.shareToken}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:bg-accent/5 hover:text-foreground transition-colors"
+                          <MoreHorizontal className="w-5 h-5" />
+                        </IconButton>
+
+                        {activeMenu === transfer.id && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="absolute right-0 top-full mt-1 w-48 bg-card rounded-xl shadow-lg border border-border py-2 z-10"
                           >
-                            <ExternalLink className="w-4 h-4" />
-                            Abrir link
-                          </a>
-                          {transfer.status === 'active' && (
-                            <button
-                              onClick={() => handleRevoke(transfer.id)}
-                              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-amber-600 hover:bg-amber-500/10"
+                            <a
+                              href={`/d/${transfer.shareToken}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:bg-accent/5 hover:text-foreground transition-colors"
                             >
-                              <Ban className="w-4 h-4" />
-                              Revogar link
+                              <ExternalLink className="w-4 h-4" />
+                              Abrir link
+                            </a>
+                            {transfer.status === 'active' && (
+                              <button
+                                onClick={() => handleRevoke(transfer.id)}
+                                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-amber-600 hover:bg-amber-500/10"
+                              >
+                                <Ban className="w-4 h-4" />
+                                Revogar link
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDelete(transfer.id)}
+                              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-500/10"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Excluir
                             </button>
-                          )}
-                          <button
-                            onClick={() => handleDelete(transfer.id)}
-                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-500/10"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Excluir
-                          </button>
-                        </motion.div>
-                      )}
+                          </motion.div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              ))}
             </AnimatePresence>
           </div>
         )}

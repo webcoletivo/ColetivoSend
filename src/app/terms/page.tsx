@@ -82,11 +82,11 @@ export default function TermsPage() {
 
             {/* Content */}
             <article className="flex-1 prose prose-slate prose-headings:scroll-mt-32 max-w-none">
-              
+
               <section id="acceptance" className="mb-12">
                 <h2>1. Aceitação dos Termos</h2>
                 <p>
-                  Ao acessar ou utilizar o ColetivoSend, você concorda em cumprir estes Termos de Uso. 
+                  Ao acessar ou utilizar o ColetivoSend, você concorda em cumprir estes Termos de Uso.
                   Se você não concordar com qualquer parte destes termos, não deverá utilizar nossos serviços.
                 </p>
               </section>
@@ -149,7 +149,7 @@ export default function TermsPage() {
               <section id="expiration" className="mb-12">
                 <h2>5. Expiração e Deleção</h2>
                 <p>
-                  <strong>O ColetivoSend não é um serviço de armazenamento em nuvem (backup).</strong> 
+                  <strong>O ColetivoSend não é um serviço de armazenamento em nuvem (backup).</strong>
                 </p>
                 <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-xl border border-amber-200 not-prose">
                   <Clock className="w-5 h-5 text-amber-600 mt-0.5" />
@@ -162,7 +162,7 @@ export default function TermsPage() {
               <section id="liability" className="mb-12">
                 <h2>6. Limitação de Responsabilidade</h2>
                 <p>
-                  O serviço é fornecido "como está" e "conforme disponibilidade". O ColetivoSend não garante que o serviço será ininterrupto ou livre de erros.
+                  O serviço é fornecido &quot;como está&quot; e &quot;conforme disponibilidade&quot;. O ColetivoSend não garante que o serviço será ininterrupto ou livre de erros.
                   Em nenhuma circunstância seremos responsáveis por danos diretos, indiretos, incidentais ou perda de dados decorrentes do uso ou incapacidade de usar o serviço.
                 </p>
               </section>

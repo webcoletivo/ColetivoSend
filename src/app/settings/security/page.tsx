@@ -3,9 +3,9 @@
 import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Shield, 
-  Smartphone, 
+import {
+  Shield,
+  Smartphone,
   Key,
   Check,
   AlertCircle,
@@ -19,10 +19,11 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import Image from 'next/image'
 
 export default function SecurityPage() {
   const { data: session } = useSession()
-  
+
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [hasPassword, setHasPassword] = useState(false)
@@ -67,11 +68,11 @@ export default function SecurityPage() {
     setError('')
     setShowSetup(true)
     setSetupStep('qr')
-    
+
     try {
       const res = await fetch('/api/user/2fa', { method: 'POST' })
       const data = await res.json()
-      
+
       if (res.ok) {
         setQrCodeUrl(data.qrCodeUrl)
         setSecret(data.secret)
@@ -100,9 +101,9 @@ export default function SecurityPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: verifyCode }),
       })
-      
+
       const data = await res.json()
-      
+
       if (res.ok) {
         setRecoveryCodes(data.recoveryCodes)
         setSetupStep('recovery')
@@ -141,9 +142,9 @@ export default function SecurityPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: disablePassword }),
       })
-      
+
       const data = await res.json()
-      
+
       if (res.ok) {
         setTwoFactorEnabled(false)
         setShowDisable(false)
@@ -196,11 +197,10 @@ export default function SecurityPage() {
               Adicione uma camada extra de segurança à sua conta usando um app autenticador.
             </p>
           </div>
-          <div className={`px-3 py-1.5 rounded-full text-xs font-medium ${
-            twoFactorEnabled 
-              ? 'bg-emerald-500/10 text-emerald-500' 
-              : 'bg-muted text-muted-foreground'
-          }`}>
+          <div className={`px-3 py-1.5 rounded-full text-xs font-medium ${twoFactorEnabled
+            ? 'bg-emerald-500/10 text-emerald-500'
+            : 'bg-muted text-muted-foreground'
+            }`}>
             {twoFactorEnabled ? 'Ativado' : 'Desativado'}
           </div>
         </div>
@@ -219,13 +219,13 @@ export default function SecurityPage() {
             <div className="flex items-center gap-3">
               <Smartphone className="w-5 h-5 text-muted-foreground" />
               <span className="text-sm text-foreground">
-                {twoFactorEnabled 
-                  ? 'App autenticador configurado' 
+                {twoFactorEnabled
+                  ? 'App autenticador configurado'
                   : 'Nenhum app autenticador configurado'}
               </span>
             </div>
             {twoFactorEnabled ? (
-                <Button
+              <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowDisable(true)}
@@ -262,13 +262,16 @@ export default function SecurityPage() {
                   <p className="text-sm text-muted-foreground">
                     Use um app autenticador como Google Authenticator, Authy ou Microsoft Authenticator.
                   </p>
-                  
+
                   <div className="flex justify-center py-4">
                     {qrCodeUrl ? (
-                      <img 
-                        src={qrCodeUrl} 
-                        alt="QR Code" 
+                      <Image
+                        src={qrCodeUrl}
+                        alt="QR Code"
+                        width={192}
+                        height={192}
                         className="w-48 h-48 rounded-lg border border-border bg-white p-2"
+                        unoptimized // QR codes are usually dynamic/data-urls or specific API urls
                       />
                     ) : (
                       <div className="w-48 h-48 bg-muted rounded-lg flex items-center justify-center">
@@ -336,7 +339,7 @@ export default function SecurityPage() {
                     >
                       Voltar
                     </Button>
-                    <Button 
+                    <Button
                       onClick={handleVerifyCode}
                       loading={isVerifying}
                       disabled={verifyCode.length !== 6}
@@ -354,7 +357,7 @@ export default function SecurityPage() {
                     <Check className="w-5 h-5" />
                     <h3 className="font-medium">2FA ativado com sucesso!</h3>
                   </div>
-                  
+
                   <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
                     <div className="flex items-start gap-3">
                       <Key className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />

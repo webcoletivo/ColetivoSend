@@ -13,10 +13,10 @@ function VerifyEmailContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { showToast } = useToast()
-  
+
   const email = searchParams.get('email') || ''
   const token = searchParams.get('token')
-  
+
   const [isVerifying, setIsVerifying] = React.useState(!!token)
   const [verificationStatus, setVerificationStatus] = React.useState<'pending' | 'success' | 'error'>(token ? 'pending' : 'pending')
   const [error, setError] = React.useState('')
@@ -25,14 +25,7 @@ function VerifyEmailContent() {
   const verificationStarted = React.useRef(false)
 
   // Handle automatic verification if token is present
-  React.useEffect(() => {
-    if (token && !verificationStarted.current) {
-      verificationStarted.current = true
-      verifyEmail()
-    }
-  }, [token])
-
-  const verifyEmail = async () => {
+  const verifyEmail = React.useCallback(async () => {
     try {
       const res = await fetch('/api/auth/verify-email/verify', {
         method: 'POST',
@@ -58,7 +51,14 @@ function VerifyEmailContent() {
     } finally {
       setIsVerifying(false)
     }
-  }
+  }, [token, router, showToast])
+
+  React.useEffect(() => {
+    if (token && !verificationStarted.current) {
+      verificationStarted.current = true
+      verifyEmail()
+    }
+  }, [token, verifyEmail])
 
   const handleResend = async () => {
     if (!email) {
@@ -152,12 +152,12 @@ function VerifyEmailContent() {
           </div>
         ) : (
           <>
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', delay: 0.2 }}
-                className="w-20 h-20 rounded-full bg-primary-500/10 flex items-center justify-center mx-auto mb-6"
-              >
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', delay: 0.2 }}
+              className="w-20 h-20 rounded-full bg-primary-500/10 flex items-center justify-center mx-auto mb-6"
+            >
               {isVerifying ? (
                 <Loader2 className="w-10 h-10 text-primary-500 animate-spin" />
               ) : (
@@ -184,7 +184,7 @@ function VerifyEmailContent() {
               <p className="text-sm text-muted-foreground">
                 Clique no link do e-mail para ativar sua conta.
               </p>
-              
+
               <Button
                 variant="secondary"
                 onClick={handleResend}
