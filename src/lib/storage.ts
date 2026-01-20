@@ -67,7 +67,7 @@ export async function uploadFile(
     const filePath = path.join(UPLOAD_DIR, storageKey)
     await fs.writeFile(filePath, file)
   }
-  
+
   return {
     storageKey,
     checksum,
@@ -116,7 +116,7 @@ export async function deleteTransferFiles(transferId: string): Promise<boolean> 
       // In S3, we need to list objects with prefix first or just handle individually
       // Simplified: This logic usually requires ListObjectsV2 for full cleanup
       // For now, relying on individual deletion or cloud lifecycle rules is safer
-      return true 
+      return true
     } else {
       const transferDir = path.join(UPLOAD_DIR, transferId)
       await fs.rm(transferDir, { recursive: true, force: true })
@@ -151,7 +151,7 @@ export async function generatePresignedDownloadUrl(
     .update(`${storageKey}:${expires}`)
     .digest('hex')
     .slice(0, 16)
-  
+
   return `/api/download/file?key=${encodeURIComponent(storageKey)}&name=${encodeURIComponent(originalName)}&expires=${expires}&sig=${signature}`
 }
 
@@ -162,13 +162,13 @@ export function verifyDownloadSignature(
 ): boolean {
   const expiresNum = parseInt(expires)
   if (Date.now() > expiresNum) return false
-  
+
   const expectedSig = crypto
     .createHmac('sha256', process.env.NEXTAUTH_SECRET || 'secret')
     .update(`${storageKey}:${expiresNum}`)
     .digest('hex')
     .slice(0, 16)
-  
+
   return signature === expectedSig
 }
 
@@ -216,11 +216,11 @@ export function isFileTypeAllowed(mimeType: string, fileName: string): boolean {
     '.vbs', '.vbe', '.js', '.jse', '.ws', '.wsf', '.wsc', '.wsh',
     '.ps1', '.psm1', '.psd1', '.reg', '.inf', '.scf', '.lnk',
   ]
-  
+
   if (BLOCKED_EXTENSIONS.includes(extension)) {
     return false
   }
-  
+
   return true
 }
 
@@ -276,7 +276,7 @@ export async function generatePresignedUploadUrl(
   if (STORAGE_TYPE === 's3' && s3Client) {
     // Prepare tags
     const tagging = `transferId=${transferId}&plan=${ownerUserId ? 'user' : 'guest'}`
-    
+
     const command = new PutObjectCommand({
       Bucket: BUCKET_NAME,
       Key: storageKey,
@@ -286,7 +286,7 @@ export async function generatePresignedUploadUrl(
     })
 
     const url = await getSignedUrl(s3Client, command, { expiresIn: expiresInSeconds })
-    
+
     // We don't need to return tagging string if the client just needs to send the header.
     // However, the client needs to know WHAT header to send if it's signed.
     // The AWS SDK signs the headers provided in the command. 
@@ -295,8 +295,8 @@ export async function generatePresignedUploadUrl(
     // Better to append it to the returned object if frontend needs it.
     // Update: The standard way is often just to sign it. The URL contains the signature.
     // But for custom headers like x-amz-tagging, they must be sent with the request.
-    
-    return { url, storageKey } 
+
+    return { url, storageKey }
     // Note: Frontend must send 'x-amz-tagging' header with the value used here if we include Tagging in command.
     // To simplify, we'll SKIP strict Tagging in the command for the initial implementation to avoid CORS/Header complexity issues on the frontend 
     // unless strictly required. The requirement says "Adicionar tags nos objetos".
@@ -329,7 +329,7 @@ export async function checkFileExists(storageKey: string, expectedSize: number):
         Bucket: BUCKET_NAME,
         Key: storageKey
       }))
-      
+
       // Check size (allow small difference? No, should be exact)
       if (response.ContentLength !== expectedSize) {
         console.warn(`[CheckFile] Size mismatch for ${storageKey}: expected ${expectedSize}, got ${response.ContentLength}`)
@@ -354,7 +354,7 @@ export async function checkFileExists(storageKey: string, expectedSize: number):
 
 export async function deleteMultipleFiles(storageKeys: string[]): Promise<boolean> {
   if (!storageKeys.length) return true
-  
+
   if (STORAGE_TYPE === 's3' && s3Client) {
     try {
       // S3 delete limit is 1000
@@ -378,7 +378,7 @@ export async function deleteMultipleFiles(storageKeys: string[]): Promise<boolea
     // Local
     try {
       await Promise.all(
-        storageKeys.map(key => 
+        storageKeys.map(key =>
           fs.unlink(path.join(UPLOAD_DIR, key)).catch(e => console.warn('Failed to delete local file:', key))
         )
       )
@@ -387,4 +387,41 @@ export async function deleteMultipleFiles(storageKeys: string[]): Promise<boolea
       return false
     }
   }
+}
+
+export async function generateSimpleUploadUrl(
+  storageKey: string,
+  contentType: string,
+  expiresInSeconds: number = 3600
+): Promise<string> {
+  if (STORAGE_TYPE === 's3' && s3Client) {
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: storageKey,
+      ContentType: contentType,
+    })
+    return await getSignedUrl(s3Client, command, { expiresIn: expiresInSeconds })
+  }
+
+  // Local fallback
+  return `/api/upload/mock-simple?key=${encodeURIComponent(storageKey)}`
+}
+
+export async function generatePresignedViewUrl(
+  storageKey: string,
+  contentType: string = 'application/octet-stream',
+  expiresInSeconds: number = 3600
+): Promise<string> {
+  if (STORAGE_TYPE === 's3' && s3Client) {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: storageKey,
+      ResponseContentDisposition: 'inline',
+      ResponseContentType: contentType
+    })
+    return await getSignedUrl(s3Client, command, { expiresIn: expiresInSeconds })
+  }
+
+  // Local fallback
+  return `/api/upload/mock-simple?key=${encodeURIComponent(storageKey)}`
 }

@@ -153,6 +153,30 @@
   .badge {
      @apply inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
   }
+
+  /* WeTransfer-style transfer card */
+  .transfer-card {
+    @apply bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl
+           rounded-2xl shadow-2xl border border-white/20 dark:border-slate-700/50;
+  }
+
+  /* Media overlay for contrast */
+  .media-overlay {
+    background: linear-gradient(
+      135deg, 
+      rgba(0,0,0,0.5) 0%, 
+      rgba(0,0,0,0.2) 40%,
+      transparent 70%
+    );
+  }
+
+  /* Promotion badge */
+  .promo-badge {
+    @apply absolute bottom-6 right-6 px-4 py-2 
+           bg-white/20 backdrop-blur-md rounded-full
+           text-white text-sm font-medium
+           opacity-0 group-hover:opacity-100 transition-opacity;
+  }
 }
 
 @layer utilities {

@@ -5,26 +5,36 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
-import { 
-  Sparkles, 
-  User, 
-  Shield, 
+import {
+  Sparkles,
+  User,
+  Shield,
   ArrowLeft,
-  ChevronRight
+  ChevronRight,
+  Image as ImageIcon
 } from 'lucide-react'
 
 const settingsNav = [
-  { 
-    href: '/settings/profile', 
-    label: 'Perfil', 
+  {
+    href: '/settings/profile',
+    label: 'Perfil',
     icon: User,
-    description: 'Foto, nome e email'
+    description: 'Foto, nome e email',
+    adminOnly: false
   },
-  { 
-    href: '/settings/security', 
-    label: 'Segurança', 
+  {
+    href: '/settings/security',
+    label: 'Segurança',
     icon: Shield,
-    description: '2FA e senha'
+    description: '2FA e senha',
+    adminOnly: false
+  },
+  {
+    href: '/settings/media',
+    label: 'Mídia de Fundo',
+    icon: ImageIcon,
+    description: 'Gerenciar background',
+    adminOnly: true
   },
 ]
 
@@ -88,11 +98,10 @@ export default function SettingsLayout({
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                      isActive 
-                        ? 'bg-primary-500/10 text-primary-500 border border-primary-500/20' 
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
+                        ? 'bg-primary-500/10 text-primary-500 border border-primary-500/20'
                         : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                    }`}
+                      }`}
                   >
                     <item.icon className={`w-5 h-5 ${isActive ? 'text-primary-500' : 'text-surface-400'}`} />
                     <div className="flex-1">

@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -21,6 +22,7 @@ model User {
   twoFactorEnabled  Boolean    @default(false)
   twoFactorSecret   String?    // Encrypted TOTP secret
   recoveryCodes     String?    // Encrypted JSON array of recovery codes
+  isAdmin           Boolean    @default(false) // Master access for admin panel
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
   transfers         Transfer[]
@@ -138,3 +140,22 @@ model RateLimit {
   @@index([key])
   @@index([expiresAt])
 }
+
+model BackgroundMedia {
+  id           String   @id @default(cuid())
+  title        String?
+  type         String   // "video" | "image"
+  isPromotion  Boolean  @default(false)
+  promotionUrl String?  // Required if isPromotion = true
+  storageKey   String   // S3 key or local path
+  mimeType     String
+  sizeBytes    Int
+  duration     Int?     // Display duration in seconds (for images)
+  order        Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([isActive, order])
+}
+
