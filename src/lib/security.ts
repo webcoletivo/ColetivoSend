@@ -53,7 +53,7 @@ export function decryptSecret(encrypted: string): string {
 
   const key = crypto.scryptSync(process.env.NEXTAUTH_SECRET || 'default-key', 'salt', 32)
   const [ivHex, encryptedHex] = encrypted.split(':')
-  
+
   if (!ivHex || !encryptedHex) return encrypted
 
   try {
@@ -90,22 +90,22 @@ export function createRateLimitKey(identifier: string, action: string): string {
 
 // Free Plan Limits (Standard User)
 export const FREE_LIMITS = {
-  maxFiles: parseInt(process.env.UPLOAD_MAX_FILES || '50'), // Increased default since size is the main limit
-  maxSizeMB: 10240, // 10 GB
+  maxFiles: parseInt(process.env.NEXT_PUBLIC_UPLOAD_MAX_FILES || '2000'),
+  maxSizeMB: parseInt(process.env.NEXT_PUBLIC_UPLOAD_MAX_SIZE_MB || '10240'),
   expirationOptions: [
     0.0416, // 1 hour (1/24)
     1,      // 1 day
     7,      // 7 days
     30      // 30 days
   ],
-  maxTransfersPer30Days: 15
+  maxTransfersPer30Days: 45
 }
 
 // Keeping these for backward compatibility or if we have Premium later
 export const GUEST_LIMITS = {
-  maxTransfers: 5,
-  maxFiles: 10,
-  maxSizeMB: 50,
+  maxTransfers: parseInt(process.env.GUEST_MAX_TRANSFERS || '5'),
+  maxFiles: parseInt(process.env.NEXT_PUBLIC_GUEST_MAX_FILES || '50'),
+  maxSizeMB: parseInt(process.env.NEXT_PUBLIC_GUEST_MAX_SIZE_MB || '2048'),
   expirationDays: 7,
 }
 

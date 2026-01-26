@@ -13,8 +13,11 @@ import { formatBytes } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 
 // Limits
-const MAX_FILES = 2000
-const MAX_SIZE = 10 * 1024 * 1024 * 1024 // 10GB
+// Limits configuration
+const USER_MAX_FILES = parseInt(process.env.NEXT_PUBLIC_UPLOAD_MAX_FILES || '2000')
+const USER_MAX_SIZE = parseInt(process.env.NEXT_PUBLIC_UPLOAD_MAX_SIZE_MB || '10240') * 1024 * 1024
+const GUEST_MAX_FILES = parseInt(process.env.NEXT_PUBLIC_GUEST_MAX_FILES || '50')
+const GUEST_MAX_SIZE = parseInt(process.env.NEXT_PUBLIC_GUEST_MAX_SIZE_MB || '2048') * 1024 * 1024
 
 const EXPIRY_OPTIONS = [
     { value: 0.0416, label: '1 hora' },
@@ -64,10 +67,14 @@ export function TransferCard({ className = '' }: TransferCardProps) {
     } | null>(null)
 
     // Derived state
+    // Derived state
+    const currentMaxFiles = isLoggedIn ? USER_MAX_FILES : GUEST_MAX_FILES
+    const currentMaxSize = isLoggedIn ? USER_MAX_SIZE : GUEST_MAX_SIZE
+
     const totalSize = files.reduce((acc, item) => acc + item.file.size, 0)
     const totalCount = files.length
     const totalBytesUploaded = Object.values(bytesUploadedMap).reduce((acc, bytes) => acc + bytes, 0)
-    const canContinue = files.length > 0 && totalSize <= MAX_SIZE && totalCount <= MAX_FILES
+    const canContinue = files.length > 0 && totalSize <= currentMaxSize && totalCount <= currentMaxFiles
     const isUploading = uploadStatus === 'uploading' || uploadStatus === 'processing' || uploadStatus === 'finalize'
     const isSuccess = uploadStatus === 'complete' && transferResult
 
@@ -450,8 +457,8 @@ export function TransferCard({ className = '' }: TransferCardProps) {
                     <>
                         <UploadDropzone
                             onFilesAdded={handleFilesAdded}
-                            maxFiles={MAX_FILES}
-                            maxSize={MAX_SIZE}
+                            maxFiles={currentMaxFiles}
+                            maxSize={currentMaxSize}
                             currentFileCount={totalCount}
                             currentTotalSize={totalSize}
                         />
@@ -461,8 +468,8 @@ export function TransferCard({ className = '' }: TransferCardProps) {
                             <FileList
                                 files={files}
                                 onRemove={handleRemoveFile}
-                                maxFiles={MAX_FILES}
-                                maxSize={MAX_SIZE}
+                                maxFiles={currentMaxFiles}
+                                maxSize={currentMaxSize}
                             />
                         )}
                     </>

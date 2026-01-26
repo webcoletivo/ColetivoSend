@@ -44,7 +44,14 @@ export async function POST(request: NextRequest) {
 
     // 1. Verify files exist in S3 (Integrity Check)
     // We check ALL files to ensure upload is complete
+    // 1. Verify files exist in S3 (Integrity Check)
+    // We check ALL files to ensure upload is complete
     const checkPromises = files.map((file: any) => limit(async () => {
+      // Security: Ensure storageKey belongs to this transfer
+      if (!file.storageKey.startsWith(`transfers/${transferId}/`)) {
+        throw new Error(`Chave de armazenamento inválida para o arquivo: ${file.name}`)
+      }
+
       // If local storage, this checks local file. If S3, checks HeadObject.
       const exists = await checkFileExists(file.storageKey, file.size)
       if (!exists) {
@@ -75,9 +82,9 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      if (recentTransfersCount >= 15) { // 15 limit
+      if (recentTransfersCount >= USER_LIMITS.maxTransfersPer30Days) {
         return NextResponse.json({
-          error: 'Limite de 15 transferências nos últimos 30 dias atingido.'
+          error: `Limite de ${USER_LIMITS.maxTransfersPer30Days} transferências nos últimos 30 dias atingido.`
         }, { status: 403 })
       }
     }
