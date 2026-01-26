@@ -55,7 +55,7 @@ export async function POST(
         shareToken,
         message || undefined,
         files.length,
-        formatBytes(totalSizeBytes)
+        formatBytes(Number(totalSizeBytes))
       )
       if (result.success) {
         if (emailLog) {
@@ -99,7 +99,7 @@ export async function POST(
           userMessage = 'E-mail do destinatário rejeitado.'
         }
 
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: userMessage,
           details: result.error,
           code: result.code
@@ -107,7 +107,7 @@ export async function POST(
       }
     } catch (emailError: any) {
       console.error('Critical email route error:', emailError)
-      
+
       // Attempt to log the critical error if emailLog was created
       if (emailLog) {
         try {
@@ -124,7 +124,7 @@ export async function POST(
         }
       }
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: `DEBUG: Erro ao processar e-mail: ${emailError.message}`,
         details: emailError.stack,
         code: 'CRITICAL_ERROR'
@@ -133,7 +133,7 @@ export async function POST(
 
   } catch (error: any) {
     console.error('Outer email route error:', error)
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: `DEBUG: Erro interno no servidor de e-mail: ${error.message}`,
       details: error.stack,
       code: 'INTERNAL_SERVER_ERROR'
