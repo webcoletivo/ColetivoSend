@@ -77,7 +77,7 @@ export async function GET(
       expiresAt: transfer.expiresAt,
       hasPassword: !!transfer.passwordHash,
       files: transfer.files,
-      totalSize: transfer.files.reduce((acc, f) => acc + f.sizeBytes, 0),
+      totalSize: transfer.files.reduce((acc, f) => acc + Number(f.sizeBytes), 0),
     })
 
   } catch (error) {
