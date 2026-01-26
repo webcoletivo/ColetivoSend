@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { generateShareToken, hashPassword, GUEST_LIMITS, USER_LIMITS, hashFingerprint, hashIP } from '@/lib/security'
+import { generateShareToken, hashPassword, USER_LIMITS, hashFingerprint, hashIP } from '@/lib/security'
 import { sendTransferEmail } from '@/lib/email'
 import { formatBytes } from '@/lib/utils'
 import { getServerSession } from 'next-auth'
@@ -9,11 +9,11 @@ import { authOptions } from '@/lib/auth'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { 
-      senderName, 
-      recipientEmail, 
-      message, 
-      files, 
+    const {
+      senderName,
+      recipientEmail,
+      message,
+      files,
       expirationDays = 7,
       password,
       fingerprint,
@@ -46,10 +46,17 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions)
     const userId = session?.user?.id || null
 
-    // Determine limits based on auth status
-    const isLoggedIn = !!userId
-    const maxFiles = isLoggedIn ? USER_LIMITS.maxFiles : GUEST_LIMITS.maxFiles
-    const maxSizeMB = isLoggedIn ? USER_LIMITS.maxSizeMB : GUEST_LIMITS.maxSizeMB
+    // Enforce Authentication
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Você precisa estar logado para enviar arquivos.' },
+        { status: 401 }
+      )
+    }
+
+    // Determine limits
+    const maxFiles = USER_LIMITS.maxFiles
+    const maxSizeMB = USER_LIMITS.maxSizeMB
     const maxSizeBytes = maxSizeMB * 1024 * 1024
 
     // Validate file count
@@ -69,64 +76,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // For guests, check usage limits
-    if (!isLoggedIn && fingerprint) {
-      const clientIP = request.headers.get('x-forwarded-for') || 
-                       request.headers.get('x-real-ip') || 
-                       'unknown'
-      
-      const fingerprintHash = hashFingerprint(fingerprint)
-      const ipHash = hashIP(clientIP)
-
-      // Check or create guest usage record
-      let guestUsage = await prisma.guestUsage.findUnique({
-        where: { fingerprintHash }
-      })
-
-      if (!guestUsage) {
-        // Try to find by IP as fallback
-        const existingByIP = await prisma.guestUsage.findFirst({
-          where: { ipHash }
-        })
-        
-        if (existingByIP && existingByIP.transfersCreatedCount >= GUEST_LIMITS.maxTransfers) {
-          return NextResponse.json(
-            { 
-              error: 'Limite de envios gratuitos atingido',
-              message: 'Você atingiu o limite de 5 envios gratuitos. Crie uma conta para continuar.',
-              limitReached: true
-            },
-            { status: 403 }
-          )
-        }
-
-        guestUsage = await prisma.guestUsage.create({
-          data: {
-            fingerprintHash,
-            ipHash,
-            transfersCreatedCount: 0,
-          }
-        })
-      }
-
-      if (guestUsage.transfersCreatedCount >= GUEST_LIMITS.maxTransfers) {
-        return NextResponse.json(
-          { 
-            error: 'Limite de envios gratuitos atingido',
-            message: 'Você atingiu o limite de 5 envios gratuitos. Crie uma conta para continuar.',
-            limitReached: true,
-            used: guestUsage.transfersCreatedCount,
-            max: GUEST_LIMITS.maxTransfers
-          },
-          { status: 403 }
-        )
-      }
-    }
-
-    // Validate expiration days for guests
-    const validExpirationDays = isLoggedIn 
-      ? (USER_LIMITS.expirationOptions.includes(expirationDays) ? expirationDays : 7)
-      : GUEST_LIMITS.expirationDays
+    // Validate expiration days
+    const validExpirationDays = USER_LIMITS.expirationOptions.includes(expirationDays) ? expirationDays : 7
 
     // Calculate expiration date
     const expiresAt = new Date()
@@ -141,8 +92,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Hash password if provided (only for logged in users)
+    // Note: userId is already enforced above, so we can just check if password exists
     let passwordHash = null
-    if (isLoggedIn && password && password.length >= 4) {
+    if (password && password.length >= 4) {
       passwordHash = await hashPassword(password)
     }
 
@@ -173,17 +125,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Update guest usage count if not logged in
-    if (!isLoggedIn && fingerprint) {
-      const fingerprintHash = hashFingerprint(fingerprint)
-      await prisma.guestUsage.update({
-        where: { fingerprintHash },
-        data: { 
-          transfersCreatedCount: { increment: 1 },
-          lastSeenAt: new Date()
-        }
-      })
-    }
+    // Guest usage update removed
 
     // Send email if recipient provided
     if (recipientEmail) {

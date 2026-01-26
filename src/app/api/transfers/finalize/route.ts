@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { generateShareToken, hashPassword, GUEST_LIMITS, USER_LIMITS, hashFingerprint, hashIP } from '@/lib/security'
+import { generateShareToken, hashPassword, USER_LIMITS, hashFingerprint, hashIP } from '@/lib/security'
 import { sendTransferEmail } from '@/lib/email'
 import { formatBytes } from '@/lib/utils'
 import { checkFileExists } from '@/lib/storage'

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { v4 as uuidv4 } from 'uuid'
 import { generatePresignedUploadUrl, isFileTypeAllowed } from '@/lib/storage'
-import { GUEST_LIMITS, USER_LIMITS, hashFingerprint, hashIP } from '@/lib/security'
+import { USER_LIMITS, hashFingerprint, hashIP } from '@/lib/security'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'

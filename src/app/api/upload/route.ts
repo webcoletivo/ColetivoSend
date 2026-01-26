@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { uploadFile } from '@/lib/storage'
-import { GUEST_LIMITS, USER_LIMITS } from '@/lib/security'
+import { USER_LIMITS } from '@/lib/security'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
@@ -19,13 +19,21 @@ export async function POST(request: NextRequest) {
 
     // Get user from session to apply correct limits
     const session = await getServerSession(authOptions)
-    const isLoggedIn = !!session?.user
-    const maxSizeBytes = (isLoggedIn ? USER_LIMITS.maxSizeMB : GUEST_LIMITS.maxSizeMB) * 1024 * 1024
+    const userId = session?.user?.id
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Você precisa estar logado para enviar arquivos.' },
+        { status: 401 }
+      )
+    }
+
+    const maxSizeBytes = USER_LIMITS.maxSizeMB * 1024 * 1024
 
     // Validate file size
     if (file.size > maxSizeBytes) {
       return NextResponse.json(
-        { error: `Arquivo excede o tamanho máximo de ${isLoggedIn ? USER_LIMITS.maxSizeMB : GUEST_LIMITS.maxSizeMB}MB` },
+        { error: `Arquivo excede o tamanho máximo de ${USER_LIMITS.maxSizeMB}MB` },
         { status: 400 }
       )
     }
