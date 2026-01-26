@@ -74,7 +74,7 @@ model Transfer {
   cleanupStatus   String   @default("pending") // pending, done, failed
   viewCount       Int      @default(0)
   downloadCount   Int      @default(0)
-  totalSizeBytes  Int      @default(0)
+  totalSizeBytes  BigInt   @default(0)
   emailLogs       EmailLog[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -110,7 +110,7 @@ model File {
   transfer     Transfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
   originalName String
   mimeType     String
-  sizeBytes    Int
+  sizeBytes    BigInt
   storageKey   String   // Path in storage (S3 key or local path)
   checksum     String?  // MD5 or SHA256 for integrity
   createdAt    DateTime @default(now())
@@ -149,7 +149,7 @@ model BackgroundMedia {
   promotionUrl String?  // Required if isPromotion = true
   storageKey   String   // S3 key or local path
   mimeType     String
-  sizeBytes    Int
+  sizeBytes    BigInt
   duration     Int?     // Display duration in seconds (for images)
   order        Int      @default(0)
   isActive     Boolean  @default(true)

@@ -26,9 +26,13 @@ export async function POST(request: NextRequest) {
 
     const { files, fingerprint } = validationResult.data
 
-    // Determine limits
+    // Enforce Authentication
     const isLoggedIn = !!userId
-    const limits = isLoggedIn ? USER_LIMITS : GUEST_LIMITS
+    if (!isLoggedIn) {
+      return NextResponse.json({ error: 'Você precisa estar logado para enviar arquivos.' }, { status: 401 })
+    }
+
+    const limits = USER_LIMITS
 
     // Validate count
     if (files.length > limits.maxFiles) {
@@ -40,27 +44,6 @@ export async function POST(request: NextRequest) {
     const maxSizeBytes = limits.maxSizeMB * 1024 * 1024
     if (totalSize > maxSizeBytes) {
       return NextResponse.json({ error: `Tamanho total excede ${limits.maxSizeMB}MB` }, { status: 400 })
-    }
-
-    // Validate guest limits (usage count)
-    if (!isLoggedIn) {
-      // Check existing usage if fingerprint provided
-      if (fingerprint) {
-        const fingerprintHash = hashFingerprint(fingerprint)
-        const ipHash = hashIP(request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown')
-
-        const usage = await prisma.guestUsage.findFirst({
-          where: { OR: [{ fingerprintHash }, { ipHash }] }
-        })
-
-
-        if (usage && usage.transfersCreatedCount >= GUEST_LIMITS.maxTransfers) {
-          return NextResponse.json({
-            error: 'Limite de envios gratuitos atingido',
-            limitReached: true
-          }, { status: 403 })
-        }
-      }
     }
 
     const transferId = uuidv4() // Temporary ID for storage organization

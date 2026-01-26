@@ -12,12 +12,9 @@ import { Button } from '@/components/ui/Button'
 import { formatBytes } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 
-// Limits
 // Limits configuration
-const USER_MAX_FILES = parseInt(process.env.NEXT_PUBLIC_UPLOAD_MAX_FILES || '2000')
-const USER_MAX_SIZE = parseInt(process.env.NEXT_PUBLIC_UPLOAD_MAX_SIZE_MB || '10240') * 1024 * 1024
-const GUEST_MAX_FILES = parseInt(process.env.NEXT_PUBLIC_GUEST_MAX_FILES || '50')
-const GUEST_MAX_SIZE = parseInt(process.env.NEXT_PUBLIC_GUEST_MAX_SIZE_MB || '2048') * 1024 * 1024
+const MAX_FILES = parseInt(process.env.NEXT_PUBLIC_UPLOAD_MAX_FILES || '2000')
+const MAX_SIZE = parseInt(process.env.NEXT_PUBLIC_UPLOAD_MAX_SIZE_MB || '10240') * 1024 * 1024
 
 const EXPIRY_OPTIONS = [
     { value: 0.0416, label: '1 hora' },
@@ -67,14 +64,10 @@ export function TransferCard({ className = '' }: TransferCardProps) {
     } | null>(null)
 
     // Derived state
-    // Derived state
-    const currentMaxFiles = isLoggedIn ? USER_MAX_FILES : GUEST_MAX_FILES
-    const currentMaxSize = isLoggedIn ? USER_MAX_SIZE : GUEST_MAX_SIZE
-
     const totalSize = files.reduce((acc, item) => acc + item.file.size, 0)
     const totalCount = files.length
     const totalBytesUploaded = Object.values(bytesUploadedMap).reduce((acc, bytes) => acc + bytes, 0)
-    const canContinue = files.length > 0 && totalSize <= currentMaxSize && totalCount <= currentMaxFiles
+    const canContinue = files.length > 0 && totalSize <= MAX_SIZE && totalCount <= MAX_FILES
     const isUploading = uploadStatus === 'uploading' || uploadStatus === 'processing' || uploadStatus === 'finalize'
     const isSuccess = uploadStatus === 'complete' && transferResult
 
@@ -131,6 +124,11 @@ export function TransferCard({ className = '' }: TransferCardProps) {
 
     // File handlers
     const handleFilesAdded = useCallback((newFiles: File[]) => {
+        if (!isLoggedIn) {
+            window.location.href = '/login'
+            return
+        }
+
         setFiles(prev => {
             const updatedFiles = [...prev]
             const remainingNewFiles = [...newFiles]
@@ -161,7 +159,7 @@ export function TransferCard({ className = '' }: TransferCardProps) {
 
             return [...updatedFiles, ...newItems]
         })
-    }, [])
+    }, [isLoggedIn])
 
     const handleRemoveFile = useCallback((id: string) => {
         setFiles(prev => prev.filter(f => f.id !== id))
@@ -189,26 +187,14 @@ export function TransferCard({ className = '' }: TransferCardProps) {
 
     // Upload & Finalize handler
     const handleTransfer = async () => {
-        if (files.length === 0) return
-        if (!isPasswordValid) {
-            showToast('Verifique a senha antes de continuar', 'error')
+        if (!isLoggedIn) {
+            window.location.href = '/login'
             return
         }
 
-        // Require login
-        if (!isLoggedIn) {
-            const draft = {
-                files: files.map(f => ({ name: f.file.name, size: f.file.size, type: f.file.type })),
-                recipientEmails,
-                senderEmail,
-                title,
-                message,
-                expiryDays,
-                hasPassword,
-                // Note: we don't store plain password in sessionStorage for security, user must re-enter
-            }
-            sessionStorage.setItem('pending_upload_draft', JSON.stringify(draft))
-            window.location.href = '/login?callbackUrl=/'
+        if (files.length === 0) return
+        if (!isPasswordValid) {
+            showToast('Verifique a senha antes de continuar', 'error')
             return
         }
 
@@ -217,7 +203,6 @@ export function TransferCard({ className = '' }: TransferCardProps) {
         setBytesUploadedMap({})
         setStartTime(Date.now())
         setEstimatedTime('')
-
         const uploadedFilesData = []
 
         try {
@@ -235,12 +220,18 @@ export function TransferCard({ className = '' }: TransferCardProps) {
                 })
             })
 
+            const presignData = await presignResponse.json()
+
             if (!presignResponse.ok) {
-                const error = await presignResponse.json()
-                throw new Error(error.error || 'Erro ao preparar upload')
+                // If 401 or 403, it might be auth related
+                if (presignResponse.status === 401) {
+                    window.location.href = '/login'
+                    return
+                }
+                throw new Error(presignData.error || 'Erro ao preparar upload')
             }
 
-            const { presignedUrls, transferId } = await presignResponse.json()
+            const { presignedUrls, transferId } = presignData
 
             // 2. Upload files
             const uploadFile = (item: FileItem, url: string) => {
@@ -313,12 +304,8 @@ export function TransferCard({ className = '' }: TransferCardProps) {
 
             const finalizePayload = {
                 transferId,
-                senderName: senderEmail.split('@')[0], // Default name from email part
-                recipientEmail: recipientEmails.length > 0 ? recipientEmails[0] : null, // Backend currently supports single main recipient for email logic, but we could extend
-                // Note: The original generic finalized endpoint takes one recipientEmail. 
-                // We might need to handle multiple emails via separate call or loop if needed.
-                // For now, let's send the first one as "primary" and we can send emails to others later if needed.
-                // Or simplified: just passing recipientEmail as the first one if exists.
+                senderName: senderEmail.split('@')[0],
+                recipientEmail: recipientEmails.length > 0 ? recipientEmails[0] : null,
                 message,
                 files: uploadedFilesData,
                 expirationDays: expiryDays,
@@ -335,12 +322,6 @@ export function TransferCard({ className = '' }: TransferCardProps) {
             if (!finalizeRes.ok) throw new Error(finalizeData.error || 'Erro ao finalizar envio')
 
             // 4. Send Emails (if recipients exist)
-            // The finalize endpoint only records one recipientEmail for the transfer record.
-            // If we have multiple recipients, we should ideally loop through them and send emails.
-            // The current /api/transfers/[id]/email endpoint uses the transfer.recipientEmail.
-            // For MVP refactor, we'll stick to the core flow. If multiple emails, we might need a better bulk email endpoint.
-            // For now, let's assume the first email is the main one.
-
             if (recipientEmails.length > 0) {
                 setUploadMessage('Enviando e-mails...')
                 await fetch(`/api/transfers/${finalizeData.transfer.id}/email`, { method: 'POST' }).catch(console.warn)
@@ -433,7 +414,21 @@ export function TransferCard({ className = '' }: TransferCardProps) {
 
     return (
         <div className={`transfer-card w-full max-w-md ${className}`}>
-            <div className="p-6 md:p-8 space-y-5">
+            {/* Login Overlay if not logged in */}
+            {!isLoadingAuth && !isLoggedIn && (
+                <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-4 rounded-2xl">
+                    <Lock className="w-12 h-12 text-primary mb-2" />
+                    <h3 className="text-2xl font-bold">Faça login para enviar</h3>
+                    <p className="text-muted-foreground text-sm max-w-xs">
+                        Para garantir a segurança e qualidade dos envios (até 10GB), é necessário estar logado.
+                    </p>
+                    <a href="/login" className="btn btn-primary w-full max-w-[200px]">
+                        Entrar / Criar Conta
+                    </a>
+                </div>
+            )}
+
+            <div className={`p-6 md:p-8 space-y-5 ${!isLoggedIn ? 'opacity-30 pointer-events-none filter blur-[1px]' : ''}`}>
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-foreground">Enviar arquivos</h2>
@@ -457,8 +452,8 @@ export function TransferCard({ className = '' }: TransferCardProps) {
                     <>
                         <UploadDropzone
                             onFilesAdded={handleFilesAdded}
-                            maxFiles={currentMaxFiles}
-                            maxSize={currentMaxSize}
+                            maxFiles={MAX_FILES}
+                            maxSize={MAX_SIZE}
                             currentFileCount={totalCount}
                             currentTotalSize={totalSize}
                         />
@@ -468,8 +463,8 @@ export function TransferCard({ className = '' }: TransferCardProps) {
                             <FileList
                                 files={files}
                                 onRemove={handleRemoveFile}
-                                maxFiles={currentMaxFiles}
-                                maxSize={currentMaxSize}
+                                maxFiles={MAX_FILES}
+                                maxSize={MAX_SIZE}
                             />
                         )}
                     </>

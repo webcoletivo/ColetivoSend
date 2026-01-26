@@ -101,13 +101,8 @@ export const FREE_LIMITS = {
   maxTransfersPer30Days: 45
 }
 
-// Keeping these for backward compatibility or if we have Premium later
-export const GUEST_LIMITS = {
-  maxTransfers: parseInt(process.env.GUEST_MAX_TRANSFERS || '5'),
-  maxFiles: parseInt(process.env.NEXT_PUBLIC_GUEST_MAX_FILES || '50'),
-  maxSizeMB: parseInt(process.env.NEXT_PUBLIC_GUEST_MAX_SIZE_MB || '2048'),
-  expirationDays: 7,
-}
+// Limits are now unified since Guest Mode is disabled
+export const GUEST_LIMITS = FREE_LIMITS
 
 export const USER_LIMITS = FREE_LIMITS // Alias for now
 
