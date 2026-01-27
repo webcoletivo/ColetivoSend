@@ -42,9 +42,22 @@ export async function POST(request: NextRequest) {
     const userId = session?.user?.id
     const isLoggedIn = !!userId
 
-    // 1. Verify files exist in S3 (Integrity Check)
-    // We check ALL files to ensure upload is complete
-    // 1. Verify files exist in S3 (Integrity Check)
+    // 1. Verify all upload sessions are completed
+    const uploadSessions = await prisma.uploadSession.findMany({
+      where: {
+        transferId,
+        status: { not: 'completed' }
+      }
+    })
+
+    if (uploadSessions.length > 0) {
+      return NextResponse.json(
+        { error: 'Alguns arquivos ainda não foram completamente enviados' },
+        { status: 400 }
+      )
+    }
+
+    // 2. Verify files exist in S3 (Integrity Check)
     // We check ALL files to ensure upload is complete
     const checkPromises = files.map((file: any) => limit(async () => {
       // Security: Ensure storageKey belongs to this transfer

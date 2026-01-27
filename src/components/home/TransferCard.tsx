@@ -11,6 +11,7 @@ import { ProgressBar } from '@/components/upload/ProgressBar'
 import { Button } from '@/components/ui/Button'
 import { formatBytes } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
+import { getUploadManager, UploadProgress as UploadProgressType } from '@/lib/upload/UploadManager'
 
 // Limits configuration
 const MAX_FILES = parseInt(process.env.NEXT_PUBLIC_UPLOAD_MAX_FILES || '2000')
@@ -185,7 +186,7 @@ export function TransferCard({ className = '' }: TransferCardProps) {
         }
     }
 
-    // Upload & Finalize handler
+    // Upload & Finalize handler with chunked upload
     const handleTransfer = async () => {
         if (!isLoggedIn) {
             window.location.href = '/login'
@@ -205,96 +206,54 @@ export function TransferCard({ className = '' }: TransferCardProps) {
         setEstimatedTime('')
         const uploadedFilesData = []
 
+        // Generate transfer ID
+        const transferId = uuidv4()
+        const uploadManager = getUploadManager()
+
         try {
-            // 1. Get presigned URLs
-            const presignResponse = await fetch('/api/upload/presign', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    files: files.map(f => ({
-                        id: f.id,
-                        name: f.file.name,
-                        size: f.file.size,
-                        type: f.file.type
-                    }))
-                })
-            })
-
-            const presignData = await presignResponse.json()
-
-            if (!presignResponse.ok) {
-                // If 401 or 403, it might be auth related
-                if (presignResponse.status === 401) {
-                    window.location.href = '/login'
-                    return
-                }
-                throw new Error(presignData.error || 'Erro ao preparar upload')
-            }
-
-            const { presignedUrls, transferId } = presignData
-
-            // 2. Upload files
-            const uploadFile = (item: FileItem, url: string) => {
-                return new Promise<void>((resolve, reject) => {
-                    const xhr = new XMLHttpRequest()
-
-                    xhr.upload.onprogress = (event) => {
-                        if (event.lengthComputable) {
-                            setBytesUploadedMap(prev => {
-                                const newMap = { ...prev, [item.id]: event.loaded }
-                                const totalUploaded = Object.values(newMap).reduce((acc, bytes) => acc + bytes, 0)
-                                setUploadProgress((totalUploaded / totalSize) * 100)
-
-                                if (startTime) {
-                                    const elapsedMs = Date.now() - startTime
-                                    if (elapsedMs > 1000 && totalUploaded > 0) {
-                                        const bps = totalUploaded / (elapsedMs / 1000)
-                                        const remainingBytes = totalSize - totalUploaded
-                                        const remainingSeconds = Math.round(remainingBytes / bps)
-
-                                        if (remainingSeconds > 60) {
-                                            setEstimatedTime(`${Math.floor(remainingSeconds / 60)}m ${remainingSeconds % 60}s`)
-                                        } else {
-                                            setEstimatedTime(`${remainingSeconds}s`)
-                                        }
-                                    }
-                                }
-                                return newMap
-                            })
-                        }
-                    }
-
-                    xhr.onload = () => {
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                            resolve()
-                        } else {
-                            reject(new Error(`Falha no envio de ${item.file.name}`))
-                        }
-                    }
-
-                    xhr.onerror = () => reject(new Error(`Erro de rede: ${item.file.name}`))
-
-                    xhr.open('PUT', url)
-                    xhr.setRequestHeader('Content-Type', item.file.type || 'application/octet-stream')
-                    xhr.send(item.file)
-                })
-            }
-
+            // Upload files with chunking
             for (let i = 0; i < files.length; i++) {
                 const item = files[i]
-                const presigned = presignedUrls.find((p: any) => p.originalId === item.id)
-
-                if (!presigned) throw new Error(`URL não encontrada para ${item.file.name}`)
-
                 setUploadMessage(`Enviando ${i + 1} de ${files.length}: ${item.file.name}`)
-                await uploadFile(item, presigned.url)
+
+                // Upload file with progress callback
+                const result = await uploadManager.uploadFile(
+                    item.file,
+                    transferId,
+                    item.id,
+                    (progress: UploadProgressType) => {
+                        // Update progress for this file
+                        setBytesUploadedMap(prev => ({
+                            ...prev,
+                            [item.id]: progress.uploadedBytes
+                        }))
+
+                        // Calculate overall progress
+                        const totalUploaded = Object.values({
+                            ...bytesUploadedMap,
+                            [item.id]: progress.uploadedBytes
+                        }).reduce((acc, bytes) => acc + bytes, 0)
+
+                        setUploadProgress((totalUploaded / totalSize) * 100)
+
+                        // Update estimated time
+                        if (progress.estimatedTimeRemaining > 0) {
+                            const seconds = progress.estimatedTimeRemaining
+                            if (seconds > 60) {
+                                setEstimatedTime(`${Math.floor(seconds / 60)}m ${seconds % 60}s`)
+                            } else {
+                                setEstimatedTime(`${seconds}s`)
+                            }
+                        }
+                    }
+                )
 
                 uploadedFilesData.push({
                     id: item.id,
                     name: item.file.name,
                     size: item.file.size,
                     type: item.file.type,
-                    storageKey: presigned.storageKey
+                    storageKey: result.storageKey
                 })
             }
 
@@ -338,7 +297,18 @@ export function TransferCard({ className = '' }: TransferCardProps) {
         } catch (error: any) {
             console.error('Upload failed:', error)
             setUploadStatus('error')
-            setUploadMessage(error.message || 'Falha no upload')
+
+            // Better error messages
+            let errorMessage = 'Falha no upload'
+            if (error.code === 'AUTH_ERROR') {
+                errorMessage = 'Sessão expirada. Por favor, faça login novamente.'
+            } else if (error.code === 'NETWORK_ERROR') {
+                errorMessage = 'Erro de conexão. Verifique sua internet e tente novamente.'
+            } else if (error.message) {
+                errorMessage = error.message
+            }
+
+            setUploadMessage(errorMessage)
         }
     }
 

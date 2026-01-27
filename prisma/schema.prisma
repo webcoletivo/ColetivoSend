@@ -159,3 +159,26 @@ model BackgroundMedia {
   @@index([isActive, order])
 }
 
+model UploadSession {
+  id            String   @id @default(cuid())
+  userId        String?  // null for guest uploads (if enabled)
+  transferId    String   // temporary transfer ID
+  fileId        String   // unique file identifier
+  fileName      String
+  fileSize      BigInt
+  mimeType      String
+  storageKey    String
+  uploadId      String   // S3 multipart upload ID
+  uploadedParts Json     @default("[]") // Array of {partNumber, ETag, size}
+  totalParts    Int      @default(0)
+  status        String   @default("active") // active, completed, failed, aborted
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([transferId])
+  @@index([fileId])
+  @@index([status, expiresAt])
+}
+

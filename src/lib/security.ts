@@ -116,6 +116,9 @@ export function validateFileCount(count: number, isLoggedIn: boolean): boolean {
   return count <= maxFiles
 }
 
+// Re-export from storage for convenience
+export { isFileTypeAllowed } from './storage'
+
 // Security headers
 export const securityHeaders = {
   'X-Frame-Options': 'DENY',
