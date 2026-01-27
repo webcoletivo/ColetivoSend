@@ -1,0 +1,14 @@
+{
+    "functions": {
+        "src/app/api/upload/chunk/[sessionId]/route.ts": {
+            "maxDuration": 300,
+            "memory": 1024
+        }
+    },
+    "crons": [
+        {
+            "path": "/api/cron/cleanup-uploads",
+            "schedule": "0 * * * *"
+        }
+    ]
+}

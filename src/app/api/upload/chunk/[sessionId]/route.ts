@@ -3,6 +3,11 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { uploadChunk, getUploadProgress, listUploadedParts, completeMultipartUpload, abortMultipartUpload } from '@/lib/upload-session'
 
+// Configure route to accept larger payloads (chunks up to 10MB)
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const maxDuration = 300 // 5 minutes for slow uploads
+
 interface RouteParams {
     params: Promise<{
         sessionId: string
