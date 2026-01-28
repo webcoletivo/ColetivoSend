@@ -217,56 +217,47 @@ export class UploadManager {
             }
         }
 
-        // Upload chunks with concurrency limit
-        const uploadPromises: Promise<void>[] = []
-        let activeUploads = 0
+        if (chunkQueue.length === 0) return
 
-        const uploadNextChunk = async (): Promise<void> => {
-            while (chunkQueue.length > 0 && activeUploads < this.config.maxConcurrentChunks) {
+        const progress = this.uploadStates.get(fileId)!
+
+        // Worker pool pattern: each worker takes a chunk from the queue and uploads it
+        const workers = Array.from({ length: Math.min(this.config.maxConcurrentChunks, chunkQueue.length) }, async () => {
+            while (chunkQueue.length > 0) {
                 const partNumber = chunkQueue.shift()!
-                activeUploads++
+                if (!partNumber) break
 
-                const uploadPromise = this.uploadChunkWithRetry(
+                await this.uploadChunkWithRetry(
                     file,
                     session,
                     partNumber,
                     fileId
-                ).then(() => {
-                    activeUploads--
-                    uploadedParts.add(partNumber)
+                )
 
-                    // Update progress
-                    const progress = this.uploadStates.get(fileId)!
-                    const uploadedBytes = uploadedParts.size * session.chunkSize
-                    const now = Date.now()
-                    const elapsed = (now - startTime) / 1000
-                    const speed = uploadedBytes / elapsed
+                uploadedParts.add(partNumber)
 
-                    progress.uploadedChunks = uploadedParts.size
-                    progress.uploadedBytes = Math.min(uploadedBytes, file.size)
-                    progress.percentage = Math.round((uploadedParts.size / totalChunks) * 100)
-                    progress.speed = speed
+                // Update progress
+                const uploadedBytes = uploadedParts.size * session.chunkSize
+                const now = Date.now()
+                const elapsed = (now - startTime) / 1000
+                const speed = uploadedBytes / elapsed
 
-                    if (speed > 0) {
-                        const remainingBytes = file.size - progress.uploadedBytes
-                        progress.estimatedTimeRemaining = Math.round(remainingBytes / speed)
-                    }
+                progress.uploadedChunks = uploadedParts.size
+                progress.uploadedBytes = Math.min(uploadedBytes, file.size)
+                progress.percentage = Math.round((uploadedParts.size / totalChunks) * 100)
+                progress.speed = speed
 
-                    this.updateProgress(fileId, progress)
+                if (speed > 0) {
+                    const remainingBytes = file.size - progress.uploadedBytes
+                    progress.estimatedTimeRemaining = Math.round(remainingBytes / speed)
+                }
 
-                    // Continue uploading
-                    return uploadNextChunk()
-                })
-
-                uploadPromises.push(uploadPromise)
+                this.updateProgress(fileId, progress)
             }
-        }
+        })
 
-        // Start initial batch
-        await uploadNextChunk()
-
-        // Wait for all uploads to complete
-        await Promise.all(uploadPromises)
+        // Wait for all workers to finish their queues
+        await Promise.all(workers)
     }
 
     /**

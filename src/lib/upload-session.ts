@@ -398,29 +398,37 @@ export async function reportPartUploaded(
     ETag: string,
     size: number
 ): Promise<void> {
-    const session = await prisma.uploadSession.findUnique({
-        where: { id: sessionId },
-    })
+    await prisma.$transaction(async (tx) => {
+        // Lock the row for update to prevent lost updates on JSON field
+        // This is critical for concurrent chunk reporting
+        await tx.$executeRaw`SELECT 1 FROM "UploadSession" WHERE id = ${sessionId} FOR UPDATE`
 
-    if (!session) {
-        throw new Error('Upload session not found')
-    }
+        const session = await tx.uploadSession.findUnique({
+            where: { id: sessionId },
+        })
 
-    const uploadedParts = session.uploadedParts as any[]
+        if (!session) {
+            throw new Error('Upload session not found')
+        }
 
-    // Check if already exists (avoid duplicates)
-    const existingIndex = uploadedParts.findIndex(p => p.partNumber === partNumber)
-    if (existingIndex >= 0) {
-        uploadedParts[existingIndex] = { partNumber, ETag, size }
-    } else {
-        uploadedParts.push({ partNumber, ETag, size })
-    }
+        const uploadedParts = session.uploadedParts as any[]
 
-    await prisma.uploadSession.update({
-        where: { id: sessionId },
-        data: {
-            uploadedParts,
-            updatedAt: new Date(),
-        },
+        // Check if already exists (avoid duplicates)
+        const existingIndex = uploadedParts.findIndex(p => p.partNumber === partNumber)
+        if (existingIndex >= 0) {
+            uploadedParts[existingIndex] = { partNumber, ETag, size }
+        } else {
+            uploadedParts.push({ partNumber, ETag, size })
+        }
+
+        await tx.uploadSession.update({
+            where: { id: sessionId },
+            data: {
+                uploadedParts,
+                updatedAt: new Date(),
+            },
+        })
+    }, {
+        timeout: 10000 // Ensure we don't hang too long
     })
 }
