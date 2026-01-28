@@ -58,7 +58,7 @@ export async function initializeMultipartUpload(
     fileSize: number,
     mimeType: string
 ): Promise<InitMultipartResult> {
-    const chunkSize = parseInt(process.env.UPLOAD_CHUNK_SIZE_MB || '6') * 1024 * 1024
+    const chunkSize = parseInt(process.env.UPLOAD_CHUNK_SIZE_MB || '20') * 1024 * 1024
     const totalParts = Math.ceil(fileSize / chunkSize)
 
     // Sanitize filename for storage
