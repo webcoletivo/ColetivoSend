@@ -57,13 +57,13 @@ export class UploadManager {
 
     constructor(config?: Partial<UploadConfig>) {
         this.config = {
-            chunkSize: parseInt(process.env.NEXT_PUBLIC_UPLOAD_CHUNK_SIZE_MB || '2') * 1024 * 1024,
+            chunkSize: parseInt(process.env.NEXT_PUBLIC_UPLOAD_CHUNK_SIZE_MB || '6') * 1024 * 1024,
             maxConcurrentChunks: parseInt(process.env.NEXT_PUBLIC_UPLOAD_MAX_CONCURRENT_CHUNKS || '3'),
             maxRetries: parseInt(process.env.NEXT_PUBLIC_UPLOAD_MAX_RETRIES || '3'),
             retryDelay: 1000,
             ...config,
         }
-        console.log('[UploadManager] v2.0 direct-to-storage active (Chunk: 2MB)')
+        console.log('[UploadManager] v2.1 direct-to-storage active (Chunk: 6MB)')
     }
 
     /**
