@@ -8,12 +8,13 @@ import {
   GetObjectCommand,
   HeadObjectCommand,
   DeleteObjectsCommand,
-  DeleteObjectCommand
+  DeleteObjectCommand,
+  UploadPartCommand
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads')
-const STORAGE_TYPE = process.env.STORAGE_TYPE || 'local'
+const STORAGE_TYPE = (process.env.STORAGE_TYPE || 'local').trim().toLowerCase()
 
 // S3 Configuration
 const s3Client = STORAGE_TYPE === 's3' ? new S3Client({
@@ -424,4 +425,24 @@ export async function generatePresignedViewUrl(
 
   // Local fallback
   return `/api/upload/mock-simple?key=${encodeURIComponent(storageKey)}`
+}
+
+export async function getPresignedPartUrl(
+  storageKey: string,
+  uploadId: string,
+  partNumber: number,
+  expiresInSeconds: number = 3600
+): Promise<string> {
+  if (STORAGE_TYPE === 's3' && s3Client) {
+    const command = new UploadPartCommand({
+      Bucket: BUCKET_NAME,
+      Key: storageKey,
+      UploadId: uploadId,
+      PartNumber: partNumber,
+    })
+    return await getSignedUrl(s3Client, command, { expiresIn: expiresInSeconds })
+  }
+
+  // Local fallback (not really usable for direct multipart, but for consistency)
+  return `/api/upload/chunk/mock?key=${encodeURIComponent(storageKey)}&part=${partNumber}`
 }

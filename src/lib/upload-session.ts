@@ -8,8 +8,9 @@ import {
 } from '@aws-sdk/client-s3'
 import prisma from '@/lib/db'
 import crypto from 'crypto'
+import { getPresignedPartUrl } from '@/lib/storage'
 
-const STORAGE_TYPE = process.env.STORAGE_TYPE || 'local'
+const STORAGE_TYPE = (process.env.STORAGE_TYPE || 'local').trim().toLowerCase()
 const BUCKET_NAME = process.env.AWS_S3_BUCKET || process.env.AWS_BUCKET_NAME || ''
 
 const s3Client = STORAGE_TYPE === 's3' ? new S3Client({
@@ -57,7 +58,7 @@ export async function initializeMultipartUpload(
     fileSize: number,
     mimeType: string
 ): Promise<InitMultipartResult> {
-    const chunkSize = parseInt(process.env.UPLOAD_CHUNK_SIZE_MB || '5') * 1024 * 1024
+    const chunkSize = parseInt(process.env.UPLOAD_CHUNK_SIZE_MB || '2') * 1024 * 1024
     const totalParts = Math.ceil(fileSize / chunkSize)
 
     // Sanitize filename for storage
@@ -353,5 +354,73 @@ export async function cleanupExpiredSessions(): Promise<number> {
         await abortMultipartUpload(session.id)
     }
 
+
     return expiredSessions.length
+}
+
+/**
+ * Get a presigned URL for a specific part (for direct storage upload)
+ */
+export async function getPresignedPartUrlForSession(
+    sessionId: string,
+    partNumber: number
+): Promise<{ url: string; storageType: string }> {
+    const session = await prisma.uploadSession.findUnique({
+        where: { id: sessionId },
+    })
+
+    if (!session) {
+        throw new Error('Upload session not found')
+    }
+
+    if (STORAGE_TYPE === 's3') {
+        const url = await getPresignedPartUrl(
+            session.storageKey,
+            session.uploadId,
+            partNumber
+        )
+        return { url, storageType: 's3' }
+    }
+
+    // Local fallback - though we want to avoid this ideally, keep it for compatibility
+    return {
+        url: `/api/upload/chunk/${sessionId}`, // PUT to this will be caught by our chunk handler
+        storageType: 'local'
+    }
+}
+
+/**
+ * Report a part as uploaded (after direct S3 upload)
+ */
+export async function reportPartUploaded(
+    sessionId: string,
+    partNumber: number,
+    ETag: string,
+    size: number
+): Promise<void> {
+    const session = await prisma.uploadSession.findUnique({
+        where: { id: sessionId },
+    })
+
+    if (!session) {
+        throw new Error('Upload session not found')
+    }
+
+    const uploadedParts = session.uploadedParts as any[]
+
+    // Check if already exists (avoid duplicates)
+    const existingIndex = uploadedParts.findIndex(p => p.partNumber === partNumber)
+    if (existingIndex >= 0) {
+        uploadedParts[existingIndex] = { partNumber, ETag, size }
+    } else {
+        uploadedParts.push({ partNumber, ETag, size })
+    }
+
+    await prisma.uploadSession.update({
+        where: { id: sessionId },
+        data: {
+            uploadedParts,
+            updatedAt: new Date(),
+        },
+    })
 }

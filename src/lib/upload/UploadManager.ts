@@ -57,12 +57,13 @@ export class UploadManager {
 
     constructor(config?: Partial<UploadConfig>) {
         this.config = {
-            chunkSize: parseInt(process.env.NEXT_PUBLIC_UPLOAD_CHUNK_SIZE_MB || '5') * 1024 * 1024,
+            chunkSize: parseInt(process.env.NEXT_PUBLIC_UPLOAD_CHUNK_SIZE_MB || '2') * 1024 * 1024,
             maxConcurrentChunks: parseInt(process.env.NEXT_PUBLIC_UPLOAD_MAX_CONCURRENT_CHUNKS || '3'),
             maxRetries: parseInt(process.env.NEXT_PUBLIC_UPLOAD_MAX_RETRIES || '3'),
             retryDelay: 1000,
             ...config,
         }
+        console.log('[UploadManager] v2.0 direct-to-storage active (Chunk: 2MB)')
     }
 
     /**
@@ -286,36 +287,82 @@ export class UploadManager {
             const abortController = new AbortController()
             this.activeUploads.set(`${fileId}-${partNumber}`, abortController)
 
-            const response = await fetch(`/api/upload/chunk/${session.sessionId}`, {
+            // 1. Get presigned URL
+            const presignResponse = await fetch(
+                `/api/upload/chunk/${session.sessionId}/presign?partNumber=${partNumber}`,
+                { signal: abortController.signal }
+            )
+
+            if (!presignResponse.ok) {
+                const data = await presignResponse.json()
+                if (presignResponse.status === 401) {
+                    await this.refreshAuthToken()
+                    return this.uploadChunkWithRetry(file, session, partNumber, fileId, attempt)
+                }
+                throw new Error(data.error || 'Erro ao obter URL de upload')
+            }
+
+            const { url, storageType } = await presignResponse.json()
+
+            // 2. Upload to storage (S3/R2 direct or local fallback)
+            const uploadHeaders: Record<string, string> = {
+                'Content-Type': 'application/octet-stream',
+            }
+
+            // Headers specific to our local backend if that's the fallback
+            if (storageType === 'local') {
+                uploadHeaders['x-part-number'] = partNumber.toString()
+            }
+
+            const uploadResponse = await fetch(url, {
                 method: 'PUT',
-                headers: {
-                    'x-part-number': partNumber.toString(),
-                    'Content-Type': 'application/octet-stream',
-                },
+                headers: uploadHeaders,
                 body: chunk,
+                signal: abortController.signal,
+            })
+
+            if (!uploadResponse.ok) {
+                if (uploadResponse.status === 413) {
+                    throw new Error('Payload muito grande. O tamanho do chunk deve ser reduzido.')
+                }
+                throw new Error(`Erro no upload para storage: ${uploadResponse.statusText}`)
+            }
+
+            // 3. Get ETag (required for multipart completion)
+            let ETag = uploadResponse.headers.get('ETag')
+
+            // If local fallback, ETag comes in JSON response
+            if (storageType === 'local') {
+                const data = await uploadResponse.json()
+                ETag = data.ETag
+            }
+
+            // Clean ETag (S3 returns it with double quotes)
+            ETag = ETag ? ETag.replace(/"/g, '') : ''
+
+            // 4. Report upload to backend
+            const reportResponse = await fetch(`/api/upload/chunk/${session.sessionId}/report`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    partNumber,
+                    ETag,
+                    size: chunk.size,
+                }),
                 signal: abortController.signal,
             })
 
             this.activeUploads.delete(`${fileId}-${partNumber}`)
 
-            if (!response.ok) {
-                const data = await response.json()
-
-                if (response.status === 401) {
-                    // Try to refresh token
-                    await this.refreshAuthToken()
-                    // Retry this chunk
-                    return this.uploadChunkWithRetry(file, session, partNumber, fileId, attempt)
-                }
-
-                throw new Error(data.error || 'Erro ao enviar chunk')
+            if (!reportResponse.ok) {
+                const data = await reportResponse.json()
+                throw new Error(data.error || 'Erro ao registrar chunk no servidor')
             }
 
-            const data = await response.json()
             return {
-                partNumber: data.partNumber,
-                ETag: data.ETag,
-                size: data.size,
+                partNumber,
+                ETag,
+                size: chunk.size,
             }
         } catch (error: any) {
             this.activeUploads.delete(`${fileId}-${partNumber}`)
@@ -327,13 +374,14 @@ export class UploadManager {
 
             // Retry logic
             if (attempt < this.config.maxRetries) {
+                console.warn(`Retrying part ${partNumber}, attempt ${attempt + 1}/${this.config.maxRetries}`)
                 const delay = this.config.retryDelay * Math.pow(2, attempt - 1)
                 await new Promise((resolve) => setTimeout(resolve, delay))
                 return this.uploadChunkWithRetry(file, session, partNumber, fileId, attempt + 1)
             }
 
             throw new UploadError(
-                `Falha ao enviar chunk ${partNumber} após ${this.config.maxRetries} tentativas`,
+                `Falha ao enviar chunk ${partNumber} após ${this.config.maxRetries} tentativas: ${error.message}`,
                 'CHUNK_ERROR',
                 true,
                 'retry'

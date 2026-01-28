@@ -1,5 +1,9 @@
 {
     "functions": {
+        "src/app/api/upload/chunk/[sessionId]/**/*.ts": {
+            "maxDuration": 300,
+            "memory": 1024
+        },
         "src/app/api/upload/chunk/[sessionId]/route.ts": {
             "maxDuration": 300,
             "memory": 1024
