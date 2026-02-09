@@ -11,6 +11,36 @@ interface LogEntry {
 class Logger {
     private isDev = process.env.NODE_ENV === 'development'
 
+    private maskPII(data: any): any {
+        if (!data) return data
+        if (typeof data !== 'object') return data
+
+        const masked = { ...data }
+        const piiFields = ['email', 'name', 'password', 'token', 'secret', 'challengeId', 'otpCode']
+
+        for (const field of piiFields) {
+            if (field in masked) {
+                if (typeof masked[field] === 'string') {
+                    if (field === 'email') {
+                        const [user, domain] = masked[field].split('@')
+                        masked[field] = `${user.slice(0, 2)}***@${domain}`
+                    } else {
+                        masked[field] = '***'
+                    }
+                }
+            }
+        }
+
+        // Recursively mask nested objects
+        for (const key in masked) {
+            if (typeof masked[key] === 'object' && masked[key] !== null) {
+                masked[key] = this.maskPII(masked[key])
+            }
+        }
+
+        return masked
+    }
+
     private formatError(error: any): any {
         if (error instanceof Error) {
             return {
@@ -27,7 +57,7 @@ class Logger {
             level,
             message,
             timestamp: new Date().toISOString(),
-            context,
+            context: context ? this.maskPII(context) : undefined,
             error: error ? this.formatError(error) : undefined,
         }
 

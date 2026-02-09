@@ -8,7 +8,6 @@ import { LRUCache } from 'lru-cache'
 const securityHeaders = {
   'X-Frame-Options': 'DENY',
   'X-Content-Type-Options': 'nosniff',
-  'X-XSS-Protection': '1; mode=block',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
   'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.amazonaws.com; media-src 'self' blob: https://*.amazonaws.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.amazonaws.com; frame-ancestors 'none';",
@@ -16,15 +15,27 @@ const securityHeaders = {
 }
 
 // Rate limit storage (LRU Cache to prevent memory leaks)
+// NOTE: This is in-memory and local to the function instance.
+// In distributed/serverless environments (like Vercel), this cache is NOT shared.
+// For critical routes, we also use database-backed rate limiting in the API routes.
 const rateLimit = new LRUCache<string, { count: number; resetAt: number }>({
   max: 500, // Maximum number of IPs to track
   ttl: 60 * 1000, // Default 1 minute TTL
 })
 
 function getRateLimitKey(request: NextRequest, action: string): string {
-  const ip = request.headers.get('x-forwarded-for') ||
-    request.headers.get('x-real-ip') ||
-    'unknown'
+  // Try to get IP from various headers, prioritized by reliability
+  const forwardedFor = request.headers.get('x-forwarded-for')
+  const realIp = request.headers.get('x-real-ip')
+
+  let ip = 'unknown'
+  if (forwardedFor) {
+    // x-forwarded-for can be a comma-separated list, the first one is the client
+    ip = forwardedFor.split(',')[0].trim()
+  } else if (realIp) {
+    ip = realIp
+  }
+
   return `${action}:${ip}`
 }
 
