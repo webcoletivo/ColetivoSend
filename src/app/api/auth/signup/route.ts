@@ -3,7 +3,9 @@ import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import crypto from 'crypto'
-import { sendVerificationEmail } from '@/lib/email'
+import { sendVerificationEmail, sendAccountExistsEmail } from '@/lib/email'
+import { checkRateLimit } from '@/lib/ratelimit'
+import { logger } from '@/lib/logger'
 
 const signupSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -13,6 +15,16 @@ const signupSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || 'unknown'
+    const { success } = await checkRateLimit(`signup:${ip}`, 3, 3600) // 3 signups per hour per IP
+
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Limite de criação de conta atingido. Tente novamente mais tarde.' },
+        { status: 429 }
+      )
+    }
+
     const body = await request.json()
     
     // Validate input
@@ -26,7 +38,6 @@ export async function POST(request: Request) {
     
     const normalizedEmail = validationResult.data.email.toLowerCase().trim()
     const { name, password } = validationResult.data
-    const origin = request.headers.get('origin') || process.env.NEXTAUTH_URL
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -34,9 +45,16 @@ export async function POST(request: Request) {
     })
 
     if (existingUser) {
+      // To prevent account enumeration, we return a success message even if the user already exists.
+      // We also send an email to the existing user to notify them.
+      try {
+        await sendAccountExistsEmail(normalizedEmail)
+      } catch (e) {
+        logger.error('Failed to send account exists email', e)
+      }
       return NextResponse.json(
-        { error: 'Este e-mail já está cadastrado' },
-        { status: 409 }
+        { message: 'Conta criada com sucesso! Verifique seu e-mail.' },
+        { status: 201 }
       )
     }
 
@@ -66,10 +84,10 @@ export async function POST(request: Request) {
 
     // Send verification email
     try {
-      console.log(`Sending verification email to ${normalizedEmail} with origin ${origin}`)
-      const sent = await sendVerificationEmail(normalizedEmail, token, origin || undefined)
+      logger.info('Sending verification email', { email: normalizedEmail })
+      const sent = await sendVerificationEmail(normalizedEmail, token)
       if (sent) {
-        console.log('Verification email sent successfully')
+        logger.info('Verification email sent successfully')
       } else {
         console.error('sendVerificationEmail returned false')
       }
@@ -78,10 +96,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { 
-        message: 'Conta criada com sucesso! Verifique seu e-mail.',
-        userId: user.id 
-      },
+      { message: 'Conta criada com sucesso! Verifique seu e-mail.' },
       { status: 201 }
     )
   } catch (error) {

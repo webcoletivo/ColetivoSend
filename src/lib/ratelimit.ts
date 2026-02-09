@@ -1,6 +1,13 @@
 import { prisma } from './db'
 import { logger } from './logger'
 
+/**
+ * Simple database-backed rate limiter using a fixed-window algorithm.
+ *
+ * @param key Unique identifier for the action and actor (e.g., 'signup:1.2.3.4')
+ * @param limit Maximum number of allowed actions within the window
+ * @param windowSeconds Window duration in seconds
+ */
 export async function checkRateLimit(key: string, limit: number, windowSeconds: number): Promise<{ success: boolean; remaining: number }> {
     const now = new Date()
     const windowStart = new Date(now.getTime() - windowSeconds * 1000)

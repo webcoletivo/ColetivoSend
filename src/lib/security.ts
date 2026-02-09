@@ -32,38 +32,63 @@ export function hashFingerprint(fingerprint: string): string {
 
 export function hashIP(ip: string): string {
   // Hash IP with a salt to prevent rainbow table attacks
-  const salt = process.env.NEXTAUTH_SECRET || 'default-salt'
-  return crypto.createHash('sha256').update(ip + salt).digest('hex')
+  if (!process.env.NEXTAUTH_SECRET) {
+    throw new Error('NEXTAUTH_SECRET is required for security operations')
+  }
+  return crypto.createHash('sha256').update(ip + process.env.NEXTAUTH_SECRET).digest('hex')
 }
 
 export function encryptSecret(secret: string): string {
-  const key = crypto.scryptSync(process.env.NEXTAUTH_SECRET || 'default-key', 'salt', 32)
-  const iv = crypto.randomBytes(16)
-  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv)
+  if (!process.env.NEXTAUTH_SECRET) {
+    throw new Error('NEXTAUTH_SECRET is required for encryption')
+  }
+  const key = crypto.scryptSync(process.env.NEXTAUTH_SECRET, 'static-salt-for-kdf', 32)
+  const iv = crypto.randomBytes(12) // GCM standard IV size is 12 bytes
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv)
+
   let encrypted = cipher.update(secret, 'utf8', 'hex')
   encrypted += cipher.final('hex')
-  return iv.toString('hex') + ':' + encrypted
+  const authTag = cipher.getAuthTag().toString('hex')
+
+  return `${iv.toString('hex')}:${authTag}:${encrypted}`
 }
 
 export function decryptSecret(encrypted: string): string {
-  if (!encrypted.includes(':')) {
-    // Legacy support for plain text secrets
+  if (!process.env.NEXTAUTH_SECRET) {
+    throw new Error('NEXTAUTH_SECRET is required for decryption')
+  }
+
+  const parts = encrypted.split(':')
+  if (parts.length < 2) {
+    // Fallback for legacy plain text or old CBC format
+    // But ideally we should transition away
     return encrypted
   }
 
-  const key = crypto.scryptSync(process.env.NEXTAUTH_SECRET || 'default-key', 'salt', 32)
-  const [ivHex, encryptedHex] = encrypted.split(':')
-
-  if (!ivHex || !encryptedHex) return encrypted
+  const key = crypto.scryptSync(process.env.NEXTAUTH_SECRET, 'static-salt-for-kdf', 32)
 
   try {
-    const iv = Buffer.from(ivHex, 'hex')
-    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv)
-    let decrypted = decipher.update(encryptedHex, 'hex', 'utf8')
-    decrypted += decipher.final('utf8')
-    return decrypted
+    if (parts.length === 3) {
+      // GCM format: iv:authTag:encrypted
+      const [ivHex, authTagHex, encryptedHex] = parts
+      const iv = Buffer.from(ivHex, 'hex')
+      const authTag = Buffer.from(authTagHex, 'hex')
+      const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv)
+      decipher.setAuthTag(authTag)
+      let decrypted = decipher.update(encryptedHex, 'hex', 'utf8')
+      decrypted += decipher.final('utf8')
+      return decrypted
+    } else {
+      // Old CBC format: iv:encrypted
+      const [ivHex, encryptedHex] = parts
+      const iv = Buffer.from(ivHex, 'hex')
+      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv)
+      let decrypted = decipher.update(encryptedHex, 'hex', 'utf8')
+      decrypted += decipher.final('utf8')
+      return decrypted
+    }
   } catch (error) {
-    console.warn('Failed to decrypt secret, returning original:', error)
+    console.warn('Failed to decrypt secret:', error)
     return encrypted
   }
 }
@@ -123,7 +148,6 @@ export { isFileTypeAllowed } from './storage'
 export const securityHeaders = {
   'X-Frame-Options': 'DENY',
   'X-Content-Type-Options': 'nosniff',
-  'X-XSS-Protection': '1; mode=block',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
 }

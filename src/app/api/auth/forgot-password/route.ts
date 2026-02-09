@@ -2,9 +2,21 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sendPasswordResetEmail } from '@/lib/email'
 import crypto from 'crypto'
+import { checkRateLimit } from '@/lib/ratelimit'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: Request) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || 'unknown'
+    const { success } = await checkRateLimit(`forgot-password:${ip}`, 5, 3600) // 5 per hour
+
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Muitas solicitações. Tente novamente mais tarde.' },
+        { status: 429 }
+      )
+    }
+
     const { email } = await request.json()
 
     if (!email || typeof email !== 'string') {
@@ -64,9 +76,9 @@ export async function POST(request: Request) {
         )
       }
       
-      console.log(`[Forgot Password] Reset link sent to ${email}`)
+      logger.info('[Forgot Password] Reset link sent', { email })
     } else {
-      console.log(`[Forgot Password] Request for non-existent email: ${email}`)
+      logger.info('[Forgot Password] Request for non-existent email', { email })
       // Mimic delay of real operation to prevent timing attacks
       await new Promise(resolve => setTimeout(resolve, 500))
     }

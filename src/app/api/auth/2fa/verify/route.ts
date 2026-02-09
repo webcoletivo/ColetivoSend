@@ -5,6 +5,7 @@ import { decryptSecret } from '@/lib/security'
 import jwt from 'jsonwebtoken'
 import { cookies } from 'next/headers'
 import crypto from 'crypto'
+import { checkRateLimit } from '@/lib/ratelimit'
 
 const CHALLENGE_SECRET = process.env.NEXTAUTH_SECRET
 
@@ -21,6 +22,18 @@ interface ChallengePayload {
 export async function POST(request: Request) {
   try {
     const { challengeId, otpCode, rememberDevice } = await request.json()
+
+    // Rate limiting: 5 attempts per minute per challengeId
+    if (challengeId) {
+      const rlKey = `2fa_verify:${challengeId}`
+      const { success } = await checkRateLimit(rlKey, 5, 60)
+      if (!success) {
+        return NextResponse.json(
+          { error: 'Muitas tentativas. Aguarde um minuto.' },
+          { status: 429 }
+        )
+      }
+    }
 
     if (!challengeId || !otpCode) {
       return NextResponse.json(

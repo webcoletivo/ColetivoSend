@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import crypto from 'crypto'
 import { sendVerificationEmail } from '@/lib/email'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: Request) {
   try {
     const { email } = await request.json()
     const normalizedEmail = email?.toLowerCase().trim()
-    const origin = request.headers.get('origin') || process.env.NEXTAUTH_URL
 
     if (!normalizedEmail) {
       return NextResponse.json({ error: 'E-mail é necessário' }, { status: 400 })
@@ -47,10 +47,10 @@ export async function POST(request: Request) {
 
     // Send email
     try {
-      console.log(`Resending verification email to ${normalizedEmail} with origin ${origin}`)
-      const sent = await sendVerificationEmail(normalizedEmail, token, origin || undefined)
+      logger.info('Resending verification email', { email: normalizedEmail })
+      const sent = await sendVerificationEmail(normalizedEmail, token)
       if (sent) {
-        console.log('Resend email sent successfully')
+        logger.info('Resend email sent successfully')
       } else {
         console.error('sendVerificationEmail returned false during resend')
       }

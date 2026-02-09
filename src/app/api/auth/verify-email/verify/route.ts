@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: Request) {
   try {
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
           where: { token },
         }),
       ])
-      console.log(`Successfully verified email for ${verificationToken.identifier}`)
+      logger.info('Successfully verified email', { email: verificationToken.identifier })
     } catch (dbError) {
       console.error('Database transaction failed during verification:', dbError)
       return NextResponse.json({ error: 'Erro ao atualizar status de verificação' }, { status: 500 })
