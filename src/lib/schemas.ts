@@ -3,7 +3,7 @@ import { USER_LIMITS } from './security'
 
 // Constants for validation
 const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024 // 5GB (example generic limit, individual limits via config)
-const MAX_FILES_COUNT = 50 // Example limit
+const MAX_FILES_COUNT = 80 // Limite de arquivos por transferência
 
 export const fileSchema = z.object({
     name: z.string().min(1, "Nome do arquivo é obrigatório"),
