@@ -16,6 +16,31 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads')
 const STORAGE_TYPE = (process.env.STORAGE_TYPE || 'local').trim().toLowerCase()
 
+/**
+ * Ensures the storage key is safe and doesn't contain path traversal attempts
+ */
+function sanitizeKey(key: string): string {
+  // Remove any null bytes
+  key = key.replace(/\0/g, '')
+  // Normalize path and remove leading slashes/dots
+  const normalized = path.normalize(key).replace(/^(\.\.(\/|\\|$))+/, '')
+  return normalized
+}
+
+/**
+ * Gets a safe absolute path for local storage operations
+ */
+function getSafePath(key: string): string {
+  const sanitized = sanitizeKey(key)
+  const safePath = path.join(UPLOAD_DIR, sanitized)
+
+  if (!safePath.startsWith(UPLOAD_DIR)) {
+    throw new Error('Path traversal detected')
+  }
+
+  return safePath
+}
+
 // S3 Configuration
 const s3Client = STORAGE_TYPE === 's3' ? new S3Client({
   region: process.env.AWS_REGION || 'us-east-1',
@@ -52,7 +77,9 @@ export async function uploadFile(
 ): Promise<UploadResult> {
   const checksum = crypto.createHash('md5').update(file).digest('hex')
   const extension = path.extname(originalName)
-  const storageKey = `${transferId}/${uuidv4()}${extension}`
+  // Ensure transferId is sanitized
+  const sanitizedTransferId = sanitizeKey(transferId)
+  const storageKey = `${sanitizedTransferId}/${uuidv4()}${extension}`
 
   if (STORAGE_TYPE === 's3' && s3Client) {
     await s3Client.send(new PutObjectCommand({
@@ -63,9 +90,9 @@ export async function uploadFile(
     }))
   } else {
     await ensureUploadDir()
-    const transferDir = path.join(UPLOAD_DIR, transferId)
+    const filePath = getSafePath(storageKey)
+    const transferDir = path.dirname(filePath)
     await fs.mkdir(transferDir, { recursive: true })
-    const filePath = path.join(UPLOAD_DIR, storageKey)
     await fs.writeFile(filePath, file)
   }
 
@@ -85,7 +112,7 @@ export async function getFile(storageKey: string): Promise<Buffer | null> {
       const byteArray = await response.Body?.transformToByteArray()
       return byteArray ? Buffer.from(byteArray) : null
     } else {
-      const filePath = path.join(UPLOAD_DIR, storageKey)
+      const filePath = getSafePath(storageKey)
       return await fs.readFile(filePath)
     }
   } catch (error) {
@@ -102,7 +129,7 @@ export async function deleteFile(storageKey: string): Promise<boolean> {
         Key: storageKey,
       }))
     } else {
-      const filePath = path.join(UPLOAD_DIR, storageKey)
+      const filePath = getSafePath(storageKey)
       await fs.unlink(filePath)
     }
     return true
@@ -119,7 +146,7 @@ export async function deleteTransferFiles(transferId: string): Promise<boolean> 
       // For now, relying on individual deletion or cloud lifecycle rules is safer
       return true
     } else {
-      const transferDir = path.join(UPLOAD_DIR, transferId)
+      const transferDir = getSafePath(transferId)
       await fs.rm(transferDir, { recursive: true, force: true })
       return true
     }
@@ -145,10 +172,13 @@ export async function generatePresignedDownloadUrl(
   }
 
   // Local fallback
+  if (!process.env.NEXTAUTH_SECRET) {
+    throw new Error('NEXTAUTH_SECRET is required for local storage signing')
+  }
   const token = crypto.randomBytes(16).toString('hex')
   const expires = Date.now() + expiresInSeconds * 1000
   const signature = crypto
-    .createHmac('sha256', process.env.NEXTAUTH_SECRET || 'secret')
+    .createHmac('sha256', process.env.NEXTAUTH_SECRET)
     .update(`${storageKey}:${expires}`)
     .digest('hex')
     .slice(0, 16)
@@ -161,11 +191,14 @@ export function verifyDownloadSignature(
   expires: string,
   signature: string
 ): boolean {
+  if (!process.env.NEXTAUTH_SECRET) {
+    throw new Error('NEXTAUTH_SECRET is required for signature verification')
+  }
   const expiresNum = parseInt(expires)
-  if (Date.now() > expiresNum) return false
+  if (isNaN(expiresNum) || Date.now() > expiresNum) return false
 
   const expectedSig = crypto
-    .createHmac('sha256', process.env.NEXTAUTH_SECRET || 'secret')
+    .createHmac('sha256', process.env.NEXTAUTH_SECRET)
     .update(`${storageKey}:${expiresNum}`)
     .digest('hex')
     .slice(0, 16)

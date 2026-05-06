@@ -156,10 +156,9 @@ Enviado via ColetivoSend
 
 export async function sendVerificationEmail(
   email: string,
-  token: string,
-  origin?: string
+  token: string
 ): Promise<EmailResult> {
-  const baseUrl = origin || process.env.NEXTAUTH_URL || ''
+  const baseUrl = process.env.NEXTAUTH_URL || ''
   const verifyUrl = `${baseUrl}/verify-email?token=${token}&email=${encodeURIComponent(email)}`
   
   const html = `
@@ -211,12 +210,70 @@ export async function sendVerificationEmail(
   })
 }
 
+export async function sendAccountExistsEmail(
+  email: string
+): Promise<EmailResult> {
+  const loginUrl = `${process.env.NEXTAUTH_URL}/login`
+  const forgotPasswordUrl = `${process.env.NEXTAUTH_URL}/forgot-password`
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+    <tr>
+      <td>
+        <div style="text-align: center; margin-bottom: 32px;">
+          <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #1e293b;">
+            <span style="color: #6366f1;">Coletivo</span>Send
+          </h1>
+        </div>
+
+        <div style="background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.06);">
+          <h2 style="margin: 0 0 16px 0; font-size: 24px; color: #1e293b;">
+            Tentativa de cadastro
+          </h2>
+          <p style="margin: 0 0 24px 0; color: #64748b; font-size: 16px;">
+            Alguém tentou criar uma conta no ColetivoSend usando este endereço de e-mail. No entanto, este e-mail já está associado a uma conta existente.
+          </p>
+
+          <p style="margin: 0 0 24px 0; color: #64748b; font-size: 16px;">
+            Se foi você, você pode fazer login clicando no botão abaixo:
+          </p>
+
+          <a href="${loginUrl}"
+             style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">
+            Fazer login →
+          </a>
+
+          <p style="margin: 24px 0 0 0; color: #94a3b8; font-size: 14px;">
+            Se você esqueceu sua senha, pode redefini-la aqui: <a href="${forgotPasswordUrl}" style="color: #6366f1;">${forgotPasswordUrl}</a>
+          </p>
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `
+
+  return sendEmail({
+    to: email,
+    subject: 'Tentativa de cadastro - ColetivoSend',
+    html,
+    text: `Você já possui uma conta no ColetivoSend. Faça login em: ${loginUrl}`,
+  })
+}
+
 export async function sendPasswordResetEmail(
   email: string,
-  token: string,
-  origin?: string
+  token: string
 ): Promise<EmailResult> {
-  const baseUrl = origin || process.env.NEXTAUTH_URL || ''
+  const baseUrl = process.env.NEXTAUTH_URL || ''
   const resetUrl = `${baseUrl}/reset-password?token=${token}`
   
   const html = `
