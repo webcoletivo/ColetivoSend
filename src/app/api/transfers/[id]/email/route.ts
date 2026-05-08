@@ -32,104 +32,78 @@ export async function POST(
       return NextResponse.json({ error: 'Destinatário não configurado para esta transferência' }, { status: 400 })
     }
 
-    // 1. Create or Update Email Log
-    let emailLog: any = null
-    try {
-      emailLog = await prisma.emailLog.create({
-        data: {
-          transferId,
-          recipientEmail,
-          status: 'queued',
-        }
-      })
-    } catch (logError) {
-      console.error('Failed to create initial email log:', logError)
-      // We continue even if logging fails, to ensure email delivery isn't blocked by DB issues.
-    }
+    const recipients = recipientEmail.split(',').map(e => e.trim()).filter(Boolean)
+    const fileCount = files.length
+    const totalSize = formatBytes(Number(totalSizeBytes))
 
-    try {
-      // 2. Send Email
-      const result = await sendTransferEmail(
-        recipientEmail,
-        senderName,
-        shareToken,
-        message || undefined,
-        files.length,
-        formatBytes(Number(totalSizeBytes))
-      )
-      if (result.success) {
-        if (emailLog) {
-          try {
-            await prisma.emailLog.update({
-              where: { id: emailLog.id },
-              data: {
-                status: 'sent',
-                sentAt: new Date(),
-                providerResponse: result.messageId,
-              }
-            })
-          } catch (e) { console.error('Silent log error:', e) }
-        }
-        return NextResponse.json({ success: true, message: 'E-mail enviado com sucesso' })
-      } else {
-        // Detailed log of failure
-        if (emailLog) {
-          try {
-            await prisma.emailLog.update({
-              where: { id: emailLog.id },
-              data: {
-                status: 'failed',
-                errorMessage: result.error,
-                providerResponse: result.code, // Store the SMTP error code if available
-                retryCount: { increment: 1 }
-              }
-            })
-          } catch (e) { console.error('Silent log error:', e) }
-        }
+    const results: { email: string; success: boolean; error?: string }[] = []
 
-        // Determine status code based on error
-        let status = 502 // Bad Gateway by default for SMTP issues
-        let userMessage = 'Falha ao conectar com o servidor de e-mail.'
-
-        if (result.code === 'EAUTH') {
-          status = 503
-          userMessage = 'Erro de autenticação no servidor de e-mail.'
-        } else if (result.code === 'EENVELOPE') {
-          status = 400
-          userMessage = 'E-mail do destinatário rejeitado.'
-        }
-
-        return NextResponse.json({
-          error: userMessage,
-          details: result.error,
-          code: result.code
-        }, { status })
+    for (const email of recipients) {
+      let emailLog: any = null
+      try {
+        emailLog = await prisma.emailLog.create({
+          data: { transferId, recipientEmail: email, status: 'queued' }
+        })
+      } catch (logError) {
+        console.error('Failed to create email log for', email, logError)
       }
-    } catch (emailError: any) {
-      console.error('Critical email route error:', emailError)
 
-      // Attempt to log the critical error if emailLog was created
-      if (emailLog) {
-        try {
+      try {
+        const result = await sendTransferEmail(
+          email,
+          senderName,
+          shareToken,
+          message || undefined,
+          fileCount,
+          totalSize
+        )
+
+        if (result.success) {
+          if (emailLog) {
+            await prisma.emailLog.update({
+              where: { id: emailLog.id },
+              data: { status: 'sent', sentAt: new Date(), providerResponse: result.messageId }
+            }).catch(e => console.error('Silent log error:', e))
+          }
+          results.push({ email, success: true })
+        } else {
+          if (emailLog) {
+            await prisma.emailLog.update({
+              where: { id: emailLog.id },
+              data: { status: 'failed', errorMessage: result.error, providerResponse: result.code, retryCount: { increment: 1 } }
+            }).catch(e => console.error('Silent log error:', e))
+          }
+          results.push({ email, success: false, error: result.error })
+        }
+      } catch (emailError: any) {
+        console.error('Email send error for', email, emailError)
+        if (emailLog) {
           await prisma.emailLog.update({
             where: { id: emailLog.id },
-            data: {
-              status: 'failed',
-              errorMessage: `CRITICAL: ${emailError.message}`,
-              retryCount: { increment: 1 }
-            }
-          })
-        } catch (logError) {
-          console.error('Failed to log critical email error to DB:', logError)
+            data: { status: 'failed', errorMessage: `CRITICAL: ${emailError.message}`, retryCount: { increment: 1 } }
+          }).catch(logError => console.error('Failed to log critical error:', logError))
         }
+        results.push({ email, success: false, error: emailError.message })
       }
-
-      return NextResponse.json({
-        error: `DEBUG: Erro ao processar e-mail: ${emailError.message}`,
-        details: emailError.stack,
-        code: 'CRITICAL_ERROR'
-      }, { status: 500 })
     }
+
+    const allSucceeded = results.every(r => r.success)
+    const anySucceeded = results.some(r => r.success)
+
+    if (allSucceeded) {
+      return NextResponse.json({ success: true, message: `E-mail enviado para ${results.length} destinatário(s)`, results })
+    }
+
+    if (anySucceeded) {
+      return NextResponse.json({ success: true, message: 'E-mail enviado parcialmente', results }, { status: 207 })
+    }
+
+    const firstFailure = results.find(r => !r.success)
+    return NextResponse.json({
+      error: 'Falha ao enviar e-mail para todos os destinatários',
+      details: firstFailure?.error,
+      results
+    }, { status: 502 })
 
   } catch (error: any) {
     console.error('Outer email route error:', error)

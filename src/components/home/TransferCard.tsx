@@ -264,7 +264,7 @@ export function TransferCard({ className = '' }: TransferCardProps) {
             const finalizePayload = {
                 transferId,
                 senderName: senderEmail.split('@')[0],
-                recipientEmail: recipientEmails.length > 0 ? recipientEmails[0] : null,
+                recipientEmail: recipientEmails.length > 0 ? recipientEmails.join(',') : null,
                 message,
                 files: uploadedFilesData,
                 expirationDays: expiryDays,

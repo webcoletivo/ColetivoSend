@@ -16,7 +16,17 @@ export const fileSchema = z.object({
 export const finalizeTransferSchema = z.object({
     transferId: z.string().uuid("ID de transferência inválido").optional(), // Sometimes frontend might not send uuid if using temp ids differently
     senderName: z.string().min(1, "Seu nome é obrigatório").max(100, "Nome muito longo").trim(),
-    recipientEmail: z.string().email("Email do destinatário inválido").optional().nullable().or(z.literal('')),
+    recipientEmail: z.string()
+        .optional()
+        .nullable()
+        .refine(
+            (val) => {
+                if (!val) return true
+                return val.split(',').every(e => z.string().email().safeParse(e.trim()).success)
+            },
+            { message: "Email(s) do destinatário inválido(s)" }
+        )
+        .or(z.literal('')),
     message: z.string().max(500, "Mensagem muito longa").optional().nullable(),
     files: z.array(fileSchema).min(1, "Pelo menos um arquivo é necessário").max(MAX_FILES_COUNT, "Muitos arquivos"),
     expirationDays: z.number()
