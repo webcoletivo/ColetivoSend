@@ -64,12 +64,11 @@ export async function checkRateLimit(key: string, limit: number, windowSeconds: 
         return { success: true, remaining: limit - (record.count + 1) }
 
     } catch (error) {
-        // Fail open in case of DB error? Or fail closed?
-        // For security (brute force), usually fail open OR closed depending on criticality. 
-        // To avoid blocking valid users during DB hiccups, we might log and allow, 
-        // but for STRICT security, we fail closed. 
-        // Let's Log and Fail Open to prevent downtime, but warn loudly.
+        // Fail CLOSED: this limiter guards brute-force/abuse on auth, signup and
+        // password endpoints. The app requires the DB for those flows anyway, so
+        // a DB outage does not create extra availability loss — but failing open
+        // would silently disable brute-force protection. Deny on error.
         logger.error('Rate limit error:', error)
-        return { success: true, remaining: 1 }
+        return { success: false, remaining: 0 }
     }
 }

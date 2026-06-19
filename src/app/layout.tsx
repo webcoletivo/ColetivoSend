@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import { Inter, Outfit } from 'next/font/google'
 import './globals.css'
 import { ToastProvider } from '@/components/ui/Toast'
@@ -23,6 +24,17 @@ export const metadata: Metadata = {
   description: siteConfig.description,
   keywords: ['file sharing', 'transfer', 'upload', 'compartilhar arquivos'],
   authors: [{ name: siteConfig.name }],
+  // Keep the site invisible to search engines (Google etc.)
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
   icons: {
     icon: '/icon.png',
     shortcut: '/icon.png',
@@ -36,11 +48,13 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  // CSP nonce set by middleware — forwarded to next-themes' inline script.
+  const nonce = (await headers()).get('x-nonce') ?? undefined
   return (
     <html lang="pt-BR" className={`${inter.variable} ${outfit.variable}`} suppressHydrationWarning>
       <head>
@@ -54,6 +68,7 @@ export default function RootLayout({
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
+          nonce={nonce}
         >
           {/* Premium background gradient */}
           <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">

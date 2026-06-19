@@ -4,14 +4,45 @@ import { getToken } from 'next-auth/jwt'
 
 import { LRUCache } from 'lru-cache'
 
-// Security headers
+// Static security headers (CSP is generated per-request with a nonce below).
 const securityHeaders = {
   'X-Frame-Options': 'DENY',
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.amazonaws.com; media-src 'self' blob: https://*.amazonaws.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.amazonaws.com; frame-ancestors 'none';",
+  // Block search engine indexing at the HTTP layer (defense in depth alongside robots.txt + metadata)
+  'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet',
   'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload'
+}
+
+// Generate a cryptographically-random nonce (Edge runtime compatible).
+function generateNonce(): string {
+  const arr = new Uint8Array(16)
+  crypto.getRandomValues(arr)
+  let binary = ''
+  for (let i = 0; i < arr.length; i++) binary += String.fromCharCode(arr[i])
+  return btoa(binary)
+}
+
+// Build a strict CSP. script-src uses a per-request nonce + strict-dynamic
+// instead of 'unsafe-inline', removing the inline-script XSS vector.
+function buildCsp(nonce: string): string {
+  const isDev = process.env.NODE_ENV === 'development'
+  // next dev needs 'unsafe-eval' for HMR; production does not.
+  const scriptSrc = `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`
+  return [
+    "default-src 'self'",
+    scriptSrc,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.amazonaws.com",
+    "media-src 'self' blob: https://*.amazonaws.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "connect-src 'self' https://*.amazonaws.com",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+  ].join('; ') + ';'
 }
 
 // Rate limit storage (LRU Cache to prevent memory leaks)
@@ -59,6 +90,8 @@ function checkRateLimit(key: string, limit: number, windowMs: number): boolean {
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
+  const nonce = generateNonce()
+  const csp = buildCsp(nonce)
 
   // 1. Rate limiting checks
   if (pathname.startsWith('/api/')) {
@@ -71,7 +104,7 @@ export async function middleware(request: NextRequest) {
     if (!isNextAuthCallback && (pathname === '/api/auth/signup' || pathname.includes('/api/auth/signin'))) {
       const key = getRateLimitKey(request, 'auth')
       if (!checkRateLimit(key, 10, 60 * 1000)) {
-        return withSecurityHeaders(NextResponse.json({ error: 'Muitas tentativas.' }, { status: 429 }), request)
+        return withSecurityHeaders(NextResponse.json({ error: 'Muitas tentativas.' }, { status: 429 }), request, csp)
       }
     }
 
@@ -79,7 +112,7 @@ export async function middleware(request: NextRequest) {
     if (pathname.includes('/api/auth/2fa/verify')) {
       const key = getRateLimitKey(request, '2fa')
       if (!checkRateLimit(key, 5, 60 * 1000)) { // 5 attempts per minute
-        return withSecurityHeaders(NextResponse.json({ error: 'Muitas tentativas. Aguarde.' }, { status: 429 }), request)
+        return withSecurityHeaders(NextResponse.json({ error: 'Muitas tentativas. Aguarde.' }, { status: 429 }), request, csp)
       }
     }
 
@@ -87,7 +120,7 @@ export async function middleware(request: NextRequest) {
     if (pathname === '/api/transfers/finalize' || pathname === '/api/upload/presign') {
       const key = getRateLimitKey(request, 'transfer_create')
       if (!checkRateLimit(key, 10, 60 * 1000)) {
-        return withSecurityHeaders(NextResponse.json({ error: 'Limite de criação rápida atingido.' }, { status: 429 }), request)
+        return withSecurityHeaders(NextResponse.json({ error: 'Limite de criação rápida atingido.' }, { status: 429 }), request, csp)
       }
     }
 
@@ -95,7 +128,7 @@ export async function middleware(request: NextRequest) {
     if (pathname.includes('/transfer/') && pathname.includes('/password') && request.method === 'POST') {
       const key = getRateLimitKey(request, 'password_verify')
       if (!checkRateLimit(key, 5, 60 * 1000)) {
-        return withSecurityHeaders(NextResponse.json({ error: 'Muitas tentativas de senha.' }, { status: 429 }), request)
+        return withSecurityHeaders(NextResponse.json({ error: 'Muitas tentativas de senha.' }, { status: 429 }), request, csp)
       }
     }
   }
@@ -107,7 +140,7 @@ export async function middleware(request: NextRequest) {
     if (!token) {
       const loginUrl = new URL('/login', request.url)
       loginUrl.searchParams.set('callbackUrl', pathname)
-      return withSecurityHeaders(NextResponse.redirect(loginUrl), request)
+      return withSecurityHeaders(NextResponse.redirect(loginUrl), request, csp)
     }
   }
 
@@ -115,19 +148,25 @@ export async function middleware(request: NextRequest) {
   if (authRoutes.some(route => pathname === route)) {
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
     if (token) {
-      return withSecurityHeaders(NextResponse.redirect(new URL('/dashboard', request.url)), request)
+      return withSecurityHeaders(NextResponse.redirect(new URL('/dashboard', request.url)), request, csp)
     }
   }
 
-  // 3. Normal Response
-  return withSecurityHeaders(NextResponse.next(), request)
+  // 3. Normal Response — propagate the nonce to the request so Next.js applies
+  // it to its own inline scripts, then enforce the same CSP on the response.
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-nonce', nonce)
+  requestHeaders.set('Content-Security-Policy', csp)
+  const response = NextResponse.next({ request: { headers: requestHeaders } })
+  return withSecurityHeaders(response, request, csp)
 }
 
-function withSecurityHeaders(response: NextResponse, request: NextRequest) {
+function withSecurityHeaders(response: NextResponse, request: NextRequest, csp: string) {
   // Apply standard security headers
   Object.entries(securityHeaders).forEach(([key, value]) => {
     response.headers.set(key, value)
   })
+  response.headers.set('Content-Security-Policy', csp)
 
   // CORS
   const origin = request.headers.get('origin')

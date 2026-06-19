@@ -175,13 +175,12 @@ export async function generatePresignedDownloadUrl(
   if (!process.env.NEXTAUTH_SECRET) {
     throw new Error('NEXTAUTH_SECRET is required for local storage signing')
   }
-  const token = crypto.randomBytes(16).toString('hex')
   const expires = Date.now() + expiresInSeconds * 1000
+  // Full 256-bit HMAC (no truncation) for download link integrity.
   const signature = crypto
     .createHmac('sha256', process.env.NEXTAUTH_SECRET)
     .update(`${storageKey}:${expires}`)
     .digest('hex')
-    .slice(0, 16)
 
   return `/api/download/file?key=${encodeURIComponent(storageKey)}&name=${encodeURIComponent(originalName)}&expires=${expires}&sig=${signature}`
 }
@@ -201,9 +200,12 @@ export function verifyDownloadSignature(
     .createHmac('sha256', process.env.NEXTAUTH_SECRET)
     .update(`${storageKey}:${expiresNum}`)
     .digest('hex')
-    .slice(0, 16)
 
-  return signature === expectedSig
+  // Constant-time comparison to avoid timing side-channels.
+  const a = Buffer.from(signature)
+  const b = Buffer.from(expectedSig)
+  if (a.length !== b.length) return false
+  return crypto.timingSafeEqual(a, b)
 }
 
 function getMimeType(fileName: string): string {
@@ -243,15 +245,35 @@ function getMimeType(fileName: string): string {
 }
 
 
-export function isFileTypeAllowed(mimeType: string, fileName: string): boolean {
-  const extension = path.extname(fileName).toLowerCase()
-  const BLOCKED_EXTENSIONS = [
-    '.exe', '.bat', '.cmd', '.com', '.msi', '.scr', '.pif',
-    '.vbs', '.vbe', '.js', '.jse', '.ws', '.wsf', '.wsc', '.wsh',
-    '.ps1', '.psm1', '.psd1', '.reg', '.inf', '.scf', '.lnk',
-  ]
+const BLOCKED_EXTENSIONS = new Set([
+  // Executables / scripts
+  'exe', 'bat', 'cmd', 'com', 'msi', 'msix', 'scr', 'pif', 'gadget',
+  'vbs', 'vbe', 'js', 'jse', 'mjs', 'cjs', 'ws', 'wsf', 'wsc', 'wsh',
+  'ps1', 'psm1', 'psd1', 'reg', 'inf', 'scf', 'lnk', 'jar', 'app',
+  'sh', 'bash', 'zsh', 'csh', 'ksh', 'run', 'bin', 'dll', 'so', 'dylib',
+  'py', 'pyc', 'rb', 'pl', 'php', 'phtml', 'php3', 'php4', 'php5', 'phar',
+  'asp', 'aspx', 'jsp', 'cgi', 'htaccess',
+  // Active/markup content that can execute script in a browser context
+  'html', 'htm', 'xhtml', 'shtml', 'svg', 'svgz', 'xml', 'xsl', 'xslt',
+  'mht', 'mhtml', 'hta', 'swf',
+])
 
-  if (BLOCKED_EXTENSIONS.includes(extension)) {
+export function isFileTypeAllowed(mimeType: string, fileName: string): boolean {
+  // Strip null bytes / trailing dots that can defeat extension checks.
+  const cleanName = fileName.replace(/\0/g, '').replace(/[. ]+$/g, '')
+
+  // Inspect EVERY dotted segment, not just the last one, to defeat
+  // double-extension tricks like "invoice.html.txt" or "x.php.jpg".
+  const segments = cleanName.toLowerCase().split('.').slice(1)
+  for (const seg of segments) {
+    if (BLOCKED_EXTENSIONS.has(seg)) {
+      return false
+    }
+  }
+
+  // Reject dangerous MIME types regardless of file name.
+  const blockedMime = /^(text\/html|application\/xhtml\+xml|image\/svg\+xml|application\/x-msdownload|application\/x-sh|application\/x-httpd-php|application\/javascript|text\/javascript)/i
+  if (mimeType && blockedMime.test(mimeType.trim())) {
     return false
   }
 

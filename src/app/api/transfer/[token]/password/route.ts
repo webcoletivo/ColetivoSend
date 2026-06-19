@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { verifyPassword } from '@/lib/security'
+import { checkRateLimit } from '@/lib/ratelimit'
 
 export async function POST(
-  request: NextRequest, 
+  request: NextRequest,
   props: { params: Promise<{ token: string }> }
 ) {
   const params = await props.params;
@@ -13,6 +14,19 @@ export async function POST(
 
     if (!token) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 400 })
+    }
+
+    // Persistent brute-force protection (the in-memory middleware limiter is not
+    // shared across serverless instances).
+    const ip = (request.headers.get('x-forwarded-for')?.split(',')[0].trim())
+      || request.headers.get('x-real-ip')
+      || 'unknown'
+    const rl = await checkRateLimit(`pwverify:${ip}:${token}`, 5, 60)
+    if (!rl.success) {
+      return NextResponse.json(
+        { error: 'Muitas tentativas de senha. Aguarde um momento.' },
+        { status: 429 }
+      )
     }
 
     if (!password) {
