@@ -4,8 +4,9 @@ import React, { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mail, Lock, Eye, EyeOff, Sparkles, ArrowRight, ArrowLeft, Shield, Loader2 } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, Shield, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Logo } from '@/components/ui/Logo'
 import { Input } from '@/components/ui/Input'
 import { OTPInput } from '@/components/ui/OTPInput'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -185,13 +186,8 @@ function LoginForm() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <a href="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
-              <Sparkles className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-foreground">
-              Coletivo<span className="text-primary-500">Send</span>
-            </span>
+          <a href="/" className="inline-flex items-center mb-6" aria-label="ColetivoSend">
+            <Logo priority className="h-10 w-auto" />
           </a>
         </motion.div>
 

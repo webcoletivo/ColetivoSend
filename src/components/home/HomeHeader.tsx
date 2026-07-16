@@ -3,8 +3,9 @@
 import React, { useState } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Sparkles, ChevronDown, User, LogOut, Settings, LayoutDashboard } from 'lucide-react'
+import { Menu, X, ChevronDown, User, LogOut, Settings, LayoutDashboard } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Logo } from '@/components/ui/Logo'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { UserAvatar } from '@/components/UserAvatar'
 
@@ -29,14 +30,9 @@ export function HomeHeader({ transparent = true }: HomeHeaderProps) {
             }`}>
             <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16 md:h-20">
-                    {/* Logo */}
-                    <a href="/" className="flex items-center gap-2 flex-shrink-0">
-                        <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
-                            <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-white" />
-                        </div>
-                        <span className="text-lg md:text-xl font-bold text-white">
-                            Coletivo<span className="text-primary-500">Send</span>
-                        </span>
+                    {/* Logo — always the white variant: the header sits over the dark media hero */}
+                    <a href="/" className="flex items-center flex-shrink-0" aria-label="ColetivoSend">
+                        <Logo variant="white" priority className="h-7 md:h-9 w-auto" />
                     </a>
 
                     {/* Desktop Navigation - hidden on smaller screens */}

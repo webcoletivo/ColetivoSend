@@ -3,8 +3,9 @@
 import React, { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { motion } from 'framer-motion'
-import { Eye, EyeOff, Sparkles, ArrowRight, Check } from 'lucide-react'
+import { Eye, EyeOff, ArrowRight, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Logo } from '@/components/ui/Logo'
 import { Input } from '@/components/ui/Input'
 import { ThemeToggle } from '@/components/theme-toggle'
 
@@ -88,13 +89,8 @@ export default function SignupPage() {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <a href="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
-              <Sparkles className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-foreground">
-              Coletivo<span className="text-primary-500">Send</span>
-            </span>
+          <a href="/" className="inline-flex items-center mb-6" aria-label="ColetivoSend">
+            <Logo priority className="h-10 w-auto" />
           </a>
           <h1 className="text-2xl font-bold text-foreground mb-2">
             Crie sua conta

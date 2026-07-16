@@ -2,8 +2,9 @@
 
 import React, { Suspense } from 'react'
 import { motion } from 'framer-motion'
-import { Mail, Sparkles, RefreshCw, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
+import { Mail, RefreshCw, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Logo } from '@/components/ui/Logo'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/Toast'
 import Link from 'next/link'
@@ -103,13 +104,8 @@ function VerifyEmailContent() {
       className="w-full max-w-md text-center"
     >
       {/* Logo */}
-      <a href="/" className="inline-flex items-center gap-2 mb-8">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
-          <Sparkles className="w-6 h-6 text-white" />
-        </div>
-        <span className="text-2xl font-bold text-foreground">
-          Coletivo<span className="text-primary-500">Send</span>
-        </span>
+      <a href="/" className="inline-flex items-center mb-8" aria-label="ColetivoSend">
+        <Logo priority className="h-10 w-auto" />
       </a>
 
       <div className="card p-8">
