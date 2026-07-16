@@ -4,10 +4,11 @@ import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   Download, Lock, Calendar, User, FileIcon,
-  AlertCircle, Clock, Ban, Sparkles, FileImage,
+  AlertCircle, Clock, Ban, FileImage,
   FileVideo, FileAudio, FileArchive, FileText, File
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Logo } from '@/components/ui/Logo'
 import { Input } from '@/components/ui/Input'
 import { formatBytes, formatDate } from '@/lib/utils'
 
@@ -277,13 +278,8 @@ export default function DownloadPage() {
     <div className="min-h-screen py-12 px-6 bg-background">
       {/* Header */}
       <header className="max-w-2xl mx-auto text-center mb-8">
-        <a href="/" className="inline-flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-xl font-bold text-foreground">
-            Coletivo<span className="text-primary-500">Send</span>
-          </span>
+        <a href="/" className="inline-flex items-center" aria-label="ColetivoSend">
+          <Logo priority className="h-9 w-auto" />
         </a>
       </header>
 

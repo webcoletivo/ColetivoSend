@@ -4,6 +4,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { Shield, Lock, Eye, Server, Cookie, Mail, ArrowUp } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Logo } from '@/components/ui/Logo'
 
 export default function PrivacyPage() {
   const scrollToSection = (id: string) => {
@@ -30,8 +31,8 @@ export default function PrivacyPage() {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <a href="/" className="font-bold text-xl text-foreground">
-            Coletivo<span className="text-primary-500">Send</span>
+          <a href="/" className="flex items-center" aria-label="ColetivoSend">
+            <Logo priority className="h-8 w-auto" />
           </a>
           <a href="/" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             Voltar ao início

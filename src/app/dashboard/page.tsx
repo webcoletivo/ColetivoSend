@@ -6,10 +6,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, Copy, Trash2, MoreHorizontal,
   ExternalLink, FileIcon, Ban,
-  Sparkles, Settings, LogOut, CheckCircle2, Loader2,
+  Settings, LogOut, CheckCircle2, Loader2,
   Clock, CheckCircle, XCircle, AlertCircle
 } from 'lucide-react'
 import { Button, IconButton } from '@/components/ui/Button'
+import { Logo } from '@/components/ui/Logo'
 import { SkeletonTable, SkeletonStatCard } from '@/components/ui/Skeleton'
 import { formatBytes, formatDate } from '@/lib/utils'
 import { UserMenu } from '@/components/ui/UserMenu'
@@ -161,13 +162,8 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-foreground">
-              Coletivo<span className="text-primary-500">Send</span>
-            </span>
+          <a href="/" className="flex items-center" aria-label="ColetivoSend">
+            <Logo priority className="h-9 w-auto" />
           </a>
 
           <div className="flex items-center gap-4">

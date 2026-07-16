@@ -6,13 +6,13 @@ import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
 import {
-  Sparkles,
   User,
   Shield,
   ArrowLeft,
   ChevronRight,
   Image as ImageIcon
 } from 'lucide-react'
+import { Logo } from '@/components/ui/Logo'
 
 const settingsNav = [
   {
@@ -73,13 +73,8 @@ export default function SettingsLayout({
                 <span className="text-sm font-medium">Voltar</span>
               </Link>
               <div className="h-6 w-px bg-border" />
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 text-white" />
-                </div>
-                <span className="text-lg font-bold text-foreground">
-                  Coletivo<span className="text-primary-500">Send</span>
-                </span>
+              <Link href="/" className="flex items-center" aria-label="ColetivoSend">
+                <Logo className="h-7 w-auto" />
               </Link>
             </div>
             <h1 className="text-lg font-semibold text-foreground">Configurações</h1>

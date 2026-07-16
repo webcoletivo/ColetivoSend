@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Check, Copy, Link2, Mail, Plus, QrCode, Sparkles, ExternalLink } from 'lucide-react'
+import { Check, Copy, Link2, Mail, Plus, QrCode, ExternalLink } from 'lucide-react'
+import { Logo } from '@/components/ui/Logo'
 import { Button } from '@/components/ui/Button'
 import { formatBytes } from '@/lib/utils'
 
@@ -60,13 +61,8 @@ export default function SuccessPage() {
     <div className="min-h-screen py-12 px-6">
       {/* Header */}
       <header className="max-w-lg mx-auto text-center mb-8">
-        <a href="/" className="inline-flex items-center gap-2 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-xl font-bold text-foreground">
-            Coletivo<span className="text-primary-500">Send</span>
-          </span>
+        <a href="/" className="inline-flex items-center mb-8" aria-label="ColetivoSend">
+          <Logo priority className="h-9 w-auto" />
         </a>
       </header>
 
