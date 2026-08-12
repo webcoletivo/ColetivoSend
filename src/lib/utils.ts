@@ -49,12 +49,32 @@ export function getFileIcon(mimeType: string): string {
   return '📎'
 }
 
+/**
+ * Token de compartilhamento — é a única credencial que protege uma transferência.
+ *
+ * Math.random() não é criptográfico: o gerador do V8 (xorshift128+) tem estado
+ * recuperável a partir de algumas saídas observadas, o que permitiria prever
+ * tokens de outras transferências. Usa-se o CSPRNG da plataforma
+ * (crypto.getRandomValues, disponível no Node 18+ e no navegador).
+ */
 export function generateShareToken(): string {
   const chars = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const length = 12
+  // Descarta bytes acima do maior múltiplo de chars.length para não enviesar
+  // as primeiras letras do alfabeto (viés de módulo).
+  const limite = Math.floor(256 / chars.length) * chars.length
   let result = ''
-  for (let i = 0; i < 12; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
+
+  while (result.length < length) {
+    const buffer = new Uint8Array(length)
+    globalThis.crypto.getRandomValues(buffer)
+    for (const byte of buffer) {
+      if (byte >= limite) continue
+      result += chars.charAt(byte % chars.length)
+      if (result.length === length) break
+    }
   }
+
   return result
 }
 
