@@ -5,6 +5,8 @@ import Image from "next/image"
 // evita o erro sem mudar o visual.
 
 // Intrinsic dimensions of the logo artwork (aspect ratio ~2.57:1).
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "/send"
+
 const LOGO_WIDTH = 4525
 const LOGO_HEIGHT = 1759
 
@@ -25,7 +27,7 @@ export function Logo({ variant = 'auto', className = 'h-8 w-auto', priority = fa
     return (
       <>
         <Image
-          src="/logo-colorido.png"
+          src={`${BASE}/logo-colorido.png`}
           alt="ColetivoSend"
           width={LOGO_WIDTH}
           height={LOGO_HEIGHT}
@@ -34,7 +36,7 @@ export function Logo({ variant = 'auto', className = 'h-8 w-auto', priority = fa
           className={`${className} block dark:hidden`}
         />
         <Image
-          src="/logo-branco.png"
+          src={`${BASE}/logo-branco.png`}
           alt=""
           aria-hidden="true"
           width={LOGO_WIDTH}
@@ -49,7 +51,7 @@ export function Logo({ variant = 'auto', className = 'h-8 w-auto', priority = fa
 
   return (
     <Image
-      src={variant === 'white' ? '/logo-branco.png' : '/logo-colorido.png'}
+      src={`${BASE}${variant === 'white' ? '/logo-branco.png' : '/logo-colorido.png'}`}
       alt="ColetivoSend"
       width={LOGO_WIDTH}
       height={LOGO_HEIGHT}
