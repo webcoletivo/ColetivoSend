@@ -1,41 +1,27 @@
-'use client'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { HomeClient } from './home-client'
 
-import React from 'react'
-import { MediaLoopPlayer } from '@/components/home/MediaLoopPlayer'
-import { TransferCard } from '@/components/home/TransferCard'
-import { HomeHeader } from '@/components/home/HomeHeader'
+/**
+ * Unificação por abas: a home é pública (quem recebe um link não precisa de
+ * conta), mas quem já está logado na plataforma não pode ver "Entrar / Criar
+ * conta". Sem sessão local e com o cookie da plataforma presente, passa pela
+ * ponte SSO — que valida a sessão central e volta para cá já autenticado.
+ */
+export default async function HomePage() {
+  const session = await getServerSession(authOptions)
 
-export default function HomePage() {
-  return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Fullscreen media background */}
-      <MediaLoopPlayer className="fixed inset-0 w-full h-full z-0" />
+  if (!session) {
+    const cookieStore = await cookies()
+    const temSessaoDaPlataforma = cookieStore
+      .getAll()
+      .some((c) => /^(__Secure-)?authjs\.session-token/.test(c.name))
+    if (temSessaoDaPlataforma) {
+      redirect('/api/sso/entrar?next=/send')
+    }
+  }
 
-      {/* Header */}
-      <HomeHeader transparent />
-
-      {/* Main content */}
-      <main className="relative z-10 min-h-screen flex items-center pointer-events-none">
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-24">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-start gap-8 lg:gap-16">
-            {/* Left side - Transfer Card */}
-            <div className="w-full lg:w-auto lg:flex-shrink-0 pointer-events-auto">
-              <TransferCard className="lg:w-[420px]" />
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* Footer - minimal on home */}
-      <footer className="absolute bottom-0 left-0 right-0 py-4 px-6 z-10">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-white/60">
-          <p>© {new Date().getFullYear()} ColetivoSend</p>
-          <div className="flex items-center gap-4">
-            <a href="/privacy" className="hover:text-white transition-colors">Privacidade</a>
-            <a href="/terms" className="hover:text-white transition-colors">Termos</a>
-          </div>
-        </div>
-      </footer>
-    </div>
-  )
+  return <HomeClient />
 }

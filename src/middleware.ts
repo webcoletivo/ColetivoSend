@@ -154,6 +154,21 @@ export async function middleware(request: NextRequest) {
     return withSecurityHeaders(NextResponse.redirect(sso), request, csp)
   }
 
+  // Home: é pública (quem chega por link não precisa de conta), mas quem já
+  // está logado na plataforma deve entrar direto, sem ver "Entrar / Criar
+  // conta". Detecta o cookie da plataforma sem chamar a rede.
+  if (pathname === '/' || pathname === '' || pathname === basePath) {
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
+    const temSessaoDaPlataforma = request.cookies
+      .getAll()
+      .some(c => /^(__Secure-)?authjs\.session-token/.test(c.name))
+    if (!token && temSessaoDaPlataforma) {
+      const sso = new URL(`${basePath}/api/sso/entrar`, request.url)
+      sso.searchParams.set('next', `${basePath}/`)
+      return withSecurityHeaders(NextResponse.redirect(sso), request, csp)
+    }
+  }
+
   // 3. Normal Response — propagate the nonce to the request so Next.js applies
   // it to its own inline scripts, then enforce the same CSP on the response.
   const requestHeaders = new Headers(request.headers)

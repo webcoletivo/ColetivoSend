@@ -1,4 +1,8 @@
-import Image from 'next/image'
+import Image from "next/image"
+
+// Unificação: sob basePath, o otimizador do Next não resolve os PNGs do
+// diretório público. São arquivos pequenos e estáticos — servi-los direto
+// evita o erro sem mudar o visual.
 
 // Intrinsic dimensions of the logo artwork (aspect ratio ~2.57:1).
 const LOGO_WIDTH = 4525
@@ -26,6 +30,7 @@ export function Logo({ variant = 'auto', className = 'h-8 w-auto', priority = fa
           width={LOGO_WIDTH}
           height={LOGO_HEIGHT}
           priority={priority}
+          unoptimized
           className={`${className} block dark:hidden`}
         />
         <Image
@@ -35,6 +40,7 @@ export function Logo({ variant = 'auto', className = 'h-8 w-auto', priority = fa
           width={LOGO_WIDTH}
           height={LOGO_HEIGHT}
           priority={priority}
+          unoptimized
           className={`${className} hidden dark:block`}
         />
       </>
@@ -48,6 +54,7 @@ export function Logo({ variant = 'auto', className = 'h-8 w-auto', priority = fa
       width={LOGO_WIDTH}
       height={LOGO_HEIGHT}
       priority={priority}
+      unoptimized
       className={className}
     />
   )
