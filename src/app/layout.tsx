@@ -61,6 +61,11 @@ export default async function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <meta name="theme-color" content="#6366f1" />
         <link rel="icon" href="/icon.png" />
+        {/* Unificação por abas: patch de basePath para chamadas /api absolutas
+            (carrega ANTES de qualquer código do app) + barra de abas da
+            plataforma (raiz do domínio). */}
+        <script src="/send/unificacao-fetch.js" nonce={nonce} />
+        <script src="/barra.js" data-module="SEND" defer nonce={nonce} />
       </head>
       <body className="min-h-screen bg-background text-foreground font-sans antialiased">
         <ThemeProvider

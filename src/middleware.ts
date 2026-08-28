@@ -133,23 +133,25 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 2. Auth Protection
+  // 2. Auth Protection — unificação por abas: sem sessão local, a ponte SSO
+  // (/api/sso/entrar) valida a sessão da plataforma e cunha a sessão local.
+  const basePath = request.nextUrl.basePath || ''
   const protectedRoutes = ['/dashboard', '/settings']
   if (protectedRoutes.some(route => pathname.startsWith(route))) {
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
     if (!token) {
-      const loginUrl = new URL('/login', request.url)
-      loginUrl.searchParams.set('callbackUrl', pathname)
-      return withSecurityHeaders(NextResponse.redirect(loginUrl), request, csp)
+      const sso = new URL(`${basePath}/api/sso/entrar`, request.url)
+      sso.searchParams.set('next', `${basePath}${pathname}`)
+      return withSecurityHeaders(NextResponse.redirect(sso), request, csp)
     }
   }
 
+  // Login/cadastro próprios aposentados: tudo passa pela plataforma.
   const authRoutes = ['/login', '/signup']
   if (authRoutes.some(route => pathname === route)) {
-    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
-    if (token) {
-      return withSecurityHeaders(NextResponse.redirect(new URL('/dashboard', request.url)), request, csp)
-    }
+    const sso = new URL(`${basePath}/api/sso/entrar`, request.url)
+    sso.searchParams.set('next', `${basePath}/dashboard`)
+    return withSecurityHeaders(NextResponse.redirect(sso), request, csp)
   }
 
   // 3. Normal Response — propagate the nonce to the request so Next.js applies
@@ -173,6 +175,7 @@ function withSecurityHeaders(response: NextResponse, request: NextRequest, csp: 
   const allowedOrigins = [
     'https://send.grupocoletivo.com.br',
     'https://coletivo-send.vercel.app',
+    'https://app.grupocoletivo.com.br',
   ]
   if (process.env.NODE_ENV === 'development') {
     allowedOrigins.push('http://localhost:3000')
