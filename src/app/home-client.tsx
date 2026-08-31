@@ -31,8 +31,8 @@ export function HomeClient() {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-white/60">
           <p>© {new Date().getFullYear()} ColetivoSend</p>
           <div className="flex items-center gap-4">
-            <a href="/privacy" className="hover:text-white transition-colors">Privacidade</a>
-            <a href="/terms" className="hover:text-white transition-colors">Termos</a>
+            <a href="/privacidade" className="hover:text-white transition-colors">Privacidade</a>
+            <a href="/termos" className="hover:text-white transition-colors">Termos</a>
           </div>
         </div>
       </footer>

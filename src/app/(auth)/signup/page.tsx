@@ -217,8 +217,8 @@ export default function SignupPage() {
 
           <p className="text-center text-xs text-muted-foreground mt-4">
             Ao criar uma conta, você concorda com nossos{' '}
-            <a href="/terms" className="text-primary-500 hover:underline">Termos</a> e{' '}
-            <a href="/privacy" className="text-primary-500 hover:underline">Política de Privacidade</a>
+            <a href="/termos" className="text-primary-500 hover:underline">Termos</a> e{' '}
+            <a href="/privacidade" className="text-primary-500 hover:underline">Política de Privacidade</a>
           </p>
 
           <div className="relative my-6">

@@ -1,14 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useSession, signOut } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 import { UserAvatar } from '@/components/UserAvatar'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  User, 
   Settings, 
-  Shield, 
-  LogOut, 
   ChevronDown,
   LayoutDashboard 
 } from 'lucide-react'
@@ -55,19 +52,17 @@ export function UserMenu() {
     ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : user.email?.[0]?.toUpperCase() || 'U'
 
-  const handleLogout = async () => {
-    await signOut({ callbackUrl: '/' })
-  }
 
+  // Unificação: conta e saída ficam na barra da plataforma. Aqui só o que é
+  // do Send.
   const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-    { icon: User, label: 'Perfil', href: '/settings/profile' },
-    { icon: Shield, label: 'Segurança', href: '/settings/security' },
+    { icon: LayoutDashboard, label: 'Meus envios', href: '/dashboard' },
   ]
 
+  // Documentos são únicos da plataforma (raiz do domínio, fora do basePath).
   const helpItems = [
-    { label: 'Termos de Uso', href: '/terms' },
-    { label: 'Privacidade', href: '/privacy' },
+    { label: 'Termos de Uso', href: '/termos' },
+    { label: 'Privacidade', href: '/privacidade' },
   ]
 
   return (
@@ -142,16 +137,6 @@ export function UserMenu() {
               ))}
             </div>
 
-            {/* Logout */}
-            <div className="border-t border-border py-1">
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-500/10 transition-colors w-full"
-              >
-                <LogOut className="w-4 h-4" />
-                Sair
-              </button>
-            </div>
           </motion.div>
         )}
       </AnimatePresence>
