@@ -44,3 +44,38 @@
     return origOpen.apply(this, arguments)
   }
 })()
+
+/**
+ * Navegação: o app usa <a href="/..."> em vários pontos; sob o basePath
+ * essas âncoras cairiam na raiz do domínio (outros sistemas / portal).
+ * Este listener prefixa no momento do clique. Caminhos da PLATAFORMA
+ * continuam intactos — são destinos intencionais.
+ */
+;(function () {
+  var BP = '/send'
+  var PLATAFORMA = [
+    '/barra.js', '/sair', '/conta', '/login', '/convite',
+    '/privacidade', '/termos', '/admin',
+    '/kadro', '/erp', '/infra', '/prompts',
+  ]
+  function ehDaPlataforma(p) {
+    for (var i = 0; i < PLATAFORMA.length; i++) {
+      var b = PLATAFORMA[i]
+      if (p === b || p.indexOf(b + '/') === 0) return true
+    }
+    return false
+  }
+  document.addEventListener(
+    'click',
+    function (ev) {
+      var a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null
+      if (!a) return
+      var href = a.getAttribute('href') || ''
+      if (href.charAt(0) !== '/' || href.indexOf('//') === 0) return
+      if (href === BP || href.indexOf(BP + '/') === 0) return // já prefixado
+      if (ehDaPlataforma(href)) return
+      a.setAttribute('href', BP + (href === '/' ? '' : href) || BP)
+    },
+    true
+  )
+})()

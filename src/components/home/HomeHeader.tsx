@@ -20,7 +20,6 @@ interface HomeHeaderProps {
 export function HomeHeader({ transparent = true }: HomeHeaderProps) {
     const { data: session, status } = useSession()
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-    const [userMenuOpen, setUserMenuOpen] = useState(false)
 
     const isLoggedIn = !!session?.user
     const isLoading = status === 'loading'
@@ -55,73 +54,15 @@ export function HomeHeader({ transparent = true }: HomeHeaderProps) {
                         {isLoading ? (
                             <div className="w-20 h-9 rounded-full bg-white/10 animate-pulse" />
                         ) : isLoggedIn ? (
-                            // User menu
-                            <div className="relative">
-                                <button
-                                    onClick={() => setUserMenuOpen(!userMenuOpen)}
-                                    className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-white/10 transition-colors"
-                                >
-                                    <UserAvatar
-                                        user={{
-                                            name: session.user?.name,
-                                            email: session.user?.email,
-                                            image: session.user?.image
-                                        }}
-                                        size="sm"
-                                    />
-                                    <span className="hidden sm:block text-sm font-medium text-white max-w-[100px] truncate">
-                                        {session.user?.name?.split(' ')[0]}
-                                    </span>
-                                    <ChevronDown className="w-4 h-4 text-white/70" />
-                                </button>
-
-                                <AnimatePresence>
-                                    {userMenuOpen && (
-                                        <>
-                                            <div
-                                                className="fixed inset-0 z-40"
-                                                onClick={() => setUserMenuOpen(false)}
-                                            />
-                                            <motion.div
-                                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                                className="absolute right-0 top-full mt-2 w-56 bg-popover border border-border rounded-xl shadow-lg overflow-hidden z-50"
-                                            >
-                                                <div className="p-3 border-b border-border">
-                                                    <p className="font-medium text-foreground truncate">{session.user?.name}</p>
-                                                    <p className="text-sm text-muted-foreground truncate">{session.user?.email}</p>
-                                                </div>
-                                                <div className="p-1">
-                                                    <a
-                                                        href="/dashboard"
-                                                        className="flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors"
-                                                    >
-                                                        <LayoutDashboard className="w-4 h-4" />
-                                                        Dashboard
-                                                    </a>
-                                                    <a
-                                                        href="/settings/profile"
-                                                        className="flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors"
-                                                    >
-                                                        <Settings className="w-4 h-4" />
-                                                        Configurações
-                                                    </a>
-                                                </div>
-                                                <div className="p-1 border-t border-border">
-                                                    <button
-                                                        onClick={() => signOut({ callbackUrl: '/' })}
-                                                        className="flex items-center gap-3 w-full px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                                                    >
-                                                        <LogOut className="w-4 h-4" />
-                                                        Sair
-                                                    </button>
-                                                </div>
-                                            </motion.div>
-                                        </>
-                                    )}
-                                </AnimatePresence>
-                            </div>
+// Unificação: identidade e saída vivem na barra da plataforma.
+                            // Aqui, só o atalho para os envios.
+                            <a
+                                href="/dashboard"
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium text-white/85 hover:text-white hover:bg-white/10 transition-colors"
+                            >
+                                <LayoutDashboard className="w-4 h-4" />
+                                <span className="hidden sm:block">Meus envios</span>
+                            </a>
                         ) : (
                             // Login/Signup buttons
                             <div className="flex items-center gap-2 md:gap-3">

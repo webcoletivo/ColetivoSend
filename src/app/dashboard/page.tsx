@@ -13,7 +13,6 @@ import { Button, IconButton } from '@/components/ui/Button'
 import { Logo } from '@/components/ui/Logo'
 import { SkeletonTable, SkeletonStatCard } from '@/components/ui/Skeleton'
 import { formatBytes, formatDate } from '@/lib/utils'
-import { UserMenu } from '@/components/ui/UserMenu'
 import { useToast } from '@/components/ui/Toast'
 import { ThemeToggle } from '@/components/theme-toggle'
 
@@ -168,7 +167,15 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-4">
             <ThemeToggle />
-            <UserMenu />
+            {/* Unificação: identidade e saída vivem na barra da plataforma.
+                Mídia de fundo é configuração do Send (admin). */}
+            <a
+              href="/settings/media"
+              title="Mídia de fundo (admin)"
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <Settings className="w-5 h-5" />
+            </a>
           </div>
         </div>
       </header>

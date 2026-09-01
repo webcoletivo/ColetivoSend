@@ -14,21 +14,9 @@ import {
 } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 
+// Unificação: perfil e segurança vivem em "Sua conta", na plataforma.
+// Aqui fica só o que é do Send.
 const settingsNav = [
-  {
-    href: '/settings/profile',
-    label: 'Perfil',
-    icon: User,
-    description: 'Foto, nome e email',
-    adminOnly: false
-  },
-  {
-    href: '/settings/security',
-    label: 'Segurança',
-    icon: Shield,
-    description: '2FA e senha',
-    adminOnly: false
-  },
   {
     href: '/settings/media',
     label: 'Mídia de Fundo',
