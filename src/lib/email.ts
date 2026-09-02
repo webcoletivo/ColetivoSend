@@ -39,23 +39,67 @@ export interface EmailResult {
   code?: string
 }
 
+function escapeHtml(v: string): string {
+  return v
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/**
+ * Unificação: todo e-mail sai pelo Resend ÚNICO da plataforma (template
+ * padrão + email_logs + retry centralizados). O corpo estruturado vai em
+ * `plataforma`; o par html/text legado fica só como fallback local (dev).
+ */
+async function enviarPelaPlataforma(payload: Record<string, unknown>): Promise<EmailResult | null> {
+  const base = process.env.PLATFORM_URL
+  const segredo = process.env.NOTIFY_SERVICE_SECRET
+  if (!base || !segredo) return null
+  try {
+    const res = await fetch(`${base}/api/servico/email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-servico-segredo': segredo },
+      body: JSON.stringify(payload),
+    })
+    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; logId?: string; error?: string }
+    if (res.ok && data.ok) return { success: true, messageId: data.logId }
+    return { success: false, error: data.error || `HTTP ${res.status}`, code: 'PLATFORM_MAIL' }
+  } catch (e: any) {
+    return { success: false, error: e?.message || 'Plataforma inacessível', code: 'PLATFORM_MAIL' }
+  }
+}
+
 export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
+  // Caminho unificado (produção): Resend único da plataforma
+  const viaPlataforma = await enviarPelaPlataforma({
+    to: options.to,
+    subject: options.subject,
+    htmlCompleto: options.html,
+    text: options.text,
+    module: 'SEND',
+    template: 'send-legado',
+  })
+  if (viaPlataforma) return viaPlataforma
+
+  // Fallback local (sem PLATFORM_URL/segredo — ambiente isolado/dev)
   try {
     const transporter = createTransporter()
-    
+
     const info = await transporter.sendMail({
       from: process.env.SMTP_FROM || 'ColetivoSend <no-reply@grupocoletivo.com.br>',
       ...options,
     })
-    
-    return { 
-      success: true, 
-      messageId: (info as any).messageId 
+
+    return {
+      success: true,
+      messageId: (info as any).messageId
     }
   } catch (error: any) {
     console.error('Email send error:', error)
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: error.message || 'Unknown SMTP error',
       code: error.code || 'SMTP_ERROR'
     }
@@ -71,7 +115,28 @@ export async function sendTransferEmail(
   totalSize?: string
 ): Promise<EmailResult> {
   const downloadUrl = `${process.env.NEXTAUTH_URL}/d/${shareToken}`
-  
+
+  // Caminho unificado: template padrão da marca via plataforma, com todos os
+  // dados de usuário escapados (nome/mensagem entram em e-mail externo).
+  const quantos = fileCount
+    ? `${fileCount} arquivo${fileCount > 1 ? 's' : ''}`
+    : 'arquivos'
+  const viaPlataforma = await enviarPelaPlataforma({
+    to: recipientEmail,
+    subject: `${senderName.replace(/[\r\n]/g, ' ')} enviou arquivos para você`,
+    titulo: 'Você recebeu arquivos',
+    bodyHtml:
+      `<p><strong>${escapeHtml(senderName)}</strong> enviou ${quantos} para você${totalSize ? ` (${escapeHtml(totalSize)})` : ''}.</p>` +
+      (message
+        ? `<p style="background:#F4F0EB;border-radius:8px;padding:12px 16px;color:#3E3A35;font-style:italic;">"${escapeHtml(message)}"</p>`
+        : ''),
+    botao: { url: downloadUrl, label: 'Baixar arquivos' },
+    preheader: `${senderName} compartilhou ${quantos} com você`,
+    module: 'SEND',
+    template: 'send-transfer',
+  })
+  if (viaPlataforma) return viaPlataforma
+
   const html = `
 <!DOCTYPE html>
 <html>

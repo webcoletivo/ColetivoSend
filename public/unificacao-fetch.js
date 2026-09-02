@@ -10,6 +10,7 @@
   function rewrite(path) {
     if (path.indexOf('/api/') !== 0) return path
     if (path.indexOf('/api/auth/verify') === 0) return path
+    if (path.indexOf('/api/notificacoes') === 0) return path // sino da barra (plataforma)
     if (path.indexOf(bp + '/') === 0) return path
     return bp + path
   }

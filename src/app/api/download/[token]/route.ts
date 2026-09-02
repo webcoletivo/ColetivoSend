@@ -180,6 +180,31 @@ export async function POST(
       data: { downloadCount: { increment: 1 } }
     })
 
+    // Notificação unificada ao dono (sino da plataforma) — nunca bloqueia o download
+    void (async () => {
+      const base = process.env.PLATFORM_URL
+      const segredo = process.env.NOTIFY_SERVICE_SECRET
+      if (!base || !segredo || !transfer.ownerUserId) return
+      const dono = await prisma.user.findUnique({
+        where: { id: transfer.ownerUserId },
+        select: { email: true },
+      })
+      if (!dono?.email) return
+      const quantos = transfer.files.length
+      await fetch(`${base}/api/servico/notificar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-servico-segredo': segredo },
+        body: JSON.stringify({
+          email: dono.email,
+          module: 'SEND',
+          type: 'transfer_baixada',
+          title: 'Seus arquivos foram baixados',
+          body: `Sua transferência de ${quantos} arquivo${quantos === 1 ? '' : 's'} teve um novo download.`,
+          url: '/send/dashboard',
+        }),
+      })
+    })().catch(() => {})
+
     return NextResponse.json({
       success: true,
       downloads: downloadUrls,
