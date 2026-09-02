@@ -70,6 +70,8 @@
     function (ev) {
       var a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null
       if (!a) return
+      // links da barra de abas da plataforma apontam para a raiz do domínio
+      if (a.closest && a.closest('#gc-barra')) return
       var href = a.getAttribute('href') || ''
       if (href.charAt(0) !== '/' || href.indexOf('//') === 0) return
       if (href === BP || href.indexOf(BP + '/') === 0) return // já prefixado
