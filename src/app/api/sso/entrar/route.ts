@@ -15,7 +15,8 @@ const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? '/send'
 const SESSION_MAX_AGE = 7 * 24 * 60 * 60
 
 function safeNext(raw: string | null): string {
-  if (raw && raw.startsWith('/') && !raw.startsWith('//')) return raw
+  // "//host" e "/\host" viram URL externa no navegador — só caminho interno
+  if (raw && raw.startsWith('/') && !raw.startsWith('//') && !raw.includes('\\')) return raw
   return `${BASE_PATH}/dashboard`
 }
 

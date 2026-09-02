@@ -30,6 +30,12 @@ export const authOptions: NextAuthOptions = {
         totpVerified: { label: 'TOTP Already Verified', type: 'text' },
       },
       async authorize(credentials: any, req: any) {
+        // Unificação por abas: o login local burlaria o SSO da plataforma —
+        // a entrada é sempre via /api/sso/entrar. Provider mantido só pelo
+        // shape da sessão; autenticar por aqui está desativado.
+        if (process.env.PLATFORM_URL) {
+          throw new Error('Login local desativado. Entre pela plataforma Grupo Coletivo.')
+        }
         if (!credentials?.email || !credentials?.password) {
           throw new Error('Email e senha são obrigatórios')
         }
