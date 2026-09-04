@@ -376,10 +376,9 @@ export default function DownloadPage() {
           </div>
         </motion.div>
 
-        {/* Footer */}
+        {/* Rodapé neutro: sistema interno, sem créditos nem link de entrada */}
         <p className="text-center text-sm text-muted-foreground mt-8">
-          Enviado com{' '}
-          <a href="/" className="text-primary-500 hover:underline">ColetivoSend</a>
+          Grupo Coletivo · compartilhamento seguro de arquivos
         </p>
       </main>
     </div>

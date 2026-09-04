@@ -128,7 +128,7 @@ export async function sendTransferEmail(
     bodyHtml:
       `<p><strong>${escapeHtml(senderName)}</strong> enviou ${quantos} para você${totalSize ? ` (${escapeHtml(totalSize)})` : ''}.</p>` +
       (message
-        ? `<p style="background:#F4F0EB;border-radius:8px;padding:12px 16px;color:#3E3A35;font-style:italic;">"${escapeHtml(message)}"</p>`
+        ? `<p style="background:#1E1B18;border-radius:8px;padding:12px 16px;color:#CFC8C2;font-style:italic;">"${escapeHtml(message)}"</p>`
         : ''),
     botao: { url: downloadUrl, label: 'Baixar arquivos' },
     preheader: `${senderName} compartilhou ${quantos} com você`,
