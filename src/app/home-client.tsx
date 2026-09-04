@@ -26,16 +26,8 @@ export function HomeClient() {
         </div>
       </main>
 
-      {/* Footer - minimal on home */}
-      <footer className="absolute bottom-0 left-0 right-0 py-4 px-6 z-10">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-white/60">
-          <p>© {new Date().getFullYear()} ColetivoSend</p>
-          <div className="flex items-center gap-4">
-            <a href="/privacidade" className="hover:text-white transition-colors">Privacidade</a>
-            <a href="/termos" className="hover:text-white transition-colors">Termos</a>
-          </div>
-        </div>
-      </footer>
+      {/* Sistema interno: sem rodapé — privacidade/termos ficam linkados
+          na página inicial da plataforma */}
     </div>
   )
 }
