@@ -14,7 +14,6 @@ import { Logo } from '@/components/ui/Logo'
 import { SkeletonTable, SkeletonStatCard } from '@/components/ui/Skeleton'
 import { formatBytes, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
-import { ThemeToggle } from '@/components/theme-toggle'
 
 interface Transfer {
   id: string
@@ -166,7 +165,6 @@ export default function DashboardPage() {
           </a>
 
           <div className="flex items-center gap-4">
-            <ThemeToggle />
             {/* Unificação: identidade e saída vivem na barra da plataforma.
                 Mídia de fundo é configuração do Send (admin). */}
             <a

@@ -6,7 +6,6 @@ import { Mail, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Logo } from '@/components/ui/Logo'
 import { Input } from '@/components/ui/Input'
-import { ThemeToggle } from '@/components/theme-toggle'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -49,7 +48,6 @@ export default function ForgotPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-12">
       <div className="fixed top-4 right-4 z-50">
-        <ThemeToggle />
       </div>
 
       <div className="fixed inset-0 -z-10 overflow-hidden">

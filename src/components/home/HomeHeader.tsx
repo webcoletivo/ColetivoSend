@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X, ChevronDown, User, LogOut, Settings, LayoutDashboard } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Logo } from '@/components/ui/Logo'
-import { ThemeToggle } from '@/components/theme-toggle'
 import { UserAvatar } from '@/components/UserAvatar'
 
 const NAV_ITEMS: { label: string; href: string }[] = [
@@ -49,7 +48,6 @@ export function HomeHeader({ transparent = true }: HomeHeaderProps) {
 
                     {/* Right side actions */}
                     <div className="flex items-center gap-3 md:gap-4">
-                        <ThemeToggle />
 
                         {isLoading ? (
                             <div className="w-20 h-9 rounded-full bg-white/10 animate-pulse" />

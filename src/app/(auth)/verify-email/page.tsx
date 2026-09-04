@@ -8,7 +8,6 @@ import { Logo } from '@/components/ui/Logo'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/Toast'
 import Link from 'next/link'
-import { ThemeToggle } from '@/components/theme-toggle'
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams()
@@ -207,7 +206,6 @@ export default function VerifyEmailPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-12">
       <div className="fixed top-4 right-4 z-50">
-        <ThemeToggle />
       </div>
 
       <div className="fixed inset-0 -z-10 overflow-hidden">

@@ -7,7 +7,6 @@ import { Lock, ArrowRight, Eye, EyeOff, CheckCircle2, AlertCircle, Loader2 } fro
 import { Button } from '@/components/ui/Button'
 import { Logo } from '@/components/ui/Logo'
 import { Input } from '@/components/ui/Input'
-import { ThemeToggle } from '@/components/theme-toggle'
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams()
@@ -71,7 +70,6 @@ function ResetPasswordForm() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-12">
       <div className="fixed top-4 right-4 z-50">
-        <ThemeToggle />
       </div>
 
       <div className="fixed inset-0 -z-10 overflow-hidden">
