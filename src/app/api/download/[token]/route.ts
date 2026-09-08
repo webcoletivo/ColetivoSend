@@ -191,6 +191,7 @@ export async function POST(
       })
       if (!dono?.email) return
       const quantos = transfer.files.length
+      const texto = `Sua transferência de ${quantos} arquivo${quantos === 1 ? '' : 's'} teve um novo download.`
       await fetch(`${base}/api/servico/notificar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-servico-segredo': segredo },
@@ -199,8 +200,23 @@ export async function POST(
           module: 'SEND',
           type: 'transfer_baixada',
           title: 'Seus arquivos foram baixados',
-          body: `Sua transferência de ${quantos} arquivo${quantos === 1 ? '' : 's'} teve um novo download.`,
+          body: texto,
           url: '/send/dashboard',
+        }),
+      })
+      // E-mail ao dono pelo canal unificado (template da plataforma)
+      await fetch(`${base}/api/servico/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-servico-segredo': segredo },
+        body: JSON.stringify({
+          to: dono.email,
+          subject: 'Seus arquivos foram baixados',
+          titulo: 'Seus arquivos foram baixados',
+          bodyHtml: `<p>${texto}</p>`,
+          module: 'SEND',
+          refType: 'transfer',
+          refId: transfer.id,
+          botao: { url: `${base}/send/dashboard`, label: 'Abrir o ColetivoSend' },
         }),
       })
     })().catch(() => {})
