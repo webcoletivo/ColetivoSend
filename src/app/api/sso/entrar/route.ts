@@ -36,8 +36,10 @@ export async function GET(request: NextRequest) {
   }
 
   if (verify.status === 401) {
-    const login = new URL('/login', request.url)
-    login.pathname = '/login' // raiz do domínio, fora do basePath
+    // Base = PLATFORM_URL (mesmo domínio): atrás do proxy, request.url vem
+    // como localhost:3000 e um redirect absoluto montado dele vaza pro
+    // navegador.
+    const login = new URL('/login', platformUrl)
     login.searchParams.set('next', next)
     return NextResponse.redirect(login)
   }
@@ -88,10 +90,10 @@ export async function GET(request: NextRequest) {
     maxAge: SESSION_MAX_AGE,
   })
 
-  const secure = request.nextUrl.protocol === 'https:'
+  const secure = platformUrl.startsWith('https:')
   const cookieName = secure ? '__Secure-next-auth.session-token' : 'next-auth.session-token'
 
-  const res = NextResponse.redirect(new URL(next, request.url))
+  const res = NextResponse.redirect(new URL(next, platformUrl))
   res.cookies.set(cookieName, sessionToken, {
     httpOnly: true,
     sameSite: 'lax',

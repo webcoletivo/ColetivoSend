@@ -143,7 +143,10 @@ export async function middleware(request: NextRequest) {
     .some(c => /^(__Secure-)?authjs\.session-token/.test(c.name))
 
   const redirectSso = (next: string) => {
-    const sso = new URL(`${basePath}/api/sso/entrar`, request.url)
+    // Base = PLATFORM_URL: atrás do proxy, request.url chega como
+    // localhost:3000 e o redirect absoluto vazaria isso pro navegador.
+    const origem = process.env.PLATFORM_URL || request.url
+    const sso = new URL(`${basePath}/api/sso/entrar`, origem)
     sso.searchParams.set('next', next)
     const res = NextResponse.redirect(sso)
     if (!temSessaoDaPlataforma) {
