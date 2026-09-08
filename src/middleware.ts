@@ -133,39 +133,47 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 2. Auth Protection — unificação por abas: sem sessão local, a ponte SSO
-  // (/api/sso/entrar) valida a sessão da plataforma e cunha a sessão local.
+  // 2. Auth Protection — unificação por abas: a plataforma é a fonte da
+  // verdade. Sessão local só vale acompanhada do cookie central: sair da
+  // plataforma (o cookie some) derruba o Send junto — a ponte SSO
+  // (/api/sso/entrar) revalida de verdade e leva ao login central.
   const basePath = request.nextUrl.basePath || ''
+  const temSessaoDaPlataforma = request.cookies
+    .getAll()
+    .some(c => /^(__Secure-)?authjs\.session-token/.test(c.name))
+
+  const redirectSso = (next: string) => {
+    const sso = new URL(`${basePath}/api/sso/entrar`, request.url)
+    sso.searchParams.set('next', next)
+    const res = NextResponse.redirect(sso)
+    if (!temSessaoDaPlataforma) {
+      // Sessão central morreu: apaga a local para não ressuscitar depois.
+      res.cookies.delete('next-auth.session-token')
+      res.cookies.delete('__Secure-next-auth.session-token')
+    }
+    return withSecurityHeaders(res, request, csp)
+  }
+
   const protectedRoutes = ['/dashboard', '/settings']
   if (protectedRoutes.some(route => pathname.startsWith(route))) {
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
-    if (!token) {
-      const sso = new URL(`${basePath}/api/sso/entrar`, request.url)
-      sso.searchParams.set('next', `${basePath}${pathname}`)
-      return withSecurityHeaders(NextResponse.redirect(sso), request, csp)
+    if (!token || !temSessaoDaPlataforma) {
+      return redirectSso(`${basePath}${pathname}`)
     }
   }
 
   // Login/cadastro próprios aposentados: tudo passa pela plataforma.
   const authRoutes = ['/login', '/signup']
   if (authRoutes.some(route => pathname === route)) {
-    const sso = new URL(`${basePath}/api/sso/entrar`, request.url)
-    sso.searchParams.set('next', `${basePath}/dashboard`)
-    return withSecurityHeaders(NextResponse.redirect(sso), request, csp)
+    return redirectSso(`${basePath}/dashboard`)
   }
 
-  // Home: é pública (quem chega por link não precisa de conta), mas quem já
-  // está logado na plataforma deve entrar direto, sem ver "Entrar / Criar
-  // conta". Detecta o cookie da plataforma sem chamar a rede.
+  // Home: sistema interno — exige a sessão central sempre (só a página de
+  // download /d/[token] permanece pública para quem recebe o link).
   if (pathname === '/' || pathname === '' || pathname === basePath) {
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
-    const temSessaoDaPlataforma = request.cookies
-      .getAll()
-      .some(c => /^(__Secure-)?authjs\.session-token/.test(c.name))
-    if (!token && temSessaoDaPlataforma) {
-      const sso = new URL(`${basePath}/api/sso/entrar`, request.url)
-      sso.searchParams.set('next', `${basePath}/`)
-      return withSecurityHeaders(NextResponse.redirect(sso), request, csp)
+    if (!token || !temSessaoDaPlataforma) {
+      return redirectSso(`${basePath}/`)
     }
   }
 
