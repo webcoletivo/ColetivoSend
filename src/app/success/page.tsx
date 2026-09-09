@@ -42,7 +42,7 @@ export default function SuccessPage() {
     )
   }
 
-  const downloadUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/d/${transfer.shareToken}`
+  const downloadUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}${process.env.NEXT_PUBLIC_BASE_PATH ?? '/send'}/d/${transfer.shareToken}`
   const totalSize = transfer.files.reduce((acc, f) => acc + f.size, 0)
   const expirationDate = new Date()
   expirationDate.setDate(expirationDate.getDate() + transfer.expirationDays)

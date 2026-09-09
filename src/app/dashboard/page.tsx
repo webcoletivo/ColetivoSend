@@ -15,6 +15,10 @@ import { SkeletonTable, SkeletonStatCard } from '@/components/ui/Skeleton'
 import { formatBytes, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 
+// Links públicos precisam do basePath: <a> puro e window.location.origin não
+// ganham o prefixo /send automaticamente (só o <Link> do Next ganha).
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? '/send'
+
 interface Transfer {
   id: string
   senderName: string
@@ -95,7 +99,7 @@ export default function DashboardPage() {
   }
 
   const handleCopyLink = async (transfer: Transfer) => {
-    const url = `${window.location.origin}/d/${transfer.shareToken}`
+    const url = `${window.location.origin}${BASE_PATH}/d/${transfer.shareToken}`
     await navigator.clipboard.writeText(url)
     setCopiedId(transfer.id)
     showToast('Link copiado!', 'success')
@@ -367,7 +371,7 @@ export default function DashboardPage() {
                             className="absolute right-0 top-full mt-1 w-48 bg-card rounded-xl shadow-lg border border-border py-2 z-10"
                           >
                             <a
-                              href={`/d/${transfer.shareToken}`}
+                              href={`${BASE_PATH}/d/${transfer.shareToken}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:bg-accent/5 hover:text-foreground transition-colors"

@@ -314,7 +314,7 @@ export function TransferCard({ className = '' }: TransferCardProps) {
 
     // Success View
     if (isSuccess && transferResult) {
-        const shareLink = `${window.location.origin}/d/${transferResult.shareToken}`
+        const shareLink = `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH ?? '/send'}/d/${transferResult.shareToken}`
 
         return (
             <div className={`transfer-card w-full max-w-md ${className}`}>
