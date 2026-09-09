@@ -1,15 +1,24 @@
 'use client'
 
+/**
+ * Página pública de download (/send/d/<token>).
+ *
+ * Identidade visual do sistema unificado (dark #0C0B0A, card #131211,
+ * acento laranja #FF6B1F) — autocontida, sem depender do tema do app.
+ *
+ * Download SEM abrir guias: as URLs presignadas já forçam
+ * Content-Disposition: attachment, então uma âncora invisível baixa
+ * direto; "baixar todos" dispara em sequência com pausa curta para o
+ * navegador registrar cada arquivo.
+ */
+
 import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { useParams } from 'next/navigation'
 import {
-  Download, Lock, Calendar, User, FileIcon,
-  AlertCircle, Clock, Ban, FileImage,
-  FileVideo, FileAudio, FileArchive, FileText, File
+  Download, Lock, AlertCircle, Clock, Ban, FileImage,
+  FileVideo, FileAudio, FileArchive, FileText, File, Loader2
 } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
 import { Logo } from '@/components/ui/Logo'
-import { Input } from '@/components/ui/Input'
 import { formatBytes, formatDate } from '@/lib/utils'
 
 type PageStatus = 'loading' | 'password' | 'ready' | 'expired' | 'revoked' | 'notfound' | 'error'
@@ -33,25 +42,53 @@ interface TransferData {
   hasPassword?: boolean
 }
 
-function getFileIconComponent(mimeType: string) {
-  if (mimeType.startsWith('image/')) return FileImage
-  if (mimeType.startsWith('video/')) return FileVideo
-  if (mimeType.startsWith('audio/')) return FileAudio
-  if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('7z')) return FileArchive
-  if (mimeType.includes('pdf') || mimeType.includes('word') || mimeType.includes('document')) return FileText
-  return File
+const LARANJA = '#FF6B1F'
+
+function IconeArquivo({ mimeType }: { mimeType: string }) {
+  const cls = 'h-[18px] w-[18px] shrink-0'
+  if (mimeType.startsWith('image/')) return <FileImage className={cls} aria-hidden />
+  if (mimeType.startsWith('video/')) return <FileVideo className={cls} aria-hidden />
+  if (mimeType.startsWith('audio/')) return <FileAudio className={cls} aria-hidden />
+  if (/zip|rar|7z|tar|gzip|compressed/.test(mimeType)) return <FileArchive className={cls} aria-hidden />
+  if (mimeType.startsWith('text/') || mimeType.includes('pdf') || mimeType.includes('document'))
+    return <FileText className={cls} aria-hidden />
+  return <File className={cls} aria-hidden />
 }
 
-function getIconColor(mimeType: string) {
-  if (mimeType.startsWith('image/')) return 'text-pink-500 bg-pink-500/10'
-  if (mimeType.startsWith('video/')) return 'text-purple-500 bg-purple-500/10'
-  if (mimeType.startsWith('audio/')) return 'text-emerald-500 bg-emerald-500/10'
-  if (mimeType.includes('zip') || mimeType.includes('rar')) return 'text-amber-500 bg-amber-500/10'
-  if (mimeType.includes('pdf')) return 'text-red-500 bg-red-500/10'
-  return 'text-primary-500 bg-primary-500/10'
+// Baixa sem abrir guia: âncora invisível + Content-Disposition attachment.
+function dispararDownload(url: string) {
+  const a = document.createElement('a')
+  a.href = url
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
 }
 
-import { useParams } from 'next/navigation'
+function Moldura({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-[#0C0B0A] px-5 py-10 text-[#EDEAE6] antialiased">
+      <div className="mx-auto w-full max-w-xl">
+        <header className="mb-6 flex items-center justify-center">
+          <Logo priority className="h-8 w-auto" />
+        </header>
+        {children}
+        <p className="mt-8 text-center text-xs uppercase tracking-[0.18em] text-[#7A756E]">
+          Grupo Coletivo · compartilhamento seguro de arquivos
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function Cartao({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-[#262421] bg-[#131211] shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
+      <div className="h-1 w-full" style={{ background: LARANJA }} />
+      {children}
+    </div>
+  )
+}
 
 export default function DownloadPage() {
   const params = useParams<{ token: string }>()
@@ -59,329 +96,235 @@ export default function DownloadPage() {
   const [transfer, setTransfer] = useState<TransferData | null>(null)
   const [password, setPassword] = useState('')
   const [passwordError, setPasswordError] = useState('')
-  const [downloadingAll, setDownloadingAll] = useState(false)
-  const [downloadingFile, setDownloadingFile] = useState<string | null>(null)
+  const [desbloqueando, setDesbloqueando] = useState(false)
+  const [baixandoTodos, setBaixandoTodos] = useState(false)
+  const [baixando, setBaixando] = useState<string | null>(null)
+  const [progresso, setProgresso] = useState<number>(0)
 
   useEffect(() => {
     const fetchTransfer = async () => {
       try {
         const res = await fetch(`/api/transfer/${params.token}`)
         const data = await res.json()
-
-        if (res.status === 404) {
-          setStatus('notfound')
-          return
-        }
-
-        if (res.status === 410) {
-          setStatus(data.code === 'expired' ? 'expired' : 'revoked')
-          return
-        }
-
-        if (!res.ok) {
-          throw new Error('Erro ao carregar')
-        }
-
+        if (res.status === 404) return setStatus('notfound')
+        if (res.status === 410) return setStatus(data.code === 'expired' ? 'expired' : 'revoked')
+        if (!res.ok) throw new Error('Erro ao carregar')
         if (data.hasPassword) {
           setStatus('password')
         } else {
           setTransfer(data)
           setStatus('ready')
         }
-      } catch (error) {
-        console.error('Error fetching transfer:', error)
+      } catch {
         setStatus('error')
       }
     }
-
     fetchTransfer()
   }, [params.token])
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (password.length < 1) {
-      setPasswordError('Digite a senha')
-      return
-    }
-
+    if (password.length < 1) return setPasswordError('Digite a senha')
+    setDesbloqueando(true)
+    setPasswordError('')
     try {
-      // First verify password
-      const verifyRes = await fetch(`/api/transfer/${params.token}/password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
-      })
-
-      if (!verifyRes.ok) {
-        const error = await verifyRes.json()
-        setPasswordError(error.error || 'Senha incorreta')
-        return
-      }
-
-      // If verified, unlock and get data
-      // For simplicity using a separate unlock endpoint or just refetching logic 
-      // where logic is: authenticated requests get data. 
-      // For now, let's call the unlock endpoint we created or just reuse logic.
-      // Actually, let's just use the `unlock` endpoint if we made one, or assume the verify 
-      // endpoint could return data.
-      // Reviewing previous step: I created `unlock` endpoint.
-
       const unlockRes = await fetch(`/api/transfer/${params.token}/unlock`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
+        body: JSON.stringify({ password }),
       })
-
       const data = await unlockRes.json()
-
       if (unlockRes.ok) {
         setTransfer(data)
         setStatus('ready')
       } else {
-        setPasswordError('Erro ao desbloquear')
+        setPasswordError(data.error || 'Senha incorreta')
       }
-
-    } catch (error) {
+    } catch {
       setPasswordError('Erro de conexão')
+    } finally {
+      setDesbloqueando(false)
     }
+  }
+
+  const handleDownloadFile = (file: TransferFile) => {
+    setBaixando(file.id)
+    dispararDownload(file.downloadUrl)
+    setTimeout(() => setBaixando(null), 900)
   }
 
   const handleDownloadAll = async () => {
-    if (!transfer) return
-    setDownloadingAll(true)
-
-    // In a real app, we might bundle them or just trigger all
-    // For now, trigger them one by one (or just the first few)
-    for (const file of transfer.files) {
-      window.open(file.downloadUrl, '_blank')
-      await new Promise(r => setTimeout(r, 500)) // Slight delay between bubbles
+    if (!transfer || baixandoTodos) return
+    setBaixandoTodos(true)
+    try {
+      for (const [i, file] of transfer.files.entries()) {
+        setProgresso(i + 1)
+        dispararDownload(file.downloadUrl)
+        // pausa para o navegador registrar cada download — nada de guias
+        if (i < transfer.files.length - 1) await new Promise(r => setTimeout(r, 700))
+      }
+    } finally {
+      setBaixandoTodos(false)
+      setProgresso(0)
     }
-
-    setDownloadingAll(false)
-  }
-
-  const handleDownloadFile = async (file: TransferFile) => {
-    setDownloadingFile(file.id)
-    window.open(file.downloadUrl, '_blank')
-    setTimeout(() => setDownloadingFile(null), 500)
   }
 
   const totalSize = transfer?.files?.reduce((acc, f) => acc + f.sizeBytes, 0) || 0
 
-  // Loading state
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Error states
-  if (status === 'notfound' || status === 'expired' || status === 'revoked' || status === 'error') {
-    const errorConfig = {
-      notfound: {
-        icon: AlertCircle,
-        title: 'Link não encontrado',
-        description: 'Este link de download não existe ou foi removido.',
-        color: 'text-muted-foreground/50',
-      },
-      expired: {
-        icon: Clock,
-        title: 'Link expirado',
-        description: 'Este link de download expirou e não está mais disponível.',
-        color: 'text-amber-500',
-      },
-      revoked: {
-        icon: Ban,
-        title: 'Link desativado',
-        description: 'Este link foi desativado pelo remetente.',
-        color: 'text-red-500',
-      },
-      error: {
-        icon: AlertCircle,
-        title: 'Erro no servidor',
-        description: 'Não foi possível carregar o envio. Tente novamente.',
-        color: 'text-red-500',
-      }
-    }
-
-    const config = errorConfig[status]
-    const IconComponent = config.icon
-
-    return (
-      <div className="min-h-screen flex items-center justify-center px-6 bg-background">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full text-center"
-        >
-          <div className={`w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-6`}>
-            <IconComponent className={`w-10 h-10 ${config.color}`} />
+      <Moldura>
+        <Cartao>
+          <div className="flex flex-col items-center gap-4 px-8 py-16">
+            <Loader2 className="h-7 w-7 animate-spin" style={{ color: LARANJA }} aria-hidden />
+            <p className="text-sm text-[#A39D95]">Carregando envio…</p>
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-3">{config.title}</h1>
-          <p className="text-muted-foreground mb-8">{config.description}</p>
-          <a href="/">
-            <Button variant="primary">
-              Ir para o início
-            </Button>
-          </a>
-        </motion.div>
-      </div>
+        </Cartao>
+      </Moldura>
     )
   }
 
-  // Password prompt
+  if (status === 'notfound' || status === 'expired' || status === 'revoked' || status === 'error') {
+    const config = {
+      notfound: { icon: AlertCircle, title: 'Link não encontrado', desc: 'Este link de download não existe ou foi removido.' },
+      expired: { icon: Clock, title: 'Link expirado', desc: 'Este link de download expirou e não está mais disponível.' },
+      revoked: { icon: Ban, title: 'Link desativado', desc: 'Este link foi desativado pelo remetente.' },
+      error: { icon: AlertCircle, title: 'Erro no servidor', desc: 'Não foi possível carregar o envio. Tente novamente.' },
+    }[status]
+    const Icone = config.icon
+    return (
+      <Moldura>
+        <Cartao>
+          <div className="flex flex-col items-center px-8 py-14 text-center">
+            <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full border border-[#33302C] bg-[#1B1917]">
+              <Icone className="h-6 w-6 text-[#A39D95]" aria-hidden />
+            </div>
+            <h1 className="text-xl font-semibold">{config.title}</h1>
+            <p className="mt-2 max-w-sm text-sm leading-relaxed text-[#A39D95]">{config.desc}</p>
+          </div>
+        </Cartao>
+      </Moldura>
+    )
+  }
+
   if (status === 'password') {
     return (
-      <div className="min-h-screen flex items-center justify-center px-6 bg-background">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full"
-        >
-          <div className="card p-8 text-center">
-            <div className="w-16 h-16 rounded-full bg-primary-500/10 flex items-center justify-center mx-auto mb-6">
-              <Lock className="w-8 h-8 text-primary-500" />
+      <Moldura>
+        <Cartao>
+          <div className="px-7 py-9 sm:px-9">
+            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl" style={{ background: 'rgba(255,107,31,0.12)' }}>
+              <Lock className="h-5 w-5" style={{ color: LARANJA }} aria-hidden />
             </div>
-            <h1 className="text-2xl font-bold text-foreground mb-2">
-              Arquivos protegidos
-            </h1>
-            <p className="text-muted-foreground mb-6">
-              Este envio está protegido por senha. Digite a senha para acessar.
+            <h1 className="text-xl font-semibold">Envio protegido por senha</h1>
+            <p className="mt-2 text-sm leading-relaxed text-[#A39D95]">
+              O conteúdo deste envio só aparece depois da senha.
             </p>
-
-            <form onSubmit={handlePasswordSubmit} className="space-y-4">
-              <Input
+            <form onSubmit={handlePasswordSubmit} className="mt-6 space-y-4">
+              <input
                 type="password"
                 placeholder="Digite a senha"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                error={passwordError}
+                autoFocus
+                className="w-full rounded-xl border border-[#33302C] bg-[#1B1917] px-4 py-3 text-sm text-[#EDEAE6] outline-none transition-colors placeholder:text-[#7A756E] focus:border-[#FF6B1F]"
               />
-              <Button type="submit" className="w-full">
+              {passwordError && <p className="text-sm text-[#F0665C]">{passwordError}</p>}
+              <button
+                type="submit"
+                disabled={desbloqueando}
+                className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-[#131211] transition-opacity disabled:opacity-60"
+                style={{ background: LARANJA }}
+              >
+                {desbloqueando && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
                 Acessar arquivos
-              </Button>
+              </button>
             </form>
           </div>
-        </motion.div>
-      </div>
+        </Cartao>
+      </Moldura>
     )
   }
 
-  // Ready - show files
   return (
-    <div className="min-h-screen py-12 px-6 bg-background">
-      {/* Header */}
-      <header className="max-w-2xl mx-auto text-center mb-8">
-        <a href="/" className="inline-flex items-center" aria-label="ColetivoSend">
-          <Logo priority className="h-9 w-auto" />
-        </a>
-      </header>
-
-      <main className="max-w-2xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="card overflow-hidden"
-        >
-          {/* Header */}
-          <div className="p-6 md:p-8 bg-gradient-to-r from-primary-500 to-primary-600 text-white">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-                <User className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-white/70 text-sm">Enviado por</p>
-                <p className="font-semibold text-lg">{transfer?.senderName}</p>
-              </div>
+    <Moldura>
+      <Cartao>
+        {/* Cabeçalho do envio */}
+        <div className="border-b border-[#262421] px-7 py-7 sm:px-9">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7A756E]">
+            Enviado por
+          </p>
+          <h1 className="mt-1 text-2xl font-semibold leading-tight">{transfer?.senderName}</h1>
+          {transfer?.message && (
+            <div className="mt-4 rounded-xl border border-[#262421] bg-[#1B1917] px-4 py-3">
+              <p className="text-sm leading-relaxed text-[#C9C3BB]">“{transfer.message}”</p>
             </div>
-
-            {transfer?.message && (
-              <div className="p-4 bg-white/10 rounded-xl backdrop-blur-sm">
-                <p className="text-white/90 text-sm italic">&quot;{transfer.message}&quot;</p>
-              </div>
-            )}
+          )}
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#A39D95]">
+            <span>
+              {transfer?.files.length} arquivo{transfer?.files.length !== 1 ? 's' : ''} · {formatBytes(totalSize)}
+            </span>
+            <span aria-hidden className="h-1 w-1 rounded-full bg-[#33302C]" />
+            <span>Expira em {formatDate(transfer?.expiresAt || '')}</span>
           </div>
+        </div>
 
-          {/* Info bar */}
-          <div className="px-6 md:px-8 py-4 bg-muted/30 border-b border-border flex items-center justify-between text-sm">
-            <div className="flex items-center gap-4">
-              <span className="text-foreground">
-                {transfer?.files.length} arquivo{transfer?.files.length !== 1 ? 's' : ''}
-              </span>
-              <span className="w-1 h-1 rounded-full bg-border" />
-              <span className="text-foreground">{formatBytes(totalSize)}</span>
-            </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Calendar className="w-4 h-4" />
-              <span>Expira em {formatDate(transfer?.expiresAt || '')}</span>
-            </div>
-          </div>
-
-          {/* File list */}
-          <div className="p-6 md:p-8 space-y-3">
-            {transfer?.files.map((file, index) => {
-              const IconComponent = getFileIconComponent(file.mimeType)
-              const iconClass = getIconColor(file.mimeType)
-              const isDownloading = downloadingFile === file.id
-
-              return (
-                <motion.div
-                  key={file.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex items-center gap-4 p-4 bg-muted/50 rounded-xl hover:bg-accent/5 transition-colors group"
+        {/* Lista de arquivos */}
+        <ul className="divide-y divide-[#201E1B] px-3 py-2 sm:px-4">
+          {transfer?.files.map(file => {
+            const ocupado = baixando === file.id
+            return (
+              <li key={file.id} className="group flex items-center gap-4 px-3 py-3.5 sm:px-4">
+                <div
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#33302C] bg-[#1B1917]"
+                  style={{ color: LARANJA }}
                 >
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${iconClass}`}>
-                    <IconComponent className="w-6 h-6" />
-                  </div>
+                  <IconeArquivo mimeType={file.mimeType} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{file.originalName}</p>
+                  <p className="text-xs text-[#7A756E]">{formatBytes(file.sizeBytes)}</p>
+                </div>
+                <button
+                  onClick={() => handleDownloadFile(file)}
+                  disabled={ocupado || baixandoTodos}
+                  aria-label={`Baixar ${file.originalName}`}
+                  className="flex items-center gap-1.5 rounded-lg border border-[#33302C] px-3 py-2 text-xs font-semibold text-[#C9C3BB] transition-colors hover:border-[#FF6B1F] hover:text-[#FF6B1F] disabled:opacity-50"
+                >
+                  {ocupado
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                    : <Download className="h-3.5 w-3.5" aria-hidden />}
+                  Baixar
+                </button>
+              </li>
+            )
+          })}
+        </ul>
 
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground truncate">{file.originalName}</p>
-                    <p className="text-sm text-muted-foreground">{formatBytes(file.sizeBytes)}</p>
-                  </div>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    loading={isDownloading}
-                    onClick={() => handleDownloadFile(file)}
-                    icon={<Download className="w-4 h-4" />}
-                    className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                  >
-                    Baixar
-                  </Button>
-                </motion.div>
-              )
-            })}
-          </div>
-
-          {/* Download all button */}
-          <div className="p-6 md:p-8 pt-0">
-            <Button
-              variant="primary"
-              loading={downloadingAll}
-              onClick={handleDownloadAll}
-              icon={<Download className="w-5 h-5" />}
-              className="w-full py-4 text-base"
-            >
-              Baixar todos os arquivos
-            </Button>
-          </div>
-        </motion.div>
-
-        {/* Rodapé neutro: sistema interno, sem créditos nem link de entrada */}
-        <p className="text-center text-sm text-muted-foreground mt-8">
-          Grupo Coletivo · compartilhamento seguro de arquivos
-        </p>
-      </main>
-    </div>
+        {/* Baixar tudo */}
+        <div className="px-7 pb-7 pt-2 sm:px-9">
+          <button
+            onClick={handleDownloadAll}
+            disabled={baixandoTodos}
+            className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-semibold text-[#131211] transition-opacity hover:opacity-90 disabled:opacity-70"
+            style={{ background: LARANJA }}
+          >
+            {baixandoTodos ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                Baixando {progresso} de {transfer?.files.length}…
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4" aria-hidden />
+                Baixar todos os arquivos
+              </>
+            )}
+          </button>
+          <p className="mt-3 text-center text-xs text-[#7A756E]">
+            Os arquivos são baixados direto, um a um — sem abrir novas guias.
+          </p>
+        </div>
+      </Cartao>
+    </Moldura>
   )
 }
-
