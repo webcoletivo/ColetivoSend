@@ -102,10 +102,9 @@
            active:scale-[0.98] ring-offset-background;
   }
   
+  /* Padrão unificado: laranja sólido, texto escuro, sem gradiente nem glow */
   .btn-primary {
-    @apply btn bg-gradient-to-r from-primary-500 to-primary-600 text-white
-           shadow-lg shadow-primary-500/25
-           hover:shadow-xl hover:shadow-primary-500/30 hover:-translate-y-0.5
+    @apply btn bg-[#FF6B1F] text-[#131211] hover:bg-[#FF8340]
            focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
   }
   
