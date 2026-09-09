@@ -1,73 +1,75 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
+/* Fonte UI (Archivo) carregada via next/font no layout raiz — sem @import externo */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  /* Design system Grupo Coletivo (plataforma unificada) — tema escuro canônico.
+     :root e .dark compartilham os mesmos tokens: o Send segue o tema da plataforma. */
   :root {
-    --background: 0 0% 100%; /* surface-50 equivalent-ish */
-    --foreground: 222.2 84% 4.9%; /* surface-950 */
+    --background: 30 9% 4.3%; /* #0C0B0A fundo geral */
+    --foreground: 33 29% 93.9%; /* #F4F0EB texto principal */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 30 7% 5.5%; /* #0F0E0D painel/card */
+    --card-foreground: 33 29% 93.9%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 30 6% 7.1%; /* #131211 superfície elevada */
+    --popover-foreground: 33 29% 93.9%;
 
-    --primary: 247 74% 65%; /* Indigo-500 #6366f1 */
-    --primary-foreground: 210 40% 98%;
+    --primary: 20 100% 56%; /* #FF6B1F laranja plataforma */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 30 6% 7.1%; /* #131211 */
+    --secondary-foreground: 33 29% 93.9%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 30 7% 5.9%; /* #100F0E tile */
+    --muted-foreground: 28 5% 53.5%; /* #8F8882 texto secundário */
 
-    --accent: 346 87% 60%; /* Rose-500 #f43f5e */
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 23 100% 71%; /* #FFA36B tom claro do laranja */
+    --accent-foreground: 30 9% 4.3%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 247 74% 65%;
+    --border: 30 8% 10.2%; /* #1C1A18 borda principal */
+    --input: 30 8% 10.2%;
+    --ring: 20 100% 56%; /* #FF6B1F foco */
 
     --radius: 0.75rem;
-    
-    /* Custom Gradients from original file preserved but using vars if needed */
-    --gradient-primary: linear-gradient(135deg, rgb(99 102 241) 0%, rgb(139 92 246) 100%);
+
+    /* Gradiente primário na família do laranja */
+    --gradient-primary: linear-gradient(135deg, #FF6B1F 0%, #FF8340 100%);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%; /* Slate-950 */
-    --foreground: 210 40% 98%;
+    --background: 30 9% 4.3%; /* #0C0B0A */
+    --foreground: 33 29% 93.9%; /* #F4F0EB */
 
-    --card: 222.2 84% 6.5%; /* Slightly lighter than background */
-    --card-foreground: 210 40% 98%;
+    --card: 30 7% 5.5%; /* #0F0E0D */
+    --card-foreground: 33 29% 93.9%;
 
-    --popover: 222.2 84% 6.5%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 30 6% 7.1%; /* #131211 */
+    --popover-foreground: 33 29% 93.9%;
 
-    --primary: 247 74% 65%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 20 100% 56%; /* #FF6B1F */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 30 6% 7.1%; /* #131211 */
+    --secondary-foreground: 33 29% 93.9%;
 
-    --muted: 217.2 32.6% 12%; /* Darker than secondary but visible */
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 30 7% 5.9%; /* #100F0E */
+    --muted-foreground: 28 5% 53.5%; /* #8F8882 */
 
-    --accent: 346 87% 60%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 23 100% 71%; /* #FFA36B */
+    --accent-foreground: 30 9% 4.3%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 12%; /* Darker border */
-    --input: 217.2 32.6% 12%;
-    --ring: 247 74% 65%;
+    --border: 30 8% 10.2%; /* #1C1A18 */
+    --input: 30 8% 10.2%;
+    --ring: 20 100% 56%;
   }
 }
 
@@ -90,7 +92,7 @@
   /* Re-implementing class wrappers using the new tokens */
   
   .glass {
-    @apply bg-background/70 backdrop-blur-md border border-white/20 shadow-glass dark:bg-slate-900/70 dark:border-white/10;
+    @apply bg-card/70 backdrop-blur-md border border-border shadow-glass;
   }
 
   .btn {
@@ -101,9 +103,9 @@
   }
   
   .btn-primary {
-    @apply btn bg-gradient-to-r from-indigo-500 to-indigo-600 text-white
-           shadow-lg shadow-indigo-500/25
-           hover:shadow-xl hover:shadow-indigo-500/30 hover:-translate-y-0.5
+    @apply btn bg-gradient-to-r from-primary-500 to-primary-600 text-white
+           shadow-lg shadow-primary-500/25
+           hover:shadow-xl hover:shadow-primary-500/30 hover:-translate-y-0.5
            focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
   }
   
@@ -156,8 +158,8 @@
 
   /* WeTransfer-style transfer card */
   .transfer-card {
-    @apply bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl
-           rounded-2xl shadow-2xl border border-white/20 dark:border-slate-700/50;
+    @apply bg-card/95 backdrop-blur-xl
+           rounded-2xl shadow-2xl border border-border;
   }
 
   /* Media overlay for contrast */

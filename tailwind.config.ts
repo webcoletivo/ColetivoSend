@@ -25,8 +25,11 @@ const config: Config = {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
-          500: "hsl(247 74% 65%)",
-          600: "hsl(247 74% 55%)",
+          // Laranja plataforma Grupo Coletivo
+          300: "hsl(23 100% 71%)", // #FFA36B tom claro
+          400: "hsl(21 100% 63%)", // #FF8340 hover
+          500: "hsl(20 100% 56%)", // #FF6B1F acento primário
+          600: "hsl(20 86% 49%)",  // #E85A12
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -52,19 +55,19 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Alias 'surface' to slate for backward compatibility and premium feel
+        // Escala 'surface' recalibrada para os neutros quentes da plataforma
         surface: {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          300: '#cbd5e1',
-          400: '#94a3b8',
-          500: '#64748b',
-          600: '#475569',
-          700: '#334155',
-          800: '#1e293b',
-          900: '#0f172a',
-          950: '#020617',
+          50: '#FAF8F6',
+          100: '#F4F0EB', // texto principal (invertido no dark)
+          200: '#E5E0DA',
+          300: '#C9C2BB',
+          400: '#8F8882', // texto secundário
+          500: '#6E6762', // labels
+          600: '#55504B',
+          700: '#3A3632',
+          800: '#221F1D', // borda forte
+          900: '#131211', // superfície elevada
+          950: '#0C0B0A', // fundo geral
         },
       },
       borderRadius: {
@@ -73,8 +76,8 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Outfit', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-archivo)', 'Helvetica', 'Arial', 'sans-serif'],
+        display: ['var(--font-archivo)', 'Helvetica', 'Arial', 'sans-serif'],
       },
       fontSize: {
         'display-xl': ['4.5rem', { lineHeight: '1.1', letterSpacing: '-0.02em' }],
@@ -87,8 +90,8 @@ const config: Config = {
         'glass-lg': '0 16px 48px 0 rgba(31, 38, 135, 0.12)',
         'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
         'soft-lg': '0 10px 40px -10px rgba(0, 0, 0, 0.1), 0 20px 60px -20px rgba(0, 0, 0, 0.05)',
-        'glow': '0 0 40px -10px rgba(99, 102, 241, 0.4)',
-        'glow-accent': '0 0 40px -10px rgba(248, 59, 92, 0.4)',
+        'glow': '0 0 40px -10px rgba(255, 107, 31, 0.4)',
+        'glow-accent': '0 0 40px -10px rgba(255, 163, 107, 0.4)',
       },
       backdropBlur: {
         'glass': '16px',

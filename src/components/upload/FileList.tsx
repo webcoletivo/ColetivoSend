@@ -79,7 +79,7 @@ export function FileList({ files, onRemove, maxFiles, maxSize, readonly = false 
           style={{
             background: totalSize > maxSize * 0.9 
               ? 'linear-gradient(to right, #f59e0b, #ef4444)'
-              : 'linear-gradient(to right, #6366f1, #8b5cf6)'
+              : 'linear-gradient(to right, #FF6B1F, #FF8340)'
           }}
         />
       </div>

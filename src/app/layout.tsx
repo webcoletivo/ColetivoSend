@@ -1,21 +1,15 @@
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
-import { Inter, Outfit } from 'next/font/google'
+import { Archivo } from 'next/font/google'
 import './globals.css'
 import { ToastProvider } from '@/components/ui/Toast'
 import { SessionProvider } from '@/components/providers/SessionProvider'
 import { ThemeProvider } from '@/components/theme-provider'
 import { siteConfig } from '@/config/site'
 
-const inter = Inter({
+const archivo = Archivo({
   subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-})
-
-const outfit = Outfit({
-  subsets: ['latin'],
-  variable: '--font-outfit',
+  variable: '--font-archivo',
   display: 'swap',
 })
 
@@ -56,10 +50,10 @@ export default async function RootLayout({
   // CSP nonce set by middleware — forwarded to next-themes' inline script.
   const nonce = (await headers()).get('x-nonce') ?? undefined
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${outfit.variable}`} suppressHydrationWarning>
+    <html lang="pt-BR" className={archivo.variable} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-        <meta name="theme-color" content="#6366f1" />
+        <meta name="theme-color" content="#0C0B0A" />
         <link rel="icon" href="/icon.png" />
         {/* Unificação por abas: patch de basePath para chamadas /api absolutas
             (carrega ANTES de qualquer código do app) + barra de abas da

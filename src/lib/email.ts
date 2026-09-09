@@ -152,7 +152,7 @@ export async function sendTransferEmail(
         <!-- Logo -->
         <div style="text-align: center; margin-bottom: 32px;">
           <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #1e293b;">
-            <span style="color: #6366f1;">Coletivo</span>Send
+            <span style="color: #FF6B1F;">Coletivo</span>Send
           </h1>
         </div>
         
@@ -175,12 +175,12 @@ export async function sendTransferEmail(
           
           <!-- Button -->
           <a href="${downloadUrl}" 
-             style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px; text-align: center;">
+             style="display: inline-block; background: linear-gradient(135deg, #FF6B1F 0%, #FF8340 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px; text-align: center;">
             Baixar arquivos →
           </a>
           
           <p style="margin: 24px 0 0 0; color: #94a3b8; font-size: 14px;">
-            Ou copie este link: <a href="${downloadUrl}" style="color: #6366f1;">${downloadUrl}</a>
+            Ou copie este link: <a href="${downloadUrl}" style="color: #FF6B1F;">${downloadUrl}</a>
           </p>
         </div>
         
@@ -239,7 +239,7 @@ export async function sendVerificationEmail(
       <td>
         <div style="text-align: center; margin-bottom: 32px;">
           <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #1e293b;">
-            <span style="color: #6366f1;">Coletivo</span>Send
+            <span style="color: #FF6B1F;">Coletivo</span>Send
           </h1>
         </div>
         
@@ -252,7 +252,7 @@ export async function sendVerificationEmail(
           </p>
           
           <a href="${verifyUrl}" 
-             style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">
+             style="display: inline-block; background: linear-gradient(135deg, #FF6B1F 0%, #FF8340 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">
             Verificar e-mail →
           </a>
           
@@ -294,7 +294,7 @@ export async function sendAccountExistsEmail(
       <td>
         <div style="text-align: center; margin-bottom: 32px;">
           <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #1e293b;">
-            <span style="color: #6366f1;">Coletivo</span>Send
+            <span style="color: #FF6B1F;">Coletivo</span>Send
           </h1>
         </div>
 
@@ -311,12 +311,12 @@ export async function sendAccountExistsEmail(
           </p>
 
           <a href="${loginUrl}"
-             style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">
+             style="display: inline-block; background: linear-gradient(135deg, #FF6B1F 0%, #FF8340 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">
             Fazer login →
           </a>
 
           <p style="margin: 24px 0 0 0; color: #94a3b8; font-size: 14px;">
-            Se você esqueceu sua senha, pode redefini-la aqui: <a href="${forgotPasswordUrl}" style="color: #6366f1;">${forgotPasswordUrl}</a>
+            Se você esqueceu sua senha, pode redefini-la aqui: <a href="${forgotPasswordUrl}" style="color: #FF6B1F;">${forgotPasswordUrl}</a>
           </p>
         </div>
       </td>
@@ -354,7 +354,7 @@ export async function sendPasswordResetEmail(
       <td>
         <div style="text-align: center; margin-bottom: 32px;">
           <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #1e293b;">
-            <span style="color: #6366f1;">Coletivo</span>Send
+            <span style="color: #FF6B1F;">Coletivo</span>Send
           </h1>
         </div>
         
@@ -367,7 +367,7 @@ export async function sendPasswordResetEmail(
           </p>
           
           <a href="${resetUrl}" 
-             style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">
+             style="display: inline-block; background: linear-gradient(135deg, #FF6B1F 0%, #FF8340 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">
             Redefinir senha →
           </a>
           
