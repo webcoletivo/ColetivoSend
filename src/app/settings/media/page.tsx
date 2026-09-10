@@ -252,8 +252,9 @@ export default function MediaManagementPage() {
         )
     }
 
+    // Container/padding vêm do layout de settings (max-w-7xl px-6 py-8)
     return (
-        <div className="max-w-4xl mx-auto py-8 px-4">
+        <div className="max-w-4xl">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
                 <div>
@@ -267,7 +268,7 @@ export default function MediaManagementPage() {
 
             {/* Error */}
             {error && (
-                <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3 text-destructive">
+                <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center gap-3 text-destructive">
                     <AlertCircle className="w-5 h-5" />
                     <span>{error}</span>
                     <button onClick={() => setError(null)} className="ml-auto"><X className="w-4 h-4" /></button>
@@ -422,7 +423,7 @@ export default function MediaManagementPage() {
                         <Reorder.Item
                             key={item.id}
                             value={item}
-                            className="bg-card border border-border rounded-xl p-4 flex items-center gap-4 cursor-move"
+                            className="bg-card border border-border rounded-xl p-5 flex items-center gap-4 cursor-move"
                         >
                             <GripVertical className="w-5 h-5 text-muted-foreground flex-shrink-0" />
 

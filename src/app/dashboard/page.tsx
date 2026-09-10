@@ -163,7 +163,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-muted/30 dark:bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center" aria-label="ColetivoSend">
             <Logo priority className="h-9 w-auto" />
           </a>
@@ -182,7 +182,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Page header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
@@ -198,7 +198,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
           {isLoading ? (
             <>
               <SkeletonStatCard />
@@ -210,7 +210,7 @@ export default function DashboardPage() {
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="card p-4 flex items-center gap-4"
+                className="card p-5 flex items-center gap-4"
               >
                 <div className="w-12 h-12 rounded-xl bg-primary-500/10 text-primary-500 flex items-center justify-center">
                   <FileIcon className="w-6 h-6" />
@@ -225,7 +225,7 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="card p-4 flex items-center gap-4"
+                className="card p-5 flex items-center gap-4"
               >
                 <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
                   <CheckCircle className="w-6 h-6" />
@@ -240,7 +240,7 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="card p-4 flex items-center gap-4"
+                className="card p-5 flex items-center gap-4"
               >
                 <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
                   <Clock className="w-6 h-6" />
@@ -281,7 +281,7 @@ export default function DashboardPage() {
         ) : (
           <div className="space-y-3">
             {/* Table header (desktop) */}
-            <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-sm font-medium text-muted-foreground">
+            <div className="hidden md:grid grid-cols-12 gap-4 px-5 py-2 text-sm font-medium text-muted-foreground">
               <div className="col-span-4">Envio</div>
               <div className="col-span-2">Arquivos</div>
               <div className="col-span-2">Status</div>
@@ -298,7 +298,7 @@ export default function DashboardPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="card p-4 hover:shadow-md transition-shadow"
+                  className="card p-5 hover:shadow-md transition-shadow"
                 >
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                     {/* Info */}

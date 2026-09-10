@@ -50,7 +50,7 @@ export function SkeletonCard({ className }: SkeletonProps) {
 
 export function SkeletonStatCard() {
   return (
-    <div className="card p-4 flex items-center gap-4">
+    <div className="card p-5 flex items-center gap-4">
       <Skeleton className="w-12 h-12 rounded-xl" />
       <div className="space-y-2">
         <Skeleton className="h-4 w-24" />
@@ -64,7 +64,7 @@ export function SkeletonTable({ rows = 5 }: { rows?: number }) {
   return (
     <div className="space-y-3">
       {/* Header */}
-      <div className="flex gap-4 px-4 py-3">
+      <div className="flex gap-4 px-5 py-3">
         <Skeleton className="h-4 w-1/4" />
         <Skeleton className="h-4 w-1/4" />
         <Skeleton className="h-4 w-1/4" />
@@ -72,7 +72,7 @@ export function SkeletonTable({ rows = 5 }: { rows?: number }) {
       </div>
       {/* Rows */}
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="flex gap-4 px-4 py-4 bg-card rounded-xl border border-border">
+        <div key={i} className="flex gap-4 px-5 py-5 bg-card rounded-xl border border-border">
           <Skeleton className="h-4 w-1/4" />
           <Skeleton className="h-4 w-1/4" />
           <Skeleton className="h-4 w-1/4" />
