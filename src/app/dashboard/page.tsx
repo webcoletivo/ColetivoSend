@@ -212,7 +212,7 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="card p-5 flex items-center gap-4"
               >
-                <div className="w-10 h-10 rounded-lg bg-[#131211] border border-[#1C1A18] text-primary-400 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-muted border border-border text-primary-400 flex items-center justify-center">
                   <FileIcon className="w-5 h-5" />
                 </div>
                 <div>
@@ -227,7 +227,7 @@ export default function DashboardPage() {
                 transition={{ delay: 0.1 }}
                 className="card p-5 flex items-center gap-4"
               >
-                <div className="w-10 h-10 rounded-lg bg-[#131211] border border-[#1C1A18] text-emerald-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-muted border border-border text-emerald-500 flex items-center justify-center">
                   <CheckCircle className="w-5 h-5" />
                 </div>
                 <div>
@@ -242,7 +242,7 @@ export default function DashboardPage() {
                 transition={{ delay: 0.2 }}
                 className="card p-5 flex items-center gap-4"
               >
-                <div className="w-10 h-10 rounded-lg bg-[#131211] border border-[#1C1A18] text-amber-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-muted border border-border text-amber-500 flex items-center justify-center">
                   <Clock className="w-5 h-5" />
                 </div>
                 <div>

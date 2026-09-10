@@ -35,10 +35,10 @@ export function Button({
       focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FF6B1F]
     `,
     secondary: `
-      bg-[#0F0E0D] text-[#F4F0EB] border border-[#1C1A18]
-      hover:bg-[#131211]
+      bg-card text-foreground border border-border
+      hover:bg-muted
     `,
-    ghost: 'text-[#C9C3BB] hover:bg-[#131211] hover:text-[#F4F0EB]',
+    ghost: 'text-muted-foreground hover:bg-muted hover:text-foreground',
     danger: `
       bg-[#E5484D] text-white
       hover:bg-[#F0665C]

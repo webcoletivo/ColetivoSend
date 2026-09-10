@@ -5,35 +5,35 @@
 @tailwind utilities;
 
 @layer base {
-  /* Design system Grupo Coletivo (plataforma unificada) — tema escuro canônico.
-     :root e .dark compartilham os mesmos tokens: o Send segue o tema da plataforma. */
+  /* Design system Grupo Coletivo (plataforma unificada).
+     Modo claro clássico em :root (claro é claro); tema escuro canônico em .dark. */
   :root {
-    --background: 30 9% 4.3%; /* #0C0B0A fundo geral */
-    --foreground: 33 29% 93.9%; /* #F4F0EB texto principal */
+    --background: 60 10% 96.1%; /* #F6F6F4 fundo geral */
+    --foreground: 60 3.7% 10.6%; /* #1C1C1A texto principal */
 
-    --card: 30 7% 5.5%; /* #0F0E0D painel/card */
-    --card-foreground: 33 29% 93.9%;
+    --card: 0 0% 100%; /* #FFFFFF painel/card */
+    --card-foreground: 60 3.7% 10.6%;
 
-    --popover: 30 6% 7.1%; /* #131211 superfície elevada */
-    --popover-foreground: 33 29% 93.9%;
+    --popover: 0 0% 100%; /* #FFFFFF superfície elevada */
+    --popover-foreground: 60 3.7% 10.6%;
 
     --primary: 20 100% 56%; /* #FF6B1F laranja plataforma */
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 37 70% 6.5%; /* #1C1305 texto escuro sobre laranja */
 
-    --secondary: 30 6% 7.1%; /* #131211 */
-    --secondary-foreground: 33 29% 93.9%;
+    --secondary: 60 5% 92.2%; /* #ECECEA */
+    --secondary-foreground: 60 3.7% 10.6%;
 
-    --muted: 30 7% 5.9%; /* #100F0E tile */
-    --muted-foreground: 28 5% 53.5%; /* #8F8882 texto secundário */
+    --muted: 60 5% 92.2%; /* #ECECEA tile */
+    --muted-foreground: 60 2.4% 41%; /* #6B6B66 texto secundário */
 
-    --accent: 23 100% 71%; /* #FFA36B tom claro do laranja */
-    --accent-foreground: 30 9% 4.3%;
+    --accent: 22 100% 92.9%; /* #FFE8DB laranja claro legível */
+    --accent-foreground: 20 80% 25%; /* laranja escuro para contraste */
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 30 8% 10.2%; /* #1C1A18 borda principal */
-    --input: 30 8% 10.2%;
+    --border: 60 4.9% 88%; /* #E2E2DF borda principal */
+    --input: 60 4.9% 88%;
     --ring: 20 100% 56%; /* #FF6B1F foco */
 
     --radius: 0.75rem;
