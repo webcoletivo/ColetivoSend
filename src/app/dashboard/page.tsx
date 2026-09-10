@@ -86,7 +86,7 @@ export default function DashboardPage() {
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
       </div>
     )
   }
@@ -198,6 +198,12 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats cards */}
+        <div className="mb-3 flex items-center gap-3">
+          <p className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Resumo
+          </p>
+          <div className="h-px flex-1 bg-border" />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
           {isLoading ? (
             <>
@@ -212,7 +218,7 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="card p-5 flex items-center gap-4"
               >
-                <div className="w-10 h-10 rounded-lg bg-muted border border-border text-primary-400 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-muted border border-border text-primary flex items-center justify-center">
                   <FileIcon className="w-5 h-5" />
                 </div>
                 <div>
@@ -304,7 +310,7 @@ export default function DashboardPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="card p-5 hover:shadow-md transition-shadow"
+                  className="card p-5 transition-colors hover:bg-muted/30"
                 >
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                     {/* Info */}

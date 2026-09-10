@@ -95,40 +95,38 @@
     @apply bg-card/70 backdrop-blur-md border border-border shadow-glass;
   }
 
+  /* Vocabulário canônico de botões do sistema unificado:
+     sólidos, sem gradiente/glow/translate/scale, foco via ring laranja. */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm
-           transition-all duration-300 ease-out
+    @apply inline-flex items-center justify-center gap-2 h-10 px-5 rounded-xl font-semibold text-sm
+           transition-colors duration-200
            disabled:opacity-50 disabled:cursor-not-allowed
-           active:scale-[0.98] ring-offset-background;
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
+           focus-visible:ring-offset-2 ring-offset-background;
   }
-  
-  /* Padrão unificado: laranja sólido, texto escuro, sem gradiente nem glow */
+
   .btn-primary {
-    @apply btn bg-[#FF6B1F] text-[#131211] hover:bg-[#FF8340]
-           focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+    @apply btn bg-primary text-primary-foreground hover:bg-primary/90;
   }
-  
+
   .btn-secondary {
-    @apply btn bg-secondary text-secondary-foreground border border-input
-           shadow-sm hover:shadow-md hover:bg-secondary/80 hover:-translate-y-0.5;
+    @apply btn bg-card text-foreground border border-border hover:bg-muted;
   }
-  
+
   .btn-ghost {
-    @apply btn hover:bg-accent hover:text-accent-foreground;
+    @apply btn text-muted-foreground hover:bg-muted hover:text-foreground;
   }
-  
+
   .btn-danger {
-    @apply btn bg-destructive text-destructive-foreground
-           shadow-lg shadow-red-500/25
-           hover:shadow-xl hover:shadow-red-500/30 hover:-translate-y-0.5;
+    @apply btn bg-destructive text-destructive-foreground hover:bg-destructive/90;
   }
-  
+
   .input {
-    @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply flex h-10 w-full rounded-lg border border-border bg-card px-4 py-2 text-sm text-foreground file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50;
   }
-  
+
   .card {
-     @apply rounded-xl border bg-card text-card-foreground shadow-sm;
+     @apply rounded-xl border border-border bg-card text-card-foreground;
   }
   
   /* Dropzone adaptation */
@@ -153,6 +151,23 @@
   
   .badge {
      @apply inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  }
+
+  /* Variantes de status (theme-aware nos dois temas) */
+  .badge-success {
+    @apply border-transparent bg-emerald-500/15 text-emerald-600 dark:text-emerald-400;
+  }
+
+  .badge-warning {
+    @apply border-transparent bg-amber-500/15 text-amber-600 dark:text-amber-400;
+  }
+
+  .badge-danger {
+    @apply border-transparent bg-destructive/15 text-destructive dark:text-red-400;
+  }
+
+  .badge-info {
+    @apply border-transparent bg-muted text-muted-foreground;
   }
 
   /* WeTransfer-style transfer card */

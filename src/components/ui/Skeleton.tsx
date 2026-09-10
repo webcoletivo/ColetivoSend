@@ -85,7 +85,7 @@ export function SkeletonTable({ rows = 5 }: { rows?: number }) {
 
 export function SkeletonUploader() {
   return (
-    <div className="p-8 border-2 border-dashed border-surface-200 rounded-2xl">
+    <div className="p-8 border-2 border-dashed border-border rounded-xl">
       <div className="flex flex-col items-center gap-4">
         <Skeleton className="w-16 h-16 rounded-full" />
         <Skeleton className="h-6 w-48" />

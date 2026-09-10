@@ -76,7 +76,7 @@ export function UserMenu() {
       >
         <UserAvatar user={user} size="md" priority />
         <div className="hidden md:block text-left mr-1">
-          <p className="text-sm font-semibold text-foreground group-hover:text-primary-500 transition-colors">
+          <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
             {user.name}
           </p>
           <p className="text-xs text-muted-foreground truncate max-w-[120px]">

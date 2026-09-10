@@ -3,6 +3,16 @@
 import React from 'react'
 import { cn } from '@/lib/utils'
 
+// Vocabulário canônico de campos do sistema unificado: h-10, rounded-lg,
+// bg-card, border-border e foco com ring laranja (theme-aware nos dois temas).
+const fieldBase =
+  'w-full rounded-lg border bg-card text-foreground placeholder:text-muted-foreground transition-colors duration-200 focus:outline-none focus:ring-2 disabled:bg-muted disabled:cursor-not-allowed'
+
+const fieldFocus = 'border-border focus:border-primary focus:ring-ring'
+const fieldError = 'border-destructive focus:border-destructive focus:ring-destructive'
+
+const labelBase = 'block text-sm font-medium text-foreground'
+
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string
   error?: string
@@ -22,31 +32,22 @@ export function Input({
   return (
     <div className="space-y-2">
       {label && (
-        <label 
-          htmlFor={inputId}
-          className="block text-sm font-medium text-surface-700 dark:text-surface-300"
-        >
+        <label htmlFor={inputId} className={labelBase}>
           {label}
         </label>
       )}
       <input
         id={inputId}
         className={cn(
-          'w-full px-4 py-3 rounded-xl border bg-background text-foreground placeholder:text-muted-foreground',
-          'transition-all duration-200',
-          'focus:outline-none focus:ring-4',
-          error 
-            ? 'border-red-500 focus:border-red-500 focus:ring-red-500/10' 
-            : 'border-input focus:border-primary-500 focus:ring-primary-500/10',
-          'disabled:bg-muted disabled:cursor-not-allowed',
-          // Dark mode specific adjustments for premium feel (slightly lighter background for inputs)
-          'dark:bg-secondary/20 dark:border-input dark:text-foreground',
+          fieldBase,
+          'h-10 px-4',
+          error ? fieldError : fieldFocus,
           className
         )}
         {...props}
       />
       {error && (
-        <p className="text-sm text-red-500 flex items-center gap-1">
+        <p className="text-sm text-destructive flex items-center gap-1">
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
@@ -54,7 +55,7 @@ export function Input({
         </p>
       )}
       {hint && !error && (
-        <p className="text-sm text-surface-500">{hint}</p>
+        <p className="text-sm text-muted-foreground">{hint}</p>
       )}
     </div>
   )
@@ -79,33 +80,25 @@ export function Textarea({
   return (
     <div className="space-y-2">
       {label && (
-        <label 
-          htmlFor={inputId}
-          className="block text-sm font-medium text-surface-700 dark:text-surface-300"
-        >
+        <label htmlFor={inputId} className={labelBase}>
           {label}
         </label>
       )}
       <textarea
         id={inputId}
         className={cn(
-          'w-full px-4 py-3 rounded-xl border bg-background text-foreground placeholder:text-muted-foreground',
-          'transition-all duration-200 resize-none',
-          'focus:outline-none focus:ring-4',
-          error 
-            ? 'border-red-500 focus:border-red-500 focus:ring-red-500/10' 
-            : 'border-input focus:border-primary-500 focus:ring-primary-500/10',
-          'disabled:bg-muted disabled:cursor-not-allowed',
-          'dark:bg-secondary/20 dark:border-input dark:text-foreground',
+          fieldBase,
+          'px-4 py-2.5 resize-none',
+          error ? fieldError : fieldFocus,
           className
         )}
         {...props}
       />
       {error && (
-        <p className="text-sm text-red-500">{error}</p>
+        <p className="text-sm text-destructive">{error}</p>
       )}
       {hint && !error && (
-        <p className="text-sm text-surface-500">{hint}</p>
+        <p className="text-sm text-muted-foreground">{hint}</p>
       )}
     </div>
   )
@@ -130,23 +123,16 @@ export function Select({
   return (
     <div className="space-y-2">
       {label && (
-        <label 
-          htmlFor={inputId}
-          className="block text-sm font-medium text-surface-700 dark:text-surface-300"
-        >
+        <label htmlFor={inputId} className={labelBase}>
           {label}
         </label>
       )}
       <select
         id={inputId}
         className={cn(
-          'w-full px-4 py-3 rounded-xl border bg-background text-foreground',
-          'transition-all duration-200 appearance-none cursor-pointer',
-          'focus:outline-none focus:ring-4',
-          error 
-            ? 'border-red-500 focus:border-red-500 focus:ring-red-500/10' 
-            : 'border-input focus:border-primary-500 focus:ring-primary-500/10',
-          'dark:bg-secondary/20 dark:border-input dark:text-foreground',
+          fieldBase,
+          'h-10 px-4 appearance-none cursor-pointer',
+          error ? fieldError : fieldFocus,
           className
         )}
         style={{
@@ -165,7 +151,7 @@ export function Select({
         ))}
       </select>
       {error && (
-        <p className="text-sm text-red-500">{error}</p>
+        <p className="text-sm text-destructive">{error}</p>
       )}
     </div>
   )
@@ -179,7 +165,7 @@ export function Checkbox({ label, className, id, ...props }: CheckboxProps) {
   const inputId = id || label.toLowerCase().replace(/\s/g, '-')
 
   return (
-    <label 
+    <label
       htmlFor={inputId}
       className="flex items-center gap-3 cursor-pointer group"
     >
@@ -188,17 +174,16 @@ export function Checkbox({ label, className, id, ...props }: CheckboxProps) {
           type="checkbox"
           id={inputId}
           className={cn(
-            'peer w-5 h-5 rounded-md border-2 border-input bg-background',
-            'transition-all duration-200 cursor-pointer appearance-none',
-            'checked:bg-primary-500 checked:border-primary-500',
-            'focus:outline-none focus:ring-4 focus:ring-primary-500/20',
-            'dark:bg-surface-800 dark:border-surface-600',
+            'peer w-5 h-5 rounded-md border-2 border-border bg-card',
+            'transition-colors duration-200 cursor-pointer appearance-none',
+            'checked:bg-primary checked:border-primary',
+            'focus:outline-none focus:ring-2 focus:ring-ring',
             className
           )}
           {...props}
         />
         <svg
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 text-primary-foreground opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -207,7 +192,7 @@ export function Checkbox({ label, className, id, ...props }: CheckboxProps) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
       </div>
-      <span className="text-sm text-muted-foreground group-hover:text-foreground dark:text-muted-foreground">
+      <span className="text-sm text-muted-foreground group-hover:text-foreground">
         {label}
       </span>
     </label>

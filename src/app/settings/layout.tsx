@@ -37,7 +37,7 @@ export default function SettingsLayout({
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -81,19 +81,19 @@ export default function SettingsLayout({
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
-                        ? 'bg-primary-500/10 text-primary-500 border border-primary-500/20'
-                        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                        ? 'bg-primary/10 text-primary border border-primary/20'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                       }`}
                   >
-                    <item.icon className={`w-5 h-5 ${isActive ? 'text-primary-500' : 'text-surface-400'}`} />
+                    <item.icon className={`w-5 h-5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
                     <div className="flex-1">
                       <p className="font-medium text-sm">{item.label}</p>
-                      <p className={`text-xs ${isActive ? 'text-primary-500/70' : 'text-surface-400'}`}>
+                      <p className={`text-xs ${isActive ? 'text-primary/70' : 'text-muted-foreground/70'}`}>
                         {item.description}
                       </p>
                     </div>
-                    <ChevronRight className={`w-4 h-4 ${isActive ? 'text-primary-400' : 'text-surface-300'}`} />
+                    <ChevronRight className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-muted-foreground/50'}`} />
                   </Link>
                 )
               })}

@@ -284,7 +284,12 @@ export default function MediaManagementPage() {
                         exit={{ opacity: 0, height: 0 }}
                         className="mb-6 p-6 bg-card border border-border rounded-xl overflow-hidden"
                     >
-                        <h3 className="font-semibold mb-4">Nova mídia</h3>
+                        <div className="mb-4 flex items-center gap-3">
+                            <p className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                Nova mídia
+                            </p>
+                            <div className="h-px flex-1 bg-border" />
+                        </div>
 
                         <div className="space-y-4">
                             {/* File input */}
@@ -319,6 +324,7 @@ export default function MediaManagementPage() {
                                             <label className="flex items-center gap-2">
                                                 <input
                                                     type="radio"
+                                                    className="accent-primary"
                                                     checked={!uploadIsPromo}
                                                     onChange={() => setUploadIsPromo(false)}
                                                 />
@@ -327,6 +333,7 @@ export default function MediaManagementPage() {
                                             <label className="flex items-center gap-2">
                                                 <input
                                                     type="radio"
+                                                    className="accent-primary"
                                                     checked={uploadIsPromo}
                                                     onChange={() => setUploadIsPromo(true)}
                                                 />
@@ -412,6 +419,12 @@ export default function MediaManagementPage() {
             )}
 
             {/* Media list */}
+            <div className="mb-3 flex items-center gap-3">
+                <p className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Mídias
+                </p>
+                <div className="h-px flex-1 bg-border" />
+            </div>
             {items.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                     <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
