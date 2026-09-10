@@ -212,8 +212,8 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="card p-5 flex items-center gap-4"
               >
-                <div className="w-12 h-12 rounded-xl bg-primary-500/10 text-primary-500 flex items-center justify-center">
-                  <FileIcon className="w-6 h-6" />
+                <div className="w-10 h-10 rounded-lg bg-[#131211] border border-[#1C1A18] text-primary-400 flex items-center justify-center">
+                  <FileIcon className="w-5 h-5" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Total de envios</p>
@@ -227,8 +227,8 @@ export default function DashboardPage() {
                 transition={{ delay: 0.1 }}
                 className="card p-5 flex items-center gap-4"
               >
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                  <CheckCircle className="w-6 h-6" />
+                <div className="w-10 h-10 rounded-lg bg-[#131211] border border-[#1C1A18] text-emerald-500 flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Ativos</p>
@@ -242,8 +242,8 @@ export default function DashboardPage() {
                 transition={{ delay: 0.2 }}
                 className="card p-5 flex items-center gap-4"
               >
-                <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                  <Clock className="w-6 h-6" />
+                <div className="w-10 h-10 rounded-lg bg-[#131211] border border-[#1C1A18] text-amber-500 flex items-center justify-center">
+                  <Clock className="w-5 h-5" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Expirados</p>
@@ -255,6 +255,12 @@ export default function DashboardPage() {
         </div>
 
         {/* Transfers list */}
+        <div className="mb-3 flex items-center gap-3">
+          <p className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Envios
+          </p>
+          <div className="h-px flex-1 bg-border" />
+        </div>
         {isLoading ? (
           <SkeletonTable rows={5} />
         ) : transfers.length === 0 ? (
