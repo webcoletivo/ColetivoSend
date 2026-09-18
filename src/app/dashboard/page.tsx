@@ -187,7 +187,7 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Meus envios</h1>
-            <p className="text-muted-foreground">Gerencie todos os seus transfers</p>
+            <p className="text-muted-foreground">Gerencie todos os seus envios</p>
           </div>
 
           <a href="/">
