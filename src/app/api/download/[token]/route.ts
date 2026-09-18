@@ -3,6 +3,7 @@ import prisma from '@/lib/db'
 import { verifyPassword } from '@/lib/security'
 import { generatePresignedDownloadUrl } from '@/lib/storage'
 import { isExpired } from '@/lib/utils'
+import { checkRateLimit } from '@/lib/ratelimit'
 
 // Get transfer info by share token (public)
 export async function GET(
@@ -98,6 +99,21 @@ export async function POST(
   try {
     const body = await request.json()
     const { password, fileId } = body
+
+    // Brute-force: mesmo motivo e mesmos números do /transfer/[token]/unlock —
+    // esta rota também devolve URLs de download quando a senha confere, e o
+    // limitador do middleware não a cobre. Senha mínima tem 4 caracteres;
+    // sem isto, dá para varrer o espaço inteiro sem freio.
+    const ip = (request.headers.get('x-forwarded-for')?.split(',')[0].trim())
+      || request.headers.get('x-real-ip')
+      || 'unknown'
+    const rl = await checkRateLimit(`download:${ip}:${params.token}`, 5, 60)
+    if (!rl.success) {
+      return NextResponse.json(
+        { error: 'Muitas tentativas. Aguarde um momento.' },
+        { status: 429 }
+      )
+    }
 
     const transfer = await prisma.transfer.findUnique({
       where: { shareToken: params.token },

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { uploadChunk, getUploadProgress, listUploadedParts, completeMultipartUpload, abortMultipartUpload } from '@/lib/upload-session'
+import { uploadChunk, getUploadProgress, listUploadedParts, abortMultipartUpload, exigirDonoDaSessao } from '@/lib/upload-session'
 
 // Configure route to accept larger payloads (chunks up to 10MB)
 export const runtime = 'nodejs'
@@ -30,6 +30,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
         }
 
         const { sessionId } = await context.params
+        await exigirDonoDaSessao(sessionId, userId) // IDOR: sessão é de quem criou
         const partNumberHeader = request.headers.get('x-part-number')
 
         if (!partNumberHeader) {
@@ -119,6 +120,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
         }
 
         const { sessionId } = await context.params
+        await exigirDonoDaSessao(sessionId, userId) // IDOR: sessão é de quem criou
 
         // Get progress
         const progress = await getUploadProgress(sessionId)
@@ -171,6 +173,7 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
         }
 
         const { sessionId } = await context.params
+        await exigirDonoDaSessao(sessionId, userId) // IDOR: só o dono aborta
 
         await abortMultipartUpload(sessionId)
 

@@ -4,6 +4,7 @@ import { sendTransferEmail } from '@/lib/email'
 import { formatBytes } from '@/lib/utils'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { checkRateLimit } from '@/lib/ratelimit'
 
 export async function POST(
   request: NextRequest,
@@ -12,17 +13,28 @@ export async function POST(
   const { id: transferId } = await params
 
   try {
+    // Disparo de e-mail é do DONO, não de quem tem o link: o id interno vaza
+    // pela rota pública GET /api/transfer/[token], e sem esta checagem qualquer
+    // pessoa com o link reenviava o aviso ao destinatário à vontade (spam).
     const session = await getServerSession(authOptions)
-    // Optional: add authorization check if needed, but transfers are public by shareToken or private by owner.
-    // For now, we'll allow anyone who knows the ID to trigger the email if it was configured in finalize.
-    // Actually, it's safer to check if the transfer exists and belongs to the user or was just created.
+    const userId = session?.user?.id
+    if (!userId) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+
+    // Mesmo o dono não precisa reenviar mais que algumas vezes por minuto.
+    const rl = await checkRateLimit(`transfer-email:${userId}:${transferId}`, 3, 60)
+    if (!rl.success) {
+      return NextResponse.json({ error: 'Muitos reenvios. Aguarde um momento.' }, { status: 429 })
+    }
 
     const transfer = await prisma.transfer.findUnique({
       where: { id: transferId },
       include: { files: true }
     })
 
-    if (!transfer) {
+    if (!transfer || transfer.ownerUserId !== userId) {
+      // 404 também para dono errado: não confirmar a existência do id.
       return NextResponse.json({ error: 'Transferência não encontrada' }, { status: 404 })
     }
 
@@ -107,9 +119,9 @@ export async function POST(
 
   } catch (error: any) {
     console.error('Outer email route error:', error)
+    // Stack trace fica no log do servidor, nunca na resposta.
     return NextResponse.json({
-      error: `DEBUG: Erro interno no servidor de e-mail: ${error.message}`,
-      details: error.stack,
+      error: 'Erro interno no servidor de e-mail',
       code: 'INTERNAL_SERVER_ERROR'
     }, { status: 500 })
   }

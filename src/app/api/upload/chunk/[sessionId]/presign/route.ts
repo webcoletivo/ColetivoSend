@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { getPresignedPartUrlForSession } from '@/lib/upload-session'
+import { getPresignedPartUrlForSession, exigirDonoDaSessao } from '@/lib/upload-session'
 
 interface RouteParams {
     params: Promise<{
@@ -22,6 +22,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
         }
 
         const { sessionId } = await context.params
+        await exigirDonoDaSessao(sessionId, userId) // IDOR: sessão é de quem criou
         const { searchParams } = new URL(request.url)
         const partNumber = parseInt(searchParams.get('partNumber') || '1')
 

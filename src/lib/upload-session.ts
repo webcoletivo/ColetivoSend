@@ -115,6 +115,24 @@ export async function initializeMultipartUpload(
 }
 
 /**
+ * A sessão de upload pertence a quem a criou. Sem esta checagem, qualquer
+ * usuário logado que descobrisse o sessionId de outro (log, referrer) podia
+ * enviar partes, ler progresso ou ABORTAR o upload alheio (IDOR).
+ *
+ * Devolve 404-equivalente também quando a sessão é de outro dono — não
+ * confirmar a existência do id para quem não é o dono.
+ */
+export async function exigirDonoDaSessao(sessionId: string, userId: string): Promise<void> {
+    const session = await prisma.uploadSession.findUnique({
+        where: { id: sessionId },
+        select: { userId: true },
+    })
+    if (!session || (session.userId && session.userId !== userId)) {
+        throw new Error('Upload session not found')
+    }
+}
+
+/**
  * Upload a single chunk/part
  */
 export async function uploadChunk(

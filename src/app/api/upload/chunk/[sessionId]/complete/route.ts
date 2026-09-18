@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { completeMultipartUpload } from '@/lib/upload-session'
+import { completeMultipartUpload, exigirDonoDaSessao } from '@/lib/upload-session'
 
 interface RouteParams {
     params: Promise<{
@@ -22,6 +22,7 @@ export async function POST(request: NextRequest, context: RouteParams) {
         }
 
         const { sessionId } = await context.params
+        await exigirDonoDaSessao(sessionId, userId) // IDOR: sessão é de quem criou
 
         // Complete multipart upload
         const result = await completeMultipartUpload(sessionId)
