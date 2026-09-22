@@ -5,6 +5,9 @@ node_modules/
 
 # Testing
 coverage/
+# E2E de produção: sessão salva e traces/prints de falha (podem expor dados)
+tests/e2e-producao/.auth/
+tests/e2e-producao/resultados/
 
 # Next.js
 .next/
