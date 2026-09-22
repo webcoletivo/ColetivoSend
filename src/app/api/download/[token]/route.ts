@@ -196,8 +196,12 @@ export async function POST(
       data: { downloadCount: { increment: 1 } }
     })
 
-    // Notificação unificada ao dono (sino da plataforma) — nunca bloqueia o download
+    // Notificação unificada ao dono (sino da plataforma) — nunca bloqueia o download.
+    // Um aviso por pessoa (IP) e por link a cada hora: quem baixa os arquivos
+    // um a um não gera um e-mail por clique.
+    const aviso = await checkRateLimit(`download-aviso:${ip}:${params.token}`, 1, 3600)
     void (async () => {
+      if (!aviso.success) return
       const base = process.env.PLATFORM_URL
       const segredo = process.env.NOTIFY_SERVICE_SECRET
       if (!base || !segredo || !transfer.ownerUserId) return
