@@ -1,18 +1,17 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
 import {
-  User,
-  Shield,
   ArrowLeft,
   ChevronRight,
   Image as ImageIcon
 } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
+import { BASE_PATH, entrarPelaPlataforma } from '@/lib/sso-client'
 
 // Unificação: perfil e segurança vivem em "Sua conta", na plataforma.
 // Aqui fica só o que é do Send.
@@ -34,6 +33,12 @@ export default function SettingsLayout({
   const { data: session, status } = useSession()
   const pathname = usePathname()
 
+  // Sessão local caiu no meio do uso: volta pela ponte SSO para a MESMA tela
+  // (usePathname vem sem basePath) — navegação inteira de propósito.
+  useEffect(() => {
+    if (status === 'unauthenticated') entrarPelaPlataforma(`${BASE_PATH}${pathname}`)
+  }, [status, pathname])
+
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -42,12 +47,7 @@ export default function SettingsLayout({
     )
   }
 
-  if (!session?.user) {
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login?callbackUrl=/settings/profile'
-    }
-    return null
-  }
+  if (!session?.user) return null
 
   return (
     <div className="min-h-screen bg-background">

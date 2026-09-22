@@ -1,11 +1,14 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Check, Copy, Link2, Mail, Plus, QrCode, ExternalLink } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 import { Button } from '@/components/ui/Button'
 import { formatBytes } from '@/lib/utils'
+import { BASE_PATH } from '@/lib/sso-client'
 
 interface TransferData {
   shareToken: string
@@ -18,6 +21,7 @@ interface TransferData {
 }
 
 export default function SuccessPage() {
+  const router = useRouter()
   const [transfer, setTransfer] = useState<TransferData | null>(null)
   const [copied, setCopied] = useState(false)
   const [showQR, setShowQR] = useState(false)
@@ -30,9 +34,10 @@ export default function SuccessPage() {
       sessionStorage.removeItem('uploadedFiles')
       sessionStorage.removeItem('lastTransfer')
     } else {
-      window.location.href = '/'
+      // Sem envio na sessão: volta à home do Send (router ganha o basePath; <a>/location não).
+      router.replace('/')
     }
-  }, [])
+  }, [router])
 
   if (!transfer) {
     return (
@@ -42,7 +47,7 @@ export default function SuccessPage() {
     )
   }
 
-  const downloadUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}${process.env.NEXT_PUBLIC_BASE_PATH ?? '/send'}/d/${transfer.shareToken}`
+  const downloadUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}${BASE_PATH}/d/${transfer.shareToken}`
   const totalSize = transfer.files.reduce((acc, f) => acc + f.size, 0)
   const expirationDate = new Date()
   expirationDate.setDate(expirationDate.getDate() + transfer.expirationDays)
@@ -61,9 +66,9 @@ export default function SuccessPage() {
     <div className="min-h-screen py-12 px-6">
       {/* Header */}
       <header className="max-w-lg mx-auto text-center mb-8">
-        <a href="/" className="inline-flex items-center mb-8" aria-label="ColetivoSend">
+        <Link href="/" className="inline-flex items-center mb-8" aria-label="ColetivoSend">
           <Logo priority className="h-9 w-auto" />
-        </a>
+        </Link>
       </header>
 
       <main className="max-w-lg mx-auto">
@@ -220,7 +225,7 @@ export default function SuccessPage() {
             transition={{ delay: 0.7 }}
             className="mt-8 pt-6 border-t border-surface-200"
           >
-            <a href="/">
+            <Link href="/">
               <Button
                 variant="primary"
                 icon={<Plus className="w-4 h-4" />}
@@ -228,7 +233,7 @@ export default function SuccessPage() {
               >
                 Criar novo envio
               </Button>
-            </a>
+            </Link>
           </motion.div>
         </motion.div>
       </main>

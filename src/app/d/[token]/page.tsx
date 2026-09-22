@@ -147,8 +147,21 @@ export default function DownloadPage() {
     }
   }
 
+  // Conta o download e avisa o dono (sino + e-mail da plataforma). As URLs
+  // presignadas já estão em mãos, então a rota só registra: dispara sem
+  // esperar e sem bloquear o clique — falha aqui nunca impede o download.
+  const registrarDownload = (fileId?: string) => {
+    fetch(`/api/download/${params.token}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileId, password: password || undefined }),
+      keepalive: true,
+    }).catch(() => {})
+  }
+
   const handleDownloadFile = (file: TransferFile) => {
     setBaixando(file.id)
+    registrarDownload(file.id)
     dispararDownload(file.downloadUrl)
     setTimeout(() => setBaixando(null), 900)
   }
@@ -156,6 +169,7 @@ export default function DownloadPage() {
   const handleDownloadAll = async () => {
     if (!transfer || baixandoTodos) return
     setBaixandoTodos(true)
+    registrarDownload()
     try {
       for (const [i, file] of transfer.files.entries()) {
         setProgresso(i + 1)

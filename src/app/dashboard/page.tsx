@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -14,10 +15,14 @@ import { Logo } from '@/components/ui/Logo'
 import { SkeletonTable, SkeletonStatCard } from '@/components/ui/Skeleton'
 import { formatBytes, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
+import { BASE_PATH, entrarPelaPlataforma } from '@/lib/sso-client'
 
 // Links públicos precisam do basePath: <a> puro e window.location.origin não
 // ganham o prefixo /send automaticamente (só o <Link> do Next ganha).
-const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? '/send'
+
+// Views/downloads mudam por ação de quem recebe o link: atualização leve em
+// segundo plano, só com a aba visível, mais refetch ao voltar para a aba.
+const INTERVALO_ATUALIZACAO_MS = 30_000
 
 interface Transfer {
   id: string
@@ -48,13 +53,15 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
-  const [isRefreshing, setIsRefreshing] = useState(false)
+  const buscando = useRef(false)
+  const logado = !!session?.user
 
-  // Fetch data
-  const fetchData = React.useCallback(async () => {
+  // Busca lista + resumo. `silencioso` = atualização em segundo plano: sem
+  // toast de erro (uma oscilação de rede não pode ficar avisando a cada ciclo).
+  const fetchData = React.useCallback(async (silencioso = false) => {
+    if (buscando.current) return
+    buscando.current = true
     try {
-      setIsRefreshing(true)
-
       const [statsRes, transfersRes] = await Promise.all([
         fetch('/api/dashboard/stats'),
         fetch('/api/transfers?limit=50') // Initial limit
@@ -69,18 +76,38 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
-      showToast('Erro ao carregar dados', 'error')
+      if (!silencioso) showToast('Erro ao carregar dados', 'error')
     } finally {
+      buscando.current = false
       setIsLoading(false)
-      setIsRefreshing(false)
     }
   }, [showToast])
 
   useEffect(() => {
-    if (session?.user) {
-      fetchData()
+    if (logado) fetchData()
+  }, [logado, fetchData])
+
+  // Polling leve + refetch ao voltar para a aba, só enquanto ela está visível.
+  useEffect(() => {
+    if (!logado) return
+    const atualizar = () => {
+      if (document.visibilityState === 'visible') fetchData(true)
     }
-  }, [session, fetchData])
+    const timer = window.setInterval(atualizar, INTERVALO_ATUALIZACAO_MS)
+    document.addEventListener('visibilitychange', atualizar)
+    window.addEventListener('focus', atualizar)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', atualizar)
+      window.removeEventListener('focus', atualizar)
+    }
+  }, [logado, fetchData])
+
+  // Sessão local caiu no meio do uso: volta pela ponte SSO (que revalida a
+  // sessão central e devolve para cá) — navegação inteira de propósito.
+  useEffect(() => {
+    if (status === 'unauthenticated') entrarPelaPlataforma(`${BASE_PATH}/dashboard`)
+  }, [status])
 
   // Auth check
   if (status === 'loading') {
@@ -91,12 +118,7 @@ export default function DashboardPage() {
     )
   }
 
-  if (!session?.user) {
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login?callbackUrl=/dashboard'
-    }
-    return null
-  }
+  if (!session?.user) return null
 
   const handleCopyLink = async (transfer: Transfer) => {
     const url = `${window.location.origin}${BASE_PATH}/d/${transfer.shareToken}`
@@ -115,9 +137,12 @@ export default function DashboardPage() {
       })
 
       if (res.ok) {
-        showToast('Link revogado com sucesso', 'success')
-        fetchData() // Refresh data
+        // Reflete na hora no estado local; o refetch silencioso confirma com o servidor.
+        setTransfers(prev => prev.map(t => (t.id === id ? { ...t, status: 'revoked' } : t)))
+        setStats(prev => ({ ...prev, active: Math.max(0, prev.active - 1) }))
         setActiveMenu(null)
+        showToast('Link revogado com sucesso', 'success')
+        fetchData(true)
       } else {
         showToast('Erro ao revogar link', 'error')
       }
@@ -135,9 +160,16 @@ export default function DashboardPage() {
       })
 
       if (res.ok) {
-        showToast('Envio excluído com sucesso', 'success')
-        fetchData() // Refresh data
+        const alvo = transfers.find(t => t.id === id)
+        setTransfers(prev => prev.filter(t => t.id !== id))
+        setStats(prev => ({
+          total: Math.max(0, prev.total - 1),
+          active: alvo?.status === 'active' ? Math.max(0, prev.active - 1) : prev.active,
+          expired: alvo?.status === 'expired' ? Math.max(0, prev.expired - 1) : prev.expired,
+        }))
         setActiveMenu(null)
+        showToast('Envio excluído com sucesso', 'success')
+        fetchData(true)
       } else {
         showToast('Erro ao excluir envio', 'error')
       }
@@ -164,20 +196,20 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <a href="/" className="flex items-center" aria-label="ColetivoSend">
+          <Link href="/" className="flex items-center" aria-label="ColetivoSend">
             <Logo priority className="h-9 w-auto" />
-          </a>
+          </Link>
 
           <div className="flex items-center gap-4">
             {/* Unificação: identidade e saída vivem na barra da plataforma.
                 Mídia de fundo é configuração do Send (admin). */}
-            <a
+            <Link
               href="/settings/media"
               title="Mídia de fundo (admin)"
               className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <Settings className="w-5 h-5" />
-            </a>
+            </Link>
           </div>
         </div>
       </header>
@@ -190,11 +222,11 @@ export default function DashboardPage() {
             <p className="text-muted-foreground">Gerencie todos os seus envios</p>
           </div>
 
-          <a href="/">
+          <Link href="/">
             <Button icon={<Plus className="w-4 h-4" />}>
               Novo envio
             </Button>
-          </a>
+          </Link>
         </div>
 
         {/* Stats cards */}
@@ -284,11 +316,11 @@ export default function DashboardPage() {
             <p className="text-muted-foreground mb-6">
               Compartilhe arquivos e gerencie tudo por aqui
             </p>
-            <a href="/">
+            <Link href="/">
               <Button icon={<Plus className="w-4 h-4" />}>
                 Criar primeiro envio
               </Button>
-            </a>
+            </Link>
           </motion.div>
         ) : (
           <div className="space-y-3">
@@ -371,6 +403,7 @@ export default function DashboardPage() {
                       <div className="relative">
                         <IconButton
                           variant="ghost"
+                          aria-label="Mais ações"
                           onClick={() => setActiveMenu(activeMenu === transfer.id ? null : transfer.id)}
                         >
                           <MoreHorizontal className="w-5 h-5" />

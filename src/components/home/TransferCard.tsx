@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button'
 import { formatBytes } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import { getUploadManager, UploadProgress as UploadProgressType } from '@/lib/upload/UploadManager'
+import { BASE_PATH, caminhoSso, entrarPelaPlataforma } from '@/lib/sso-client'
 
 // Limits configuration
 const MAX_FILES = parseInt(process.env.NEXT_PUBLIC_UPLOAD_MAX_FILES || '2000')
@@ -51,7 +52,6 @@ export function TransferCard({ className = '' }: TransferCardProps) {
 
     // Upload state
     const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'processing' | 'finalize' | 'complete' | 'error'>('idle')
-    const [uploadProgress, setUploadProgress] = useState(0)
     const [uploadMessage, setUploadMessage] = useState('')
     const [bytesUploadedMap, setBytesUploadedMap] = useState<Record<string, number>>({})
     const [startTime, setStartTime] = useState<number | null>(null)
@@ -68,6 +68,9 @@ export function TransferCard({ className = '' }: TransferCardProps) {
     const totalSize = files.reduce((acc, item) => acc + item.file.size, 0)
     const totalCount = files.length
     const totalBytesUploaded = Object.values(bytesUploadedMap).reduce((acc, bytes) => acc + bytes, 0)
+    // Progresso geral derivado do mapa de bytes (o callback de upload não vê
+    // o estado atual dos outros arquivos — derivar evita a barra voltar).
+    const uploadProgress = totalSize > 0 ? Math.min(100, (totalBytesUploaded / totalSize) * 100) : 0
     const canContinue = files.length > 0 && totalSize <= MAX_SIZE && totalCount <= MAX_FILES
     const isUploading = uploadStatus === 'uploading' || uploadStatus === 'processing' || uploadStatus === 'finalize'
     const isSuccess = uploadStatus === 'complete' && transferResult
@@ -117,7 +120,6 @@ export function TransferCard({ className = '' }: TransferCardProps) {
         setPassword('')
         setConfirmPassword('')
         setUploadStatus('idle')
-        setUploadProgress(0)
         setUploadMessage('')
         setBytesUploadedMap({})
         setTransferResult(null)
@@ -126,7 +128,7 @@ export function TransferCard({ className = '' }: TransferCardProps) {
     // File handlers
     const handleFilesAdded = useCallback((newFiles: File[]) => {
         if (!isLoggedIn) {
-            window.location.href = '/login'
+            entrarPelaPlataforma(BASE_PATH)
             return
         }
 
@@ -189,7 +191,7 @@ export function TransferCard({ className = '' }: TransferCardProps) {
     // Upload & Finalize handler with chunked upload
     const handleTransfer = async () => {
         if (!isLoggedIn) {
-            window.location.href = '/login'
+            entrarPelaPlataforma(BASE_PATH)
             return
         }
 
@@ -200,7 +202,6 @@ export function TransferCard({ className = '' }: TransferCardProps) {
         }
 
         setUploadStatus('uploading')
-        setUploadProgress(0)
         setBytesUploadedMap({})
         setStartTime(Date.now())
         setEstimatedTime('')
@@ -227,14 +228,6 @@ export function TransferCard({ className = '' }: TransferCardProps) {
                             ...prev,
                             [item.id]: progress.uploadedBytes
                         }))
-
-                        // Calculate overall progress
-                        const totalUploaded = Object.values({
-                            ...bytesUploadedMap,
-                            [item.id]: progress.uploadedBytes
-                        }).reduce((acc, bytes) => acc + bytes, 0)
-
-                        setUploadProgress((totalUploaded / totalSize) * 100)
 
                         // Update estimated time
                         if (progress.estimatedTimeRemaining > 0) {
@@ -314,7 +307,7 @@ export function TransferCard({ className = '' }: TransferCardProps) {
 
     // Success View
     if (isSuccess && transferResult) {
-        const shareLink = `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH ?? '/send'}/d/${transferResult.shareToken}`
+        const shareLink = `${window.location.origin}${BASE_PATH}/d/${transferResult.shareToken}`
 
         return (
             <div className={`transfer-card w-full max-w-md ${className}`}>
@@ -392,7 +385,8 @@ export function TransferCard({ className = '' }: TransferCardProps) {
                     <p className="text-muted-foreground text-sm max-w-xs">
                         Para garantir a segurança e qualidade dos envios (até 10GB), é necessário estar logado.
                     </p>
-                    <a href="/login" className="btn btn-primary w-full max-w-[200px]">
+                    {/* Ponte SSO (navegação inteira de propósito: grava cookie e volta) */}
+                    <a href={caminhoSso(BASE_PATH)} className="btn btn-primary w-full max-w-[200px]">
                         Entrar / Criar Conta
                     </a>
                 </div>
@@ -640,7 +634,7 @@ export function TransferCard({ className = '' }: TransferCardProps) {
                                 'Arraste arquivos ou clique para selecionar'
                             ) : (
                                 <>
-                                    <a href="/login" className="text-primary hover:underline">Faça login</a> para enviar arquivos
+                                    <a href={caminhoSso(BASE_PATH)} className="text-primary hover:underline">Faça login</a> para enviar arquivos
                                 </>
                             )}
                         </p>

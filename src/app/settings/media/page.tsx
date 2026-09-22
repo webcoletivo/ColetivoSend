@@ -72,12 +72,10 @@ export default function MediaManagementPage() {
 
     useEffect(() => {
         if (status === 'loading') return
-        if (!session?.user) {
-            router.push('/login')
-            return
-        }
+        // Sem sessão, o layout de settings já leva à ponte SSO e volta para cá.
+        if (!session?.user) return
         fetchMedia()
-    }, [session, status, router, fetchMedia])
+    }, [session, status, fetchMedia])
 
     // Handle file selection
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

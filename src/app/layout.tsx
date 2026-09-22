@@ -58,6 +58,8 @@ export default async function RootLayout({
         {/* Unificação por abas: patch de basePath para chamadas /api absolutas
             (carrega ANTES de qualquer código do app) + barra de abas da
             plataforma (raiz do domínio). */}
+        {/* Síncrono de propósito: precisa aplicar o patch antes da hidratação. */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
         <script src="/send/unificacao-fetch.js" nonce={nonce} />
         <script src="/barra.js" data-module="SEND" defer nonce={nonce} />
       </head>

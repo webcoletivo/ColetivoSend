@@ -1,12 +1,17 @@
 'use client'
 
 import React, { useState } from 'react'
-import { useSession, signOut } from 'next-auth/react'
+import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, ChevronDown, User, LogOut, Settings, LayoutDashboard } from 'lucide-react'
+import { Menu, X, LayoutDashboard } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Logo } from '@/components/ui/Logo'
-import { UserAvatar } from '@/components/UserAvatar'
+import { BASE_PATH, caminhoSso } from '@/lib/sso-client'
+
+// Entrar/criar conta: a ponte SSO leva ao login central e volta para o Send
+// (navegação inteira de propósito: a ponte grava cookie e redireciona).
+const ENTRAR = caminhoSso(BASE_PATH)
 
 const NAV_ITEMS: { label: string; href: string }[] = [
     // Menu items removed as requested
@@ -29,9 +34,9 @@ export function HomeHeader({ transparent = true }: HomeHeaderProps) {
             <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16 md:h-20">
                     {/* Logo — always the white variant: the header sits over the dark media hero */}
-                    <a href="/" className="flex items-center flex-shrink-0" aria-label="ColetivoSend">
+                    <Link href="/" className="flex items-center flex-shrink-0" aria-label="ColetivoSend">
                         <Logo variant="white" priority className="h-7 md:h-9 w-auto" />
-                    </a>
+                    </Link>
 
                     {/* Desktop Navigation - hidden on smaller screens */}
                     <div className="hidden lg:flex items-center gap-8">
@@ -54,23 +59,23 @@ export function HomeHeader({ transparent = true }: HomeHeaderProps) {
                         ) : isLoggedIn ? (
 // Unificação: identidade e saída vivem na barra da plataforma.
                             // Aqui, só o atalho para os envios.
-                            <a
+                            <Link
                                 href="/dashboard"
                                 className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium text-white/85 hover:text-white hover:bg-white/10 transition-colors"
                             >
                                 <LayoutDashboard className="w-4 h-4" />
                                 <span className="hidden sm:block">Meus envios</span>
-                            </a>
+                            </Link>
                         ) : (
-                            // Login/Signup buttons
+                            // Sem sessão local (expirou no meio do uso): ponte SSO
                             <div className="flex items-center gap-2 md:gap-3">
                                 <a
-                                    href="/login"
+                                    href={ENTRAR}
                                     className="hidden sm:block text-sm font-medium text-white/80 hover:text-white transition-colors"
                                 >
                                     Entrar
                                 </a>
-                                <a href="/signup">
+                                <a href={ENTRAR}>
                                     <Button variant="secondary" size="sm">
                                         Criar conta
                                     </Button>
@@ -110,7 +115,7 @@ export function HomeHeader({ transparent = true }: HomeHeaderProps) {
                                 ))}
                                 {!isLoggedIn && (
                                     <a
-                                        href="/login"
+                                        href={ENTRAR}
                                         className="block px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-colors sm:hidden"
                                         onClick={() => setMobileMenuOpen(false)}
                                     >

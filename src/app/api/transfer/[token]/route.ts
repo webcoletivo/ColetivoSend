@@ -85,6 +85,14 @@ export async function GET(
       }, { status: 410 })
     }
 
+    // Views: a página pública (/d/[token]) só passa por aqui — sem isto o
+    // contador do painel do dono nunca sai do zero.
+    const { viewCount } = await prisma.transfer.update({
+      where: { id: transfer.id },
+      data: { viewCount: { increment: 1 } },
+      select: { viewCount: true },
+    })
+
     // If password protected, return limited data only
     if (transfer.passwordHash) {
       return NextResponse.json({
@@ -108,7 +116,7 @@ export async function GET(
       senderName: transfer.senderName,
       message: transfer.message,
       expiresAt: transfer.expiresAt,
-      viewCount: transfer.viewCount,
+      viewCount,
       downloadCount: transfer.downloadCount,
       files: filesWithUrls,
       hasPassword: false
