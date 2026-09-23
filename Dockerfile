@@ -8,12 +8,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN apk add --no-cache libc6-compat openssl curl
 WORKDIR /app
 
-FROM base AS deps
+# Instalação e build no mesmo estágio: a camada do npm ci só muda com o
+# lockfile, e evita copiar node_modules entre estágios (70 s de I/O no VPS).
+FROM base AS builder
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --include=dev
-
-FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ARG NEXT_PUBLIC_BASE_PATH=/send
 ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
