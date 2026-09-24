@@ -1,37 +1,3 @@
-import nodemailer from 'nodemailer'
-
-interface EmailOptions {
-  to: string
-  subject: string
-  html: string
-  text?: string
-}
-
-function createTransporter() {
-  // In development, log to console
-  if (!process.env.SMTP_HOST) {
-    return {
-      sendMail: async (options: EmailOptions) => {
-        console.log('📧 Email (dev mode):')
-        console.log('  To:', options.to)
-        console.log('  Subject:', options.subject)
-        console.log('  Content:', options.text || options.html)
-        return { messageId: 'dev-' + Date.now() }
-      }
-    }
-  }
-  
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: parseInt(process.env.SMTP_PORT || '587') === 465, // True for 465, false for 587
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASSWORD,
-    },
-  })
-}
-
 export interface EmailResult {
   success: boolean
   messageId?: string
@@ -39,7 +5,7 @@ export interface EmailResult {
   code?: string
 }
 
-function escapeHtml(v: string): string {
+export function escapeHtml(v: string): string {
   return v
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -48,10 +14,16 @@ function escapeHtml(v: string): string {
     .replace(/'/g, '&#39;')
 }
 
+/** Assunto/preheader: uma linha só (CR/LF injetaria cabeçalhos). */
+function umaLinha(v: string): string {
+  return v.replace(/[\r\n\t]+/g, ' ').trim()
+}
+
 /**
  * Unificação: todo e-mail sai pelo Resend ÚNICO da plataforma (template
- * padrão + email_logs + retry centralizados). O corpo estruturado vai em
- * `plataforma`; o par html/text legado fica só como fallback local (dev).
+ * padrão + email_logs + retry centralizados). Não há mais SMTP local — sem
+ * PLATFORM_URL/segredo (ambiente isolado/dev) o e-mail é só registrado no
+ * log, sem dados do destinatário.
  */
 async function enviarPelaPlataforma(payload: Record<string, unknown>): Promise<EmailResult | null> {
   const base = process.env.PLATFORM_URL
@@ -62,47 +34,13 @@ async function enviarPelaPlataforma(payload: Record<string, unknown>): Promise<E
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-servico-segredo': segredo },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15_000),
     })
     const data = (await res.json().catch(() => ({}))) as { ok?: boolean; logId?: string; error?: string }
     if (res.ok && data.ok) return { success: true, messageId: data.logId }
     return { success: false, error: data.error || `HTTP ${res.status}`, code: 'PLATFORM_MAIL' }
   } catch (e: any) {
     return { success: false, error: e?.message || 'Plataforma inacessível', code: 'PLATFORM_MAIL' }
-  }
-}
-
-export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
-  // Caminho unificado (produção): Resend único da plataforma
-  const viaPlataforma = await enviarPelaPlataforma({
-    to: options.to,
-    subject: options.subject,
-    htmlCompleto: options.html,
-    text: options.text,
-    module: 'SEND',
-    template: 'send-legado',
-  })
-  if (viaPlataforma) return viaPlataforma
-
-  // Fallback local (sem PLATFORM_URL/segredo — ambiente isolado/dev)
-  try {
-    const transporter = createTransporter()
-
-    const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || 'ColetivoSend <no-reply@grupocoletivo.com.br>',
-      ...options,
-    })
-
-    return {
-      success: true,
-      messageId: (info as any).messageId
-    }
-  } catch (error: any) {
-    console.error('Email send error:', error)
-    return {
-      success: false,
-      error: error.message || 'Unknown SMTP error',
-      code: error.code || 'SMTP_ERROR'
-    }
   }
 }
 
@@ -116,276 +54,29 @@ export async function sendTransferEmail(
 ): Promise<EmailResult> {
   const downloadUrl = `${process.env.NEXTAUTH_URL}/d/${shareToken}`
 
-  // Caminho unificado: template padrão da marca via plataforma, com todos os
-  // dados de usuário escapados (nome/mensagem entram em e-mail externo).
+  // Template padrão da marca via plataforma, com todos os dados de usuário
+  // escapados (nome/mensagem entram em e-mail externo).
   const quantos = fileCount
     ? `${fileCount} arquivo${fileCount > 1 ? 's' : ''}`
     : 'arquivos'
+  const remetente = umaLinha(senderName)
   const viaPlataforma = await enviarPelaPlataforma({
     to: recipientEmail,
-    subject: `${senderName.replace(/[\r\n]/g, ' ')} enviou arquivos para você`,
+    subject: `${remetente} enviou arquivos para você`,
     titulo: 'Você recebeu arquivos',
     bodyHtml:
-      `<p><strong>${escapeHtml(senderName)}</strong> enviou ${quantos} para você${totalSize ? ` (${escapeHtml(totalSize)})` : ''}.</p>` +
+      `<p><strong>${escapeHtml(remetente)}</strong> enviou ${quantos} para você${totalSize ? ` (${escapeHtml(totalSize)})` : ''}.</p>` +
       (message
         ? `<p style="background:#1E1B18;border-radius:8px;padding:12px 16px;color:#CFC8C2;font-style:italic;">"${escapeHtml(message)}"</p>`
         : ''),
     botao: { url: downloadUrl, label: 'Baixar arquivos' },
-    preheader: `${senderName} compartilhou ${quantos} com você`,
+    preheader: `${remetente} compartilhou ${quantos} com você`,
     module: 'SEND',
     template: 'send-transfer',
   })
   if (viaPlataforma) return viaPlataforma
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Você recebeu arquivos</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    <tr>
-      <td>
-        <!-- Logo -->
-        <div style="text-align: center; margin-bottom: 32px;">
-          <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #1e293b;">
-            <span style="color: #FF6B1F;">Coletivo</span>Send
-          </h1>
-        </div>
-        
-        <!-- Card -->
-        <div style="background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.06);">
-          <h2 style="margin: 0 0 8px 0; font-size: 24px; color: #1e293b; font-weight: 600;">
-            Você recebeu arquivos
-          </h2>
-          <p style="margin: 0 0 24px 0; color: #64748b; font-size: 16px;">
-            <strong style="color: #1e293b;">${senderName}</strong> enviou ${fileCount ? `${fileCount} arquivo${fileCount > 1 ? 's' : ''}` : 'arquivos'} para você${totalSize ? ` (${totalSize})` : ''}.
-          </p>
-          
-          ${message ? `
-          <div style="background: #f1f5f9; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px;">
-            <p style="margin: 0; color: #475569; font-size: 15px; font-style: italic;">
-              "${message}"
-            </p>
-          </div>
-          ` : ''}
-          
-          <!-- Button -->
-          <a href="${downloadUrl}" 
-             style="display: inline-block; background: linear-gradient(135deg, #FF6B1F 0%, #FF8340 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px; text-align: center;">
-            Baixar arquivos →
-          </a>
-          
-          <p style="margin: 24px 0 0 0; color: #94a3b8; font-size: 14px;">
-            Ou copie este link: <a href="${downloadUrl}" style="color: #FF6B1F;">${downloadUrl}</a>
-          </p>
-        </div>
-        
-        <!-- Footer -->
-        <div style="text-align: center; margin-top: 32px; color: #94a3b8; font-size: 13px;">
-          <p style="margin: 0;">
-            Enviado com <span style="color: #f43f5e;">♥</span> via ColetivoSend
-          </p>
-          <p style="margin: 8px 0 0 0;">
-            © ${new Date().getFullYear()} ColetivoSend. Compartilhamento seguro de arquivos.
-          </p>
-        </div>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `
-  
-  const text = `
-${senderName} enviou arquivos para você via ColetivoSend.
-
-${message ? `Mensagem: "${message}"\n\n` : ''}
-
-Baixe seus arquivos: ${downloadUrl}
-
----
-Enviado via ColetivoSend
-  `
-  
-  return sendEmail({
-    to: recipientEmail,
-    subject: `${senderName} enviou arquivos para você`,
-    html,
-    text,
-  })
-}
-
-export async function sendVerificationEmail(
-  email: string,
-  token: string
-): Promise<EmailResult> {
-  const baseUrl = process.env.NEXTAUTH_URL || ''
-  const verifyUrl = `${baseUrl}/verify-email?token=${token}&email=${encodeURIComponent(email)}`
-  
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    <tr>
-      <td>
-        <div style="text-align: center; margin-bottom: 32px;">
-          <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #1e293b;">
-            <span style="color: #FF6B1F;">Coletivo</span>Send
-          </h1>
-        </div>
-        
-        <div style="background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.06);">
-          <h2 style="margin: 0 0 16px 0; font-size: 24px; color: #1e293b;">
-            Verifique seu e-mail
-          </h2>
-          <p style="margin: 0 0 24px 0; color: #64748b; font-size: 16px;">
-            Clique no botão abaixo para verificar seu endereço de e-mail e ativar sua conta.
-          </p>
-          
-          <a href="${verifyUrl}" 
-             style="display: inline-block; background: linear-gradient(135deg, #FF6B1F 0%, #FF8340 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">
-            Verificar e-mail →
-          </a>
-          
-          <p style="margin: 24px 0 0 0; color: #94a3b8; font-size: 14px;">
-            Este link expira em 24 horas. Se você não criou uma conta, ignore este e-mail.
-          </p>
-        </div>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `
-  
-  return sendEmail({
-    to: email,
-    subject: 'Verifique seu e-mail - ColetivoSend',
-    html,
-    text: `Verifique seu e-mail: ${verifyUrl}`,
-  })
-}
-
-export async function sendAccountExistsEmail(
-  email: string
-): Promise<EmailResult> {
-  const loginUrl = `${process.env.NEXTAUTH_URL}/login`
-  const forgotPasswordUrl = `${process.env.NEXTAUTH_URL}/forgot-password`
-
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    <tr>
-      <td>
-        <div style="text-align: center; margin-bottom: 32px;">
-          <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #1e293b;">
-            <span style="color: #FF6B1F;">Coletivo</span>Send
-          </h1>
-        </div>
-
-        <div style="background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.06);">
-          <h2 style="margin: 0 0 16px 0; font-size: 24px; color: #1e293b;">
-            Tentativa de cadastro
-          </h2>
-          <p style="margin: 0 0 24px 0; color: #64748b; font-size: 16px;">
-            Alguém tentou criar uma conta no ColetivoSend usando este endereço de e-mail. No entanto, este e-mail já está associado a uma conta existente.
-          </p>
-
-          <p style="margin: 0 0 24px 0; color: #64748b; font-size: 16px;">
-            Se foi você, você pode fazer login clicando no botão abaixo:
-          </p>
-
-          <a href="${loginUrl}"
-             style="display: inline-block; background: linear-gradient(135deg, #FF6B1F 0%, #FF8340 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">
-            Fazer login →
-          </a>
-
-          <p style="margin: 24px 0 0 0; color: #94a3b8; font-size: 14px;">
-            Se você esqueceu sua senha, pode redefini-la aqui: <a href="${forgotPasswordUrl}" style="color: #FF6B1F;">${forgotPasswordUrl}</a>
-          </p>
-        </div>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `
-
-  return sendEmail({
-    to: email,
-    subject: 'Tentativa de cadastro - ColetivoSend',
-    html,
-    text: `Você já possui uma conta no ColetivoSend. Faça login em: ${loginUrl}`,
-  })
-}
-
-export async function sendPasswordResetEmail(
-  email: string,
-  token: string
-): Promise<EmailResult> {
-  const baseUrl = process.env.NEXTAUTH_URL || ''
-  const resetUrl = `${baseUrl}/reset-password?token=${token}`
-  
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    <tr>
-      <td>
-        <div style="text-align: center; margin-bottom: 32px;">
-          <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #1e293b;">
-            <span style="color: #FF6B1F;">Coletivo</span>Send
-          </h1>
-        </div>
-        
-        <div style="background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.06);">
-          <h2 style="margin: 0 0 16px 0; font-size: 24px; color: #1e293b;">
-            Redefinir senha
-          </h2>
-          <p style="margin: 0 0 24px 0; color: #64748b; font-size: 16px;">
-            Você solicitou a redefinição de senha. Clique no botão abaixo para criar uma nova senha.
-          </p>
-          
-          <a href="${resetUrl}" 
-             style="display: inline-block; background: linear-gradient(135deg, #FF6B1F 0%, #FF8340 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">
-            Redefinir senha →
-          </a>
-          
-          <p style="margin: 24px 0 0 0; color: #94a3b8; font-size: 14px;">
-            Este link expira em 1 hora. Se você não solicitou esta alteração, ignore este e-mail.
-          </p>
-        </div>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `
-  
-  return sendEmail({
-    to: email,
-    subject: 'Redefinir senha - ColetivoSend',
-    html,
-    text: `Redefina sua senha: ${resetUrl}`,
-  })
+  // Ambiente isolado (sem plataforma): nada é enviado; registro sem PII.
+  console.log(`[email] (sem plataforma) e-mail de envio não despachado: ${quantos}`)
+  return { success: true, messageId: `dev-${Date.now()}` }
 }
