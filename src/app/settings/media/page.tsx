@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence, Reorder } from 'framer-motion'
@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Tooltip } from '@/components/ui/Tooltip'
+import { formatBytes } from '@/lib/utils'
 
 interface MediaItem {
     id: string
@@ -32,6 +33,19 @@ interface MediaItem {
 const BOTAO_ICONE =
     'p-2 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
+// Mensagem própria para a URL da propaganda (null = válida).
+function validarUrlPropaganda(valor: string): string | null {
+    const url = valor.trim()
+    if (!url) return 'Informe a URL da propaganda.'
+    try {
+        const { protocol } = new URL(url)
+        if (protocol !== 'http:' && protocol !== 'https:') throw new Error('protocolo')
+    } catch {
+        return 'Informe uma URL válida, começando com https://'
+    }
+    return null
+}
+
 export default function MediaManagementPage() {
     const { data: session, status } = useSession()
     const router = useRouter()
@@ -48,6 +62,10 @@ export default function MediaManagementPage() {
     const [uploadType, setUploadType] = useState<'video' | 'image'>('video')
     const [uploadIsPromo, setUploadIsPromo] = useState(false)
     const [uploadPromoUrl, setUploadPromoUrl] = useState('')
+    // Validação própria (inline) da URL da propaganda — sem bolha nativa
+    const [erroUrl, setErroUrl] = useState<string | null>(null)
+    const inputArquivoRef = useRef<HTMLInputElement>(null)
+    const inputUrlRef = useRef<HTMLInputElement>(null)
     const [uploadTitle, setUploadTitle] = useState('')
     const [uploadDuration, setUploadDuration] = useState(6)
     const [isUploading, setIsUploading] = useState(false)
@@ -106,9 +124,13 @@ export default function MediaManagementPage() {
     const handleUpload = async () => {
         if (!uploadFile) return
 
-        if (uploadIsPromo && !uploadPromoUrl) {
-            setError('URL da propaganda é obrigatória')
-            return
+        if (uploadIsPromo) {
+            const erro = validarUrlPropaganda(uploadPromoUrl)
+            if (erro) {
+                setErroUrl(erro)
+                inputUrlRef.current?.focus()
+                return
+            }
         }
 
         setIsUploading(true)
@@ -325,16 +347,45 @@ export default function MediaManagementPage() {
                         </div>
 
                         <div className="space-y-4">
-                            {/* File input */}
+                            {/* Arquivo: botão próprio; o input nativo fica escondido
+                                (sem o "Escolher arquivo" do navegador) e é aberto pelo botão. */}
                             <div>
-                                <label htmlFor="midia-arquivo" className="rotulo-campo">Arquivo</label>
+                                <p id="midia-arquivo-rotulo" className="rotulo-campo">Arquivo</p>
                                 <input
-                                    id="midia-arquivo"
+                                    ref={inputArquivoRef}
+                                    id="midia-arquivo-input"
                                     type="file"
                                     accept="video/*,image/*"
                                     onChange={handleFileSelect}
-                                    className="input h-auto py-2"
+                                    className="hidden"
+                                    tabIndex={-1}
+                                    aria-hidden="true"
                                 />
+                                <button
+                                    type="button"
+                                    id="midia-arquivo"
+                                    onClick={() => inputArquivoRef.current?.click()}
+                                    disabled={isUploading}
+                                    aria-labelledby="midia-arquivo-rotulo midia-arquivo-estado"
+                                    className="flex w-full items-center gap-3 rounded-lg border border-dashed border-border bg-card px-4 py-3 text-left text-sm transition-colors hover:border-primary hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary" aria-hidden="true">
+                                        <Upload className="w-4 h-4" />
+                                    </span>
+                                    <span id="midia-arquivo-estado" className="min-w-0 flex-1">
+                                        {uploadFile ? (
+                                            <>
+                                                <span className="block truncate font-medium text-foreground">{uploadFile.name}</span>
+                                                <span className="block text-xs text-muted-foreground">{formatBytes(uploadFile.size)} · clique para trocar</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="block font-medium text-foreground">Escolher arquivo</span>
+                                                <span className="block text-xs text-muted-foreground">Vídeo ou imagem</span>
+                                            </>
+                                        )}
+                                    </span>
+                                </button>
                             </div>
 
                             {uploadFile && (
@@ -362,7 +413,7 @@ export default function MediaManagementPage() {
                                                     name="midia-tipo"
                                                     className="accent-primary"
                                                     checked={!uploadIsPromo}
-                                                    onChange={() => setUploadIsPromo(false)}
+                                                    onChange={() => { setUploadIsPromo(false); setErroUrl(null) }}
                                                 />
                                                 <span>{uploadType === 'video' ? 'Vídeo' : 'Imagem'}</span>
                                             </label>
@@ -384,14 +435,23 @@ export default function MediaManagementPage() {
                                         <div>
                                             <label htmlFor="midia-url" className="rotulo-campo">URL da propaganda <span aria-hidden="true">*</span></label>
                                             <input
+                                                ref={inputUrlRef}
                                                 id="midia-url"
                                                 type="url"
-                                                required
+                                                aria-required="true"
+                                                aria-invalid={erroUrl ? true : undefined}
+                                                aria-describedby={erroUrl ? 'midia-url-erro' : undefined}
                                                 value={uploadPromoUrl}
-                                                onChange={(e) => setUploadPromoUrl(e.target.value)}
-                                                className="input"
+                                                onChange={(e) => { setUploadPromoUrl(e.target.value); setErroUrl(null) }}
+                                                className={`input ${erroUrl ? 'border-destructive focus-visible:border-destructive' : ''}`}
                                                 placeholder="https://..."
                                             />
+                                            {erroUrl && (
+                                                <p id="midia-url-erro" className="mt-1.5 flex items-center gap-1.5 text-sm text-destructive">
+                                                    <AlertCircle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+                                                    {erroUrl}
+                                                </p>
+                                            )}
                                         </div>
                                     )}
 
