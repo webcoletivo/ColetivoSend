@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { checkRateLimit } from '../ratelimit'
+import { checkRateLimit, bloqueadoPorFalhas, registrarFalha } from '../ratelimit'
 import { prisma } from '../db'
 
 // Mock Prisma
@@ -9,9 +9,51 @@ vi.mock('../db', () => ({
             findUnique: vi.fn(),
             create: vi.fn(),
             update: vi.fn(),
+            upsert: vi.fn(),
         }
     }
 }))
+
+describe('bloqueadoPorFalhas / registrarFalha', () => {
+    beforeEach(() => {
+        vi.resetAllMocks()
+    })
+
+    it('sem registro ou janela vencida: não bloqueia', async () => {
+        // @ts-ignore
+        prisma.rateLimit.findUnique.mockResolvedValue(null)
+        expect(await bloqueadoPorFalhas('senha-errada:ip:tok', 5)).toBe(false)
+        // @ts-ignore
+        prisma.rateLimit.findUnique.mockResolvedValue({ count: 99, expiresAt: new Date(Date.now() - 1000) })
+        expect(await bloqueadoPorFalhas('senha-errada:ip:tok', 5)).toBe(false)
+    })
+
+    it('bloqueia quando as falhas na janela chegam ao limite', async () => {
+        // @ts-ignore
+        prisma.rateLimit.findUnique.mockResolvedValue({ count: 5, expiresAt: new Date(Date.now() + 60_000) })
+        expect(await bloqueadoPorFalhas('senha-errada:ip:tok', 5)).toBe(true)
+        // @ts-ignore
+        prisma.rateLimit.findUnique.mockResolvedValue({ count: 4, expiresAt: new Date(Date.now() + 60_000) })
+        expect(await bloqueadoPorFalhas('senha-errada:ip:tok', 5)).toBe(false)
+    })
+
+    it('em erro de banco, considera bloqueado (fail closed)', async () => {
+        // @ts-ignore
+        prisma.rateLimit.findUnique.mockRejectedValue(new Error('db down'))
+        expect(await bloqueadoPorFalhas('senha-errada:ip:tok', 5)).toBe(true)
+    })
+
+    it('registrarFalha abre janela nova ou incrementa a atual', async () => {
+        // @ts-ignore
+        prisma.rateLimit.findUnique.mockResolvedValue(null)
+        await registrarFalha('k', 60)
+        expect(prisma.rateLimit.upsert).toHaveBeenCalledTimes(1)
+        // @ts-ignore
+        prisma.rateLimit.findUnique.mockResolvedValue({ count: 2, expiresAt: new Date(Date.now() + 60_000) })
+        await registrarFalha('k', 60)
+        expect(prisma.rateLimit.update).toHaveBeenCalledWith({ where: { key: 'k' }, data: { count: { increment: 1 } } })
+    })
+})
 
 describe('checkRateLimit', () => {
     beforeEach(() => {

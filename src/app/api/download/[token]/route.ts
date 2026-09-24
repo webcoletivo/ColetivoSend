@@ -1,196 +1,92 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { verifyPassword } from '@/lib/security'
+import { verifyPassword, ipDoPedido } from '@/lib/security'
 import { generatePresignedDownloadUrl } from '@/lib/storage'
-import { isExpired } from '@/lib/utils'
-import { checkRateLimit } from '@/lib/ratelimit'
+import { checkRateLimit, bloqueadoPorFalhas, registrarFalha } from '@/lib/ratelimit'
+import { logger } from '@/lib/logger'
+import { sleep } from '@/lib/utils'
+import {
+  estadoPublico,
+  respostaDeEstado,
+  LIMITES_PUBLICOS,
+  VALIDADE_URL_DOWNLOAD_SEGUNDOS,
+  ATRASO_SENHA_ERRADA_MS,
+} from '@/lib/transfer-publico'
 
-// Get transfer info by share token (public)
-export async function GET(
-  request: NextRequest,
-  props: { params: Promise<{ token: string }> }
-) {
-  const params = await props.params;
-  try {
-    const transfer = await prisma.transfer.findUnique({
-      where: { shareToken: params.token },
-      include: {
-        files: {
-          select: {
-            id: true,
-            originalName: true,
-            sizeBytes: true,
-            mimeType: true,
-          }
-        }
-      }
-    })
+export const dynamic = 'force-dynamic'
 
-    if (!transfer) {
-      return NextResponse.json(
-        { error: 'Link não encontrado', status: 'notfound' },
-        { status: 404 }
-      )
-    }
-
-    // Check if expired
-    if (isExpired(transfer.expiresAt)) {
-      // Update status if not already
-      if (transfer.status === 'active') {
-        await prisma.transfer.update({
-          where: { id: transfer.id },
-          data: { status: 'expired' }
-        })
-      }
-      return NextResponse.json(
-        { error: 'Link expirado', status: 'expired' },
-        { status: 410 }
-      )
-    }
-
-    // Check if revoked
-    if (transfer.status === 'revoked') {
-      return NextResponse.json(
-        { error: 'Este link foi desativado pelo remetente', status: 'revoked' },
-        { status: 410 }
-      )
-    }
-
-    // Check if deleted
-    if (transfer.status === 'deleted') {
-      return NextResponse.json(
-        { error: 'Link não encontrado', status: 'notfound' },
-        { status: 404 }
-      )
-    }
-
-    // Increment view count
-    await prisma.transfer.update({
-      where: { id: transfer.id },
-      data: { viewCount: { increment: 1 } }
-    })
-
-    // Return transfer info (without password hash)
-    return NextResponse.json({
-      id: transfer.id,
-      senderName: transfer.senderName,
-      message: transfer.message,
-      expiresAt: transfer.expiresAt,
-      hasPassword: !!transfer.passwordHash,
-      files: transfer.files,
-      totalSize: transfer.files.reduce((acc, f) => acc + Number(f.sizeBytes), 0),
-    })
-
-  } catch (error) {
-    console.error('Get download error:', error)
-    return NextResponse.json(
-      { error: 'Erro interno' },
-      { status: 500 }
-    )
-  }
-}
-
-// Verify password and get download URLs
+/**
+ * Registra um download (um arquivo ou todos), devolve URLs presignadas novas
+ * (15 min) e avisa o dono. Exige a senha quando o link tem senha — com o
+ * mesmo freio de força bruta do /unlock.
+ */
 export async function POST(
   request: NextRequest,
   props: { params: Promise<{ token: string }> }
 ) {
-  const params = await props.params;
+  const { token } = await props.params
   try {
-    const body = await request.json()
-    const { password, fileId } = body
+    if (!token || token.length > 64) {
+      return respostaDeEstado('notfound')
+    }
 
-    // Brute-force: mesmo motivo e mesmos números do /transfer/[token]/unlock —
-    // esta rota também devolve URLs de download quando a senha confere, e o
-    // limitador do middleware não a cobre. Senha mínima tem 4 caracteres;
-    // sem isto, dá para varrer o espaço inteiro sem freio.
-    const ip = (request.headers.get('x-forwarded-for')?.split(',')[0].trim())
-      || request.headers.get('x-real-ip')
-      || 'unknown'
-    const rl = await checkRateLimit(`download:${ip}:${params.token}`, 5, 60)
+    const corpo = await request.json().catch(() => ({})) as { password?: unknown; fileId?: unknown }
+    const password = typeof corpo.password === 'string' ? corpo.password : ''
+    const fileId = typeof corpo.fileId === 'string' && corpo.fileId.length <= 64 ? corpo.fileId : undefined
+    const ip = ipDoPedido(request)
+
+    // Abuso do contador / das URLs: por IP+token (baixar arquivo a arquivo cabe).
+    const rl = await checkRateLimit(
+      `download:${ip}:${token}`,
+      LIMITES_PUBLICOS.download.limite,
+      LIMITES_PUBLICOS.download.janelaSegundos,
+    )
     if (!rl.success) {
-      return NextResponse.json(
-        { error: 'Muitas tentativas. Aguarde um momento.' },
-        { status: 429 }
-      )
+      return NextResponse.json({ error: 'Muitas tentativas. Aguarde um momento.' }, { status: 429 })
     }
 
     const transfer = await prisma.transfer.findUnique({
-      where: { shareToken: params.token },
-      include: {
-        files: true
-      }
+      where: { shareToken: token },
+      include: { files: true }
     })
 
     if (!transfer) {
-      return NextResponse.json(
-        { error: 'Link não encontrado' },
-        { status: 404 }
-      )
+      return respostaDeEstado('notfound')
     }
 
-    // Check status
-    if (transfer.status !== 'active') {
-      return NextResponse.json(
-        { error: 'Este link não está mais disponível' },
-        { status: 410 }
-      )
+    const estado = estadoPublico(transfer)
+    if (estado !== 'ok') {
+      return respostaDeEstado(estado)
     }
 
-    // Check expiration
-    if (isExpired(transfer.expiresAt)) {
-      return NextResponse.json(
-        { error: 'Link expirado' },
-        { status: 410 }
-      )
-    }
-
-    // Verify password if required
     if (transfer.passwordHash) {
       if (!password) {
-        return NextResponse.json(
-          { error: 'Senha necessária', requiresPassword: true },
-          { status: 401 }
-        )
+        return NextResponse.json({ error: 'Senha necessária', requiresPassword: true }, { status: 401 })
       }
-
+      // Freio de força bruta: mesma chave do /unlock (IP+token); só erros contam.
+      const chaveSenha = `senha-errada:${ip}:${token}`
+      if (await bloqueadoPorFalhas(chaveSenha, LIMITES_PUBLICOS.senhaErrada.limite)) {
+        return NextResponse.json({ error: 'Muitas tentativas de senha. Aguarde um momento.' }, { status: 429 })
+      }
       const isValid = await verifyPassword(password, transfer.passwordHash)
       if (!isValid) {
-        return NextResponse.json(
-          { error: 'Senha incorreta' },
-          { status: 401 }
-        )
+        await registrarFalha(chaveSenha, LIMITES_PUBLICOS.senhaErrada.janelaSegundos)
+        await sleep(ATRASO_SENHA_ERRADA_MS)
+        return NextResponse.json({ error: 'Senha incorreta' }, { status: 401 })
       }
     }
 
-    // Generate download URLs
-    let downloadUrls
-
-    if (fileId) {
-      // Single file download
-      const file = transfer.files.find(f => f.id === fileId)
-      if (!file) {
-        return NextResponse.json(
-          { error: 'Arquivo não encontrado' },
-          { status: 404 }
-        )
-      }
-
-      downloadUrls = [{
-        id: file.id,
-        name: file.originalName,
-        url: generatePresignedDownloadUrl(file.storageKey, file.originalName, 300),
-      }]
-    } else {
-      // All files download
-      downloadUrls = transfer.files.map(file => ({
-        id: file.id,
-        name: file.originalName,
-        url: generatePresignedDownloadUrl(file.storageKey, file.originalName, 300),
-      }))
+    const arquivos = fileId ? transfer.files.filter(f => f.id === fileId) : transfer.files
+    if (fileId && arquivos.length === 0) {
+      return NextResponse.json({ error: 'Arquivo não encontrado' }, { status: 404 })
     }
 
-    // Increment download count
+    const downloadUrls = await Promise.all(arquivos.map(async (file) => ({
+      id: file.id,
+      name: file.originalName,
+      url: await generatePresignedDownloadUrl(file.storageKey, file.originalName, VALIDADE_URL_DOWNLOAD_SEGUNDOS),
+    })))
+
     await prisma.transfer.update({
       where: { id: transfer.id },
       data: { downloadCount: { increment: 1 } }
@@ -199,7 +95,11 @@ export async function POST(
     // Notificação unificada ao dono (sino da plataforma) — nunca bloqueia o download.
     // Um aviso por pessoa (IP) e por link a cada hora: quem baixa os arquivos
     // um a um não gera um e-mail por clique.
-    const aviso = await checkRateLimit(`download-aviso:${ip}:${params.token}`, 1, 3600)
+    const aviso = await checkRateLimit(
+      `download-aviso:${ip}:${token}`,
+      LIMITES_PUBLICOS.avisoAoDono.limite,
+      LIMITES_PUBLICOS.avisoAoDono.janelaSegundos,
+    )
     void (async () => {
       if (!aviso.success) return
       const base = process.env.PLATFORM_URL
@@ -247,10 +147,7 @@ export async function POST(
     })
 
   } catch (error) {
-    console.error('Download request error:', error)
-    return NextResponse.json(
-      { error: 'Erro ao processar download' },
-      { status: 500 }
-    )
+    logger.error('[download] erro ao registrar download', error)
+    return NextResponse.json({ error: 'Erro ao processar download' }, { status: 500 })
   }
 }

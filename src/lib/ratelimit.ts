@@ -72,3 +72,39 @@ export async function checkRateLimit(key: string, limit: number, windowSeconds: 
         return { success: false, remaining: 0 }
     }
 }
+
+/**
+ * Contador de FALHAS (senha errada): só as tentativas erradas contam, para
+ * quem acertou a senha não ser bloqueado ao baixar vários arquivos. Par de
+ * funções: `bloqueadoPorFalhas` antes de verificar, `registrarFalha` depois
+ * de um erro. Em erro de banco, considera bloqueado (fail closed).
+ */
+export async function bloqueadoPorFalhas(key: string, limit: number): Promise<boolean> {
+    try {
+        const record = await prisma.rateLimit.findUnique({ where: { key } })
+        if (!record) return false
+        if (new Date() > record.expiresAt) return false
+        return record.count >= limit
+    } catch (error) {
+        logger.error('Rate limit error:', error)
+        return true
+    }
+}
+
+export async function registrarFalha(key: string, windowSeconds: number): Promise<void> {
+    const now = new Date()
+    try {
+        const record = await prisma.rateLimit.findUnique({ where: { key } })
+        if (!record || now > record.expiresAt) {
+            await prisma.rateLimit.upsert({
+                where: { key },
+                create: { key, count: 1, expiresAt: new Date(now.getTime() + windowSeconds * 1000) },
+                update: { count: 1, expiresAt: new Date(now.getTime() + windowSeconds * 1000) },
+            })
+            return
+        }
+        await prisma.rateLimit.update({ where: { key }, data: { count: { increment: 1 } } })
+    } catch (error) {
+        logger.error('Rate limit error:', error)
+    }
+}

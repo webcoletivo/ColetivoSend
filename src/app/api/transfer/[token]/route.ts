@@ -1,17 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { generatePresignedDownloadUrl } from '@/lib/storage'
+import { generatePresignedDownloadUrl, deleteMultipleFiles } from '@/lib/storage'
+import { checkRateLimit } from '@/lib/ratelimit'
+import { ipDoPedido } from '@/lib/security'
+import { logger } from '@/lib/logger'
+import {
+  estadoPublico,
+  respostaDeEstado,
+  LIMITES_PUBLICOS,
+  VALIDADE_URL_DOWNLOAD_SEGUNDOS,
+} from '@/lib/transfer-publico'
 
+export const dynamic = 'force-dynamic'
+
+/**
+ * Metadados do link público (/d/<token>). Sem senha, já devolve as URLs
+ * presignadas (15 min); com senha, só diz que há senha — arquivos e mensagem
+ * ficam para o /unlock. Nunca expõe o id interno, o dono ou o destinatário.
+ */
 export async function GET(
-  request: NextRequest, 
+  request: NextRequest,
   props: { params: Promise<{ token: string }> }
 ) {
-  const params = await props.params;
+  const { token } = await props.params
   try {
-    const { token } = params
+    if (!token || token.length > 64) {
+      return respostaDeEstado('notfound')
+    }
 
-    if (!token) {
-      return NextResponse.json({ error: 'Token inválido' }, { status: 400 })
+    // Varredura de tokens / inflar o contador de views: limite por IP no banco
+    // (compartilhado entre instâncias — o do middleware é por processo).
+    const rl = await checkRateLimit(
+      `publico:${ipDoPedido(request)}`,
+      LIMITES_PUBLICOS.metadados.limite,
+      LIMITES_PUBLICOS.metadados.janelaSegundos,
+    )
+    if (!rl.success) {
+      return NextResponse.json({ error: 'Muitos pedidos. Aguarde um momento.' }, { status: 429 })
     }
 
     const transfer = await prisma.transfer.findUnique({
@@ -30,59 +55,34 @@ export async function GET(
     })
 
     if (!transfer) {
-      return NextResponse.json({ error: 'Link não encontrado' }, { status: 404 })
+      return respostaDeEstado('notfound')
     }
 
-    // Check expiration (Lazy Expire)
-    const now = new Date()
-    const expiresAt = new Date(transfer.expiresAt)
-    if (expiresAt <= now) {
-      // If it's still marked active, update it
-      // OR if it's marked expired but files are NOT cleaned up (pending), try again
-      if (transfer.status === 'active' || (transfer.status === 'expired' /* check cleanup status in next step? no, schema optimization needed for complex check */)) {
+    const estado = estadoPublico(transfer)
+    if (estado === 'expired') {
+      // Expiração preguiçosa: apaga os objetos na hora (o cron é a rede de segurança).
+      if (transfer.status === 'active' || transfer.cleanupStatus !== 'done') {
         try {
-           console.log(`[LazyExpire] Triggering immediate cleanup for ${transfer.id}`)
-           
-           // Immediate deletion of S3 files
-           const storageKeys = transfer.files.map(f => f.storageKey)
-           if (storageKeys.length > 0) {
-             const { deleteMultipleFiles } = await import('@/lib/storage')
-             await deleteMultipleFiles(storageKeys)
-           }
-
-           // Update DB
-           await prisma.transfer.update({
-             where: { id: transfer.id },
-             data: { 
-               status: 'expired',
-               cleanupStatus: 'done' // Assume done if we just tried. (Simpler for Lazy trigger)
-             }
-           })
-           
-           // Also mark files deleted
-           await prisma.file.updateMany({
-             where: { transferId: transfer.id },
-             data: { deletedAt: new Date() }
-           })
-           
+          const storageKeys = transfer.files.map(f => f.storageKey)
+          const apagou = storageKeys.length === 0 || await deleteMultipleFiles(storageKeys)
+          await prisma.transfer.update({
+            where: { id: transfer.id },
+            data: { status: 'expired', cleanupStatus: apagou ? 'done' : 'failed' }
+          })
+          if (apagou) {
+            await prisma.file.updateMany({
+              where: { transferId: transfer.id },
+              data: { deletedAt: new Date() }
+            })
+          }
         } catch (e) {
-          console.error('Lazy expire update failed:', e)
+          logger.error('[transfer] expiração preguiçosa falhou', e)
         }
       }
-  
-      return NextResponse.json({ 
-        error: 'Este link expirou',
-        code: 'EXPIRED',
-        expiresAt: transfer.expiresAt
-      }, { status: 410 })
+      return respostaDeEstado('expired')
     }
-
-    // Check revocation
-    if (transfer.status === 'revoked') {
-      return NextResponse.json({ 
-        error: 'Link desativado', 
-        code: 'revoked' 
-      }, { status: 410 })
+    if (estado !== 'ok') {
+      return respostaDeEstado(estado)
     }
 
     // Views: a página pública (/d/[token]) só passa por aqui — sem isto o
@@ -93,26 +93,22 @@ export async function GET(
       select: { viewCount: true },
     })
 
-    // If password protected, return limited data only
+    // Com senha: nada além do fato de haver senha.
     if (transfer.passwordHash) {
-      return NextResponse.json({
-        hasPassword: true,
-        id: transfer.id,
-        // Don't send files or text yet
-      })
+      return NextResponse.json({ hasPassword: true })
     }
 
-    // If public/verified, return full data
     const filesWithUrls = await Promise.all(
       transfer.files.map(async (file) => ({
-        ...file,
-        downloadUrl: await generatePresignedDownloadUrl(file.storageKey, file.originalName),
-        storageKey: undefined, // Hide real storage key from client
+        id: file.id,
+        originalName: file.originalName,
+        sizeBytes: file.sizeBytes,
+        mimeType: file.mimeType,
+        downloadUrl: await generatePresignedDownloadUrl(file.storageKey, file.originalName, VALIDADE_URL_DOWNLOAD_SEGUNDOS),
       }))
     )
 
     return NextResponse.json({
-      id: transfer.id,
       senderName: transfer.senderName,
       message: transfer.message,
       expiresAt: transfer.expiresAt,
@@ -123,7 +119,7 @@ export async function GET(
     })
 
   } catch (error) {
-    console.error('Fetch transfer error:', error)
+    logger.error('[transfer] erro ao buscar link público', error)
     return NextResponse.json({ error: 'Erro ao buscar link' }, { status: 500 })
   }
 }
