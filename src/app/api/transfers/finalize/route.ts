@@ -1,26 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { generateShareToken, hashPassword, USER_LIMITS, hashFingerprint, hashIP } from '@/lib/security'
-import { sendTransferEmail } from '@/lib/email'
-import { formatBytes } from '@/lib/utils'
+import { generateShareToken, hashPassword, USER_LIMITS } from '@/lib/security'
 import { checkFileExists } from '@/lib/storage'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { nomeDeExibicao } from '@/lib/plataforma'
-import pLimit from 'p-limit'
-
-// Limit concurrency for S3 checks
-const limit = pLimit(5)
-
+import { prefixoDoDono } from '@/lib/upload-session'
+import { logger } from '@/lib/logger'
 import { finalizeTransferSchema } from '@/lib/schemas'
+
+export const dynamic = 'force-dynamic'
+
+/** Executa `tarefa` sobre cada item com no máximo `limite` em paralelo. */
+async function emLotes<T>(itens: T[], limite: number, tarefa: (item: T) => Promise<void>): Promise<void> {
+  let proximo = 0
+  const trabalhadores = Array.from({ length: Math.min(limite, itens.length) }, async () => {
+    while (proximo < itens.length) {
+      const item = itens[proximo++]
+      await tarefa(item)
+    }
+  })
+  await Promise.all(trabalhadores)
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const rawBody = await request.json()
+    // Só usuário da plataforma cria envio (não existe mais convidado).
+    const session = await getServerSession(authOptions)
+    const userId = session?.user?.id
+    if (!userId) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
 
-    // Zod Validation
+    const rawBody = await request.json().catch(() => null)
     const validationResult = finalizeTransferSchema.safeParse(rawBody)
-
     if (!validationResult.success) {
       return NextResponse.json({
         error: 'Dados inválidos',
@@ -36,114 +49,92 @@ export async function POST(request: NextRequest) {
       files,
       expirationDays,
       password,
-      fingerprint,
     } = validationResult.data
 
-    const session = await getServerSession(authOptions)
-    const userId = session?.user?.id
-    const isLoggedIn = !!userId
-
-    // 1. Verify all upload sessions are completed
-    const uploadSessions = await prisma.uploadSession.findMany({
-      where: {
-        transferId,
-        status: { not: 'completed' }
-      }
+    // 1. Posse: cada arquivo tem de ser um upload CONCLUÍDO deste usuário,
+    //    neste envio, com o mesmo tamanho declarado — a chave vem do servidor
+    //    (prefixo do dono), nunca do cliente. Sem isto, um envio podia apontar
+    //    para objetos de outra pessoa no bucket.
+    const sessoes = await prisma.uploadSession.findMany({
+      where: { userId, transferId },
+      select: { storageKey: true, fileSize: true, status: true },
     })
-
-    if (uploadSessions.length > 0) {
+    const pendentes = sessoes.filter(s => s.status !== 'completed' && s.status !== 'aborted')
+    if (pendentes.length > 0) {
       return NextResponse.json(
         { error: 'Alguns arquivos ainda não foram completamente enviados' },
         { status: 400 }
       )
     }
-
-    // 2. Verify files exist in S3 (Integrity Check)
-    // We check ALL files to ensure upload is complete
-    const checkPromises = files.map((file: any) => limit(async () => {
-      // Security: Ensure storageKey belongs to this transfer
-      if (!file.storageKey.startsWith(`transfers/${transferId}/`)) {
-        throw new Error(`Chave de armazenamento inválida para o arquivo: ${file.name}`)
+    const concluidas = new Map(sessoes.filter(s => s.status === 'completed').map(s => [s.storageKey, Number(s.fileSize)]))
+    const prefixo = prefixoDoDono(userId, transferId)
+    const chaves = new Set<string>()
+    for (const file of files) {
+      const tamanhoDaSessao = concluidas.get(file.storageKey)
+      if (!file.storageKey.startsWith(prefixo) || tamanhoDaSessao === undefined || tamanhoDaSessao !== file.size || chaves.has(file.storageKey)) {
+        return NextResponse.json({ error: 'Upload incompleto. Por favor, tente novamente.' }, { status: 400 })
       }
+      chaves.add(file.storageKey)
+    }
 
-      // If local storage, this checks local file. If S3, checks HeadObject.
-      const exists = await checkFileExists(file.storageKey, file.size)
-      if (!exists) {
-        throw new Error(`Arquivo incompleto ou ausente: ${file.name}`)
-      }
-      return true
-    }))
+    // 2. Limites por envio (o init de cada arquivo já limitou o arquivo).
+    const totalSizeBytes = files.reduce((acc, f) => acc + f.size, 0)
+    const maxSizeBytes = USER_LIMITS.maxSizeMB * 1024 * 1024
+    if (totalSizeBytes > maxSizeBytes) {
+      return NextResponse.json({ error: `Tamanho total excede ${USER_LIMITS.maxSizeMB}MB` }, { status: 400 })
+    }
 
-    try {
-      await Promise.all(checkPromises)
-    } catch (error: any) {
-      console.error('Integrity check failed:', error)
+    // 3. O objeto existe no armazenamento com o tamanho declarado (HEAD).
+    let integro = true
+    await emLotes(files, 5, async (file) => {
+      if (!integro) return
+      if (!(await checkFileExists(file.storageKey, file.size))) integro = false
+    })
+    if (!integro) {
       return NextResponse.json({ error: 'Upload incompleto. Por favor, tente novamente.' }, { status: 400 })
     }
 
-    // 2. Validate rolling window limit for transfer creation (Free Plan)
-    // "15 transfers in last 30 days"
-    if (userId) { // Apply to all users now since Free is the standard
-      const thirtyDaysAgo = new Date()
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
-      const recentTransfersCount = await prisma.transfer.count({
-        where: {
-          ownerUserId: userId,
-          createdAt: {
-            gte: thirtyDaysAgo
-          }
-        }
-      })
-
-      if (recentTransfersCount >= USER_LIMITS.maxTransfersPer30Days) {
-        return NextResponse.json({
-          error: `Limite de ${USER_LIMITS.maxTransfersPer30Days} transferências nos últimos 30 dias atingido.`
-        }, { status: 403 })
-      }
+    // 4. Janela de 30 dias por usuário
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const recentTransfersCount = await prisma.transfer.count({
+      where: { ownerUserId: userId, createdAt: { gte: thirtyDaysAgo } }
+    })
+    if (recentTransfersCount >= USER_LIMITS.maxTransfersPer30Days) {
+      return NextResponse.json({
+        error: `Limite de ${USER_LIMITS.maxTransfersPer30Days} transferências nos últimos 30 dias atingido.`
+      }, { status: 403 })
     }
 
-    // 3. Determine expiration & Validate
+    // 5. Expiração (opções fixas; fração de dia = horas)
     const validExpirationDays = USER_LIMITS.expirationOptions.includes(expirationDays)
       ? expirationDays
-      : 7 // Default if invalid option sent
-
+      : 7
     const expiresAt = new Date()
-    // handle fractional days (like 0.0416 for 1 hour)
-    // Add minutes if < 1 day, otherwise Add days
     if (validExpirationDays < 1) {
       expiresAt.setMinutes(expiresAt.getMinutes() + Math.round(validExpirationDays * 24 * 60))
     } else {
       expiresAt.setDate(expiresAt.getDate() + validExpirationDays)
     }
 
-    // 4. Generate Share Token
+    // 6. Token público (≥128 bits) — colisão é astronomicamente improvável, mas confere
     let shareToken = generateShareToken()
-    let tokenExists = await prisma.transfer.findUnique({ where: { shareToken } })
-    while (tokenExists) {
+    while (await prisma.transfer.findUnique({ where: { shareToken }, select: { id: true } })) {
       shareToken = generateShareToken()
-      tokenExists = await prisma.transfer.findUnique({ where: { shareToken } })
     }
 
-    // 4. Hash password
-    let passwordHash = null
-    if (isLoggedIn && password && password.length >= 4) {
-      passwordHash = await hashPassword(password)
-    }
-
-    const totalSizeBytes = files.reduce((acc: number, f: any) => acc + (f.size || 0), 0)
+    // 7. Senha opcional (bcrypt)
+    const passwordHash = password && password.length >= 4 ? await hashPassword(password) : null
 
     // Remetente = nome da plataforma (o cliente manda um palpite; quem manda
     // é o verify, com a cópia local como reserva). Aparece na página pública,
     // no e-mail e no painel.
-    const nomeRemetente = userId
-      ? (await nomeDeExibicao(userId, request.headers.get('cookie'), senderName.trim())).slice(0, 100)
-      : senderName.trim()
+    const nomeRemetente = (await nomeDeExibicao(userId, request.headers.get('cookie'), senderName.trim())).slice(0, 100)
 
-    // 5. Create DB Records
+    // 8. Registros
     const transfer = await prisma.transfer.create({
       data: {
-        ownerUserId: userId || null,
+        ownerUserId: userId,
         senderName: nomeRemetente,
         recipientEmail: recipientEmail?.trim() || null,
         message: message?.trim() || null,
@@ -153,7 +144,7 @@ export async function POST(request: NextRequest) {
         status: 'active',
         totalSizeBytes,
         files: {
-          create: files.map((file: any) => ({
+          create: files.map((file) => ({
             originalName: file.name,
             mimeType: file.type || 'application/octet-stream',
             sizeBytes: file.size,
@@ -162,49 +153,11 @@ export async function POST(request: NextRequest) {
           }))
         }
       },
-      include: {
-        files: true,
-      }
+      select: { id: true, shareToken: true, expiresAt: true },
     })
 
-    // 6. Update Guest Usage
-    if (!isLoggedIn && fingerprint) {
-      const fingerprintHash = hashFingerprint(fingerprint)
-      const ipHash = hashIP(request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown')
-
-      // Try to find existing usage record by fingerprint OR IP
-      // Note: In `api/upload/presign` we checked limits. Here we assume we can increment.
-      // But we should double check if strictly required? 
-      // Theoretically user could have started multiple transfers in parallel.
-      // We'll just increment here.
-
-      try {
-        await prisma.guestUsage.upsert({
-          where: { fingerprintHash },
-          create: {
-            fingerprintHash,
-            ipHash,
-            transfersCreatedCount: 1,
-            lastSeenAt: new Date()
-          },
-          update: {
-            transfersCreatedCount: { increment: 1 },
-            lastSeenAt: new Date()
-          }
-        })
-      } catch (e) {
-        // Fallback for IP collision or race condition? 
-        // We'll ignore unique constraint errors on IP hash for simplicity 
-        // (schema says fingerprintHash is unique, ipHash is NOT unique in schema `model GuestUsage`? 
-        // Let's check schema. `ipHash` is not marked unique in `@unique`. `fingerprintHash` IS unique.
-        // So upsert on fingerprintHash is safe.)
-      }
-    }
-
-    // 7. Email Sending is now decoupled to POST /api/transfers/[id]/email
-    // The client will call it after a successful finalize.
-
-    // Cleanup is now handled by Vercel Cron (/api/cron/cleanup)
+    // E-mail ao destinatário é disparado pelo cliente em POST /api/transfers/[id]/email.
+    // Limpeza dos arquivos expirados: cron (/api/cron/cleanup) + expiração preguiçosa.
 
     return NextResponse.json({
       success: true,
@@ -217,7 +170,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Finalize error:', error)
+    logger.error('[finalize] erro ao finalizar transferência', error)
     return NextResponse.json({ error: 'Erro ao finalizar transferência' }, { status: 500 })
   }
 }

@@ -2,18 +2,28 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { logger } from '@/lib/logger'
+
+export const dynamic = 'force-dynamic'
+
+/** Paginação: inteiro dentro de [min, max]; qualquer outra coisa vira o padrão. */
+function inteiroEntre(bruto: string | null, padrao: number, min: number, max: number): number {
+  const n = Number.parseInt(bruto ?? '', 10)
+  if (!Number.isFinite(n)) return padrao
+  return Math.min(max, Math.max(min, n))
+}
 
 export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const page = inteiroEntre(searchParams.get('page'), 1, 1, 100_000)
+    const limit = inteiroEntre(searchParams.get('limit'), 10, 1, 100)
     const skip = (page - 1) * limit
 
     const userId = session.user.id
@@ -54,7 +64,7 @@ export async function GET(request: Request) {
       if (status === 'active' && new Date(t.expiresAt) <= now) {
         status = 'expired'
       }
-      
+
       return {
         id: t.id,
         senderName: t.senderName,
@@ -80,7 +90,7 @@ export async function GET(request: Request) {
       }
     })
   } catch (error) {
-    console.error('Error fetching transfers:', error)
+    logger.error('[transfers] erro ao listar envios', error)
     return NextResponse.json({ error: 'Erro ao buscar envios' }, { status: 500 })
   }
 }

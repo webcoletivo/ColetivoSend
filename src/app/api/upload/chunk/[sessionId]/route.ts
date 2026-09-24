@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { uploadChunk, getUploadProgress, listUploadedParts, abortMultipartUpload, exigirDonoDaSessao } from '@/lib/upload-session'
+import { respostaDeErroDeUpload } from '@/lib/upload-erros'
 
 // Configure route to accept larger payloads (chunks up to 10MB)
 export const runtime = 'nodejs'
@@ -42,7 +43,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
 
         const partNumber = parseInt(partNumberHeader)
 
-        if (isNaN(partNumber) || partNumber < 1) {
+        if (isNaN(partNumber) || partNumber < 1 || partNumber > 10000) {
             return NextResponse.json(
                 { error: 'Part number inválido' },
                 { status: 400 }
@@ -79,28 +80,8 @@ export async function PUT(request: NextRequest, context: RouteParams) {
                 percentage: Math.round((progress.uploadedBytes / progress.fileSize) * 100),
             },
         })
-    } catch (error: any) {
-        console.error('Upload chunk error:', error)
-
-        // Return specific error codes for better client-side handling
-        if (error.message.includes('not found')) {
-            return NextResponse.json(
-                { error: 'Sessão de upload não encontrada', code: 'SESSION_NOT_FOUND' },
-                { status: 404 }
-            )
-        }
-
-        if (error.message.includes('expired')) {
-            return NextResponse.json(
-                { error: 'Sessão de upload expirada', code: 'SESSION_EXPIRED' },
-                { status: 410 }
-            )
-        }
-
-        return NextResponse.json(
-            { error: error.message || 'Erro ao enviar chunk', code: 'UPLOAD_ERROR' },
-            { status: 500 }
-        )
+    } catch (error) {
+        return respostaDeErroDeUpload('[upload] erro ao enviar parte', error, 'Erro ao enviar chunk', 'UPLOAD_ERROR')
     }
 }
 
@@ -140,20 +121,8 @@ export async function GET(request: NextRequest, context: RouteParams) {
             status: progress.status,
             uploadedPartNumbers,
         })
-    } catch (error: any) {
-        console.error('Get upload status error:', error)
-
-        if (error.message.includes('not found')) {
-            return NextResponse.json(
-                { error: 'Sessão de upload não encontrada', code: 'SESSION_NOT_FOUND' },
-                { status: 404 }
-            )
-        }
-
-        return NextResponse.json(
-            { error: error.message || 'Erro ao obter status do upload' },
-            { status: 500 }
-        )
+    } catch (error) {
+        return respostaDeErroDeUpload('[upload] erro ao obter status', error, 'Erro ao obter status do upload', 'STATUS_ERROR')
     }
 }
 
@@ -181,11 +150,7 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
             success: true,
             message: 'Upload cancelado',
         })
-    } catch (error: any) {
-        console.error('Abort upload error:', error)
-        return NextResponse.json(
-            { error: error.message || 'Erro ao cancelar upload' },
-            { status: 500 }
-        )
+    } catch (error) {
+        return respostaDeErroDeUpload('[upload] erro ao cancelar upload', error, 'Erro ao cancelar upload', 'ABORT_ERROR')
     }
 }

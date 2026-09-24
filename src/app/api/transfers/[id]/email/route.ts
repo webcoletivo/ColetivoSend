@@ -5,6 +5,9 @@ import { formatBytes } from '@/lib/utils'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { checkRateLimit } from '@/lib/ratelimit'
+import { logger } from '@/lib/logger'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(
   request: NextRequest,
@@ -57,7 +60,7 @@ export async function POST(
           data: { transferId, recipientEmail: email, status: 'queued' }
         })
       } catch (logError) {
-        console.error('Failed to create email log for', email, logError)
+        logger.error('[email] falha ao registrar log de e-mail', logError)
       }
 
       try {
@@ -75,7 +78,7 @@ export async function POST(
             await prisma.emailLog.update({
               where: { id: emailLog.id },
               data: { status: 'sent', sentAt: new Date(), providerResponse: result.messageId }
-            }).catch(e => console.error('Silent log error:', e))
+            }).catch(e => logger.error('[email] falha ao registrar envio', e))
           }
           results.push({ email, success: true })
         } else {
@@ -83,19 +86,20 @@ export async function POST(
             await prisma.emailLog.update({
               where: { id: emailLog.id },
               data: { status: 'failed', errorMessage: result.error, providerResponse: result.code, retryCount: { increment: 1 } }
-            }).catch(e => console.error('Silent log error:', e))
+            }).catch(e => logger.error('[email] falha ao registrar falha', e))
           }
           results.push({ email, success: false, error: result.error })
         }
       } catch (emailError: any) {
-        console.error('Email send error for', email, emailError)
+        logger.error('[email] falha ao enviar e-mail de envio', emailError)
         if (emailLog) {
           await prisma.emailLog.update({
             where: { id: emailLog.id },
             data: { status: 'failed', errorMessage: `CRITICAL: ${emailError.message}`, retryCount: { increment: 1 } }
-          }).catch(logError => console.error('Failed to log critical error:', logError))
+          }).catch(logError => logger.error('[email] falha ao registrar erro crítico', logError))
         }
-        results.push({ email, success: false, error: emailError.message })
+        // Detalhe da exceção fica no log; o cliente recebe uma mensagem genérica.
+        results.push({ email, success: false, error: 'Falha ao enviar' })
       }
     }
 
@@ -118,7 +122,7 @@ export async function POST(
     }, { status: 502 })
 
   } catch (error: any) {
-    console.error('Outer email route error:', error)
+    logger.error('[email] erro na rota de reenvio', error)
     // Stack trace fica no log do servidor, nunca na resposta.
     return NextResponse.json({
       error: 'Erro interno no servidor de e-mail',

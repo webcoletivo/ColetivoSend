@@ -48,6 +48,25 @@ export interface UploadProgress {
 }
 
 /**
+ * Chave no bucket sob o prefixo do DONO: transfers/<userId>/<transferId>/<fileId>-<nome>.
+ * O finalize só aceita chaves desse prefixo para o usuário da sessão — um
+ * envio nunca aponta para objeto de outra pessoa. Nome saneado (só
+ * [A-Za-z0-9.-_], sem ".." e limitado) para a chave não carregar caminho.
+ */
+export function chaveDeArmazenamento(userId: string | null, transferId: string, fileId: string, fileName: string): string {
+    const nome = fileName
+        .replace(/[^a-zA-Z0-9.\-_]/g, '_')
+        .replace(/\.{2,}/g, '.')
+        .slice(-120) || 'arquivo'
+    return `${prefixoDoDono(userId, transferId)}${fileId}-${nome}`
+}
+
+/** Prefixo de todos os objetos de um envio deste usuário. */
+export function prefixoDoDono(userId: string | null, transferId: string): string {
+    return userId ? `transfers/${userId}/${transferId}/` : `transfers/${transferId}/`
+}
+
+/**
  * Initialize a multipart upload session
  */
 export async function initializeMultipartUpload(
@@ -61,9 +80,7 @@ export async function initializeMultipartUpload(
     const chunkSize = parseInt(process.env.UPLOAD_CHUNK_SIZE_MB || '20') * 1024 * 1024
     const totalParts = Math.ceil(fileSize / chunkSize)
 
-    // Sanitize filename for storage
-    const sanitizedName = fileName.replace(/[^a-zA-Z0-9.\-_]/g, '_')
-    const storageKey = `transfers/${transferId}/${fileId}-${sanitizedName}`
+    const storageKey = chaveDeArmazenamento(userId, transferId, fileId, fileName)
 
     let uploadId = ''
 
@@ -127,7 +144,8 @@ export async function exigirDonoDaSessao(sessionId: string, userId: string): Pro
         where: { id: sessionId },
         select: { userId: true },
     })
-    if (!session || (session.userId && session.userId !== userId)) {
+    // Sessão sem dono (resquício de convidado) não é de ninguém: também nega.
+    if (!session || session.userId !== userId) {
         throw new Error('Upload session not found')
     }
 }

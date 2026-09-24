@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { completeMultipartUpload, exigirDonoDaSessao } from '@/lib/upload-session'
+import { respostaDeErroDeUpload } from '@/lib/upload-erros'
+
+export const dynamic = 'force-dynamic'
 
 interface RouteParams {
     params: Promise<{
@@ -33,26 +36,7 @@ export async function POST(request: NextRequest, context: RouteParams) {
             size: result.size,
             message: 'Upload concluído com sucesso',
         })
-    } catch (error: any) {
-        console.error('Complete upload error:', error)
-
-        if (error.message.includes('not found')) {
-            return NextResponse.json(
-                { error: 'Sessão de upload não encontrada', code: 'SESSION_NOT_FOUND' },
-                { status: 404 }
-            )
-        }
-
-        if (error.message.includes('Incomplete upload')) {
-            return NextResponse.json(
-                { error: error.message, code: 'INCOMPLETE_UPLOAD' },
-                { status: 400 }
-            )
-        }
-
-        return NextResponse.json(
-            { error: error.message || 'Erro ao finalizar upload', code: 'COMPLETE_ERROR' },
-            { status: 500 }
-        )
+    } catch (error) {
+        return respostaDeErroDeUpload('[upload] erro ao concluir upload', error, 'Erro ao finalizar upload', 'COMPLETE_ERROR')
     }
 }

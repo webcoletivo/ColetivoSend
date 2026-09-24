@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import prisma from '@/lib/db'
 import { initializeMultipartUpload } from '@/lib/upload-session'
 import { USER_LIMITS, isFileTypeAllowed } from '@/lib/security'
-import { z } from 'zod'
+import { initUploadSchema, MAX_FILES_COUNT } from '@/lib/schemas'
+import { logger } from '@/lib/logger'
 
-const initUploadSchema = z.object({
-    transferId: z.string().min(1),
-    fileId: z.string().min(1),
-    fileName: z.string().min(1),
-    fileSize: z.number().min(1).max(10 * 1024 * 1024 * 1024), // 10GB max
-    mimeType: z.string(),
-})
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
     try {
@@ -26,7 +22,7 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        const body = await request.json()
+        const body = await request.json().catch(() => null)
         const validation = initUploadSchema.safeParse(body)
 
         if (!validation.success) {
@@ -57,6 +53,20 @@ export async function POST(request: NextRequest) {
             )
         }
 
+        // Limites POR ENVIO, contados no servidor: quantidade de arquivos e
+        // bytes somados das sessões deste usuário neste transferId.
+        const doEnvio = await prisma.uploadSession.aggregate({
+            where: { userId, transferId, status: { not: 'aborted' } },
+            _count: { _all: true },
+            _sum: { fileSize: true },
+        })
+        if (doEnvio._count._all >= MAX_FILES_COUNT) {
+            return NextResponse.json({ error: `Máximo de ${MAX_FILES_COUNT} arquivos por envio` }, { status: 400 })
+        }
+        if (Number(doEnvio._sum.fileSize ?? 0) + fileSize > maxSizeBytes) {
+            return NextResponse.json({ error: `Tamanho total do envio excede ${USER_LIMITS.maxSizeMB}MB` }, { status: 400 })
+        }
+
         // Initialize multipart upload
         const result = await initializeMultipartUpload(
             userId,
@@ -75,10 +85,10 @@ export async function POST(request: NextRequest) {
             chunkSize: result.chunkSize,
             totalParts: result.totalParts,
         })
-    } catch (error: any) {
-        console.error('Init upload error:', error)
+    } catch (error) {
+        logger.error('[upload] erro ao iniciar upload', error)
         return NextResponse.json(
-            { error: error.message || 'Erro ao inicializar upload' },
+            { error: 'Erro ao inicializar upload' },
             { status: 500 }
         )
     }
