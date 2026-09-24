@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { Tooltip } from '@/components/ui/Tooltip'
 
 interface MediaItem {
     id: string
@@ -564,67 +565,73 @@ export default function MediaManagementPage() {
                                 <div className="flex items-center gap-2 flex-shrink-0">
                                     {editingId === item.id ? (
                                         <>
-                                            <button
-                                                type="button"
-                                                onClick={handleSaveEdit}
-                                                aria-label={`Salvar alterações de ${nome}`}
-                                                title="Salvar"
-                                                className={`${BOTAO_ICONE} text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10`}
-                                            >
-                                                <Check className="w-4 h-4" aria-hidden="true" />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => { setEditingId(null); setEditData({}) }}
-                                                aria-label="Cancelar edição"
-                                                title="Cancelar"
-                                                className={`${BOTAO_ICONE} text-muted-foreground hover:bg-muted hover:text-foreground`}
-                                            >
-                                                <X className="w-4 h-4" aria-hidden="true" />
-                                            </button>
+                                            <Tooltip texto="Salvar">
+                                                <button
+                                                    type="button"
+                                                    onClick={handleSaveEdit}
+                                                    aria-label={`Salvar alterações de ${nome}`}
+                                                    className={`${BOTAO_ICONE} text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10`}
+                                                >
+                                                    <Check className="w-4 h-4" aria-hidden="true" />
+                                                </button>
+                                            </Tooltip>
+                                            <Tooltip texto="Cancelar" alinhar="fim">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setEditingId(null); setEditData({}) }}
+                                                    aria-label="Cancelar edição"
+                                                    className={`${BOTAO_ICONE} text-muted-foreground hover:bg-muted hover:text-foreground`}
+                                                >
+                                                    <X className="w-4 h-4" aria-hidden="true" />
+                                                </button>
+                                            </Tooltip>
                                         </>
                                     ) : (
                                         <>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleToggleActive(item.id, item.isActive)}
-                                                className={`${BOTAO_ICONE} ${item.isActive ? 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
-                                                title={item.isActive ? 'Desativar' : 'Ativar'}
-                                                aria-label={item.isActive ? `Desativar ${nome}` : `Ativar ${nome}`}
-                                                aria-pressed={item.isActive}
-                                            >
-                                                {item.isActive ? <Eye className="w-4 h-4" aria-hidden="true" /> : <EyeOff className="w-4 h-4" aria-hidden="true" />}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => { setEditingId(item.id); setEditData({}) }}
-                                                aria-label={`Editar ${nome}`}
-                                                title="Editar"
-                                                className={`${BOTAO_ICONE} text-muted-foreground hover:bg-muted hover:text-foreground`}
-                                            >
-                                                <Edit2 className="w-4 h-4" aria-hidden="true" />
-                                            </button>
-                                            {item.isPromotion && item.promotionUrl && (
-                                                <a
-                                                    href={item.promotionUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    aria-label={`Abrir link da propaganda ${nome} (nova guia)`}
-                                                    title="Abrir propaganda"
+                                            <Tooltip texto={item.isActive ? 'Desativar' : 'Ativar'}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleToggleActive(item.id, item.isActive)}
+                                                    className={`${BOTAO_ICONE} ${item.isActive ? 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                                                    aria-label={item.isActive ? `Desativar ${nome}` : `Ativar ${nome}`}
+                                                    aria-pressed={item.isActive}
+                                                >
+                                                    {item.isActive ? <Eye className="w-4 h-4" aria-hidden="true" /> : <EyeOff className="w-4 h-4" aria-hidden="true" />}
+                                                </button>
+                                            </Tooltip>
+                                            <Tooltip texto="Editar">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setEditingId(item.id); setEditData({}) }}
+                                                    aria-label={`Editar ${nome}`}
                                                     className={`${BOTAO_ICONE} text-muted-foreground hover:bg-muted hover:text-foreground`}
                                                 >
-                                                    <ExternalLink className="w-4 h-4" aria-hidden="true" />
-                                                </a>
+                                                    <Edit2 className="w-4 h-4" aria-hidden="true" />
+                                                </button>
+                                            </Tooltip>
+                                            {item.isPromotion && item.promotionUrl && (
+                                                <Tooltip texto="Abrir propaganda">
+                                                    <a
+                                                        href={item.promotionUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        aria-label={`Abrir link da propaganda ${nome} (nova guia)`}
+                                                        className={`${BOTAO_ICONE} text-muted-foreground hover:bg-muted hover:text-foreground`}
+                                                    >
+                                                        <ExternalLink className="w-4 h-4" aria-hidden="true" />
+                                                    </a>
+                                                </Tooltip>
                                             )}
-                                            <button
-                                                type="button"
-                                                onClick={() => setExcluindo(item)}
-                                                aria-label={`Excluir ${nome}`}
-                                                title="Excluir"
-                                                className={`${BOTAO_ICONE} text-destructive hover:bg-destructive/10`}
-                                            >
-                                                <Trash2 className="w-4 h-4" aria-hidden="true" />
-                                            </button>
+                                            <Tooltip texto="Excluir" alinhar="fim">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setExcluindo(item)}
+                                                    aria-label={`Excluir ${nome}`}
+                                                    className={`${BOTAO_ICONE} text-destructive hover:bg-destructive/10`}
+                                                >
+                                                    <Trash2 className="w-4 h-4" aria-hidden="true" />
+                                                </button>
+                                            </Tooltip>
                                         </>
                                     )}
                                 </div>

@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button'
 import { Logo } from '@/components/ui/Logo'
 import { MenuAcoes } from '@/components/ui/MenuAcoes'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { Tooltip } from '@/components/ui/Tooltip'
 import { SkeletonTable, SkeletonStatCard } from '@/components/ui/Skeleton'
 import { formatBytes, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
@@ -208,14 +209,15 @@ export default function DashboardPage() {
           <div className="flex items-center gap-4">
             {/* Unificação: identidade e saída vivem na barra da plataforma.
                 Mídia de fundo é configuração do Send (admin). */}
-            <Link
-              href="/settings/media"
-              title="Mídia de fundo (admin)"
-              aria-label="Mídia de fundo (admin)"
-              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <Settings className="w-5 h-5" aria-hidden="true" />
-            </Link>
+            <Tooltip texto="Mídia de fundo (admin)" lado="baixo" alinhar="fim">
+              <Link
+                href="/settings/media"
+                aria-label="Mídia de fundo (admin)"
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Settings className="w-5 h-5" aria-hidden="true" />
+              </Link>
+            </Tooltip>
           </div>
         </div>
       </header>
