@@ -34,9 +34,17 @@ function aposDeploy(descricao: string, verificar: () => void) {
 
 test.beforeAll(async () => {
   anon = await apiAnonima()
-  const saude = await anon.get(`${SEND}/api/health`, { failOnStatusCode: false })
-  deployNovo = saude.ok() && !('x-powered-by' in saude.headers())
-  console.log(`[seguranca] build em produção ${deployNovo ? 'já inclui' : 'ainda NÃO inclui'} a auditoria (X-Powered-By ${deployNovo ? 'ausente' : 'presente'})`)
+  // /api/health nunca trouxe X-Powered-By (nem no build antigo); a página
+  // pública e as rotas de API trazem — a auditoria desliga em todas.
+  const sondas = [`${SEND}/d/nao-existe-123`, `${SEND}/api/transfers`]
+  let comPoweredBy = 0
+  for (const caminho of sondas) {
+    const r = await anon.get(caminho, { failOnStatusCode: false })
+    if ('x-powered-by' in r.headers()) comPoweredBy++
+    await pausa()
+  }
+  deployNovo = comPoweredBy === 0
+  console.log(`[seguranca] build em produção ${deployNovo ? 'já inclui' : 'ainda NÃO inclui'} a auditoria (X-Powered-By em ${comPoweredBy}/${sondas.length} sondas)`)
 })
 
 test.afterAll(async () => {
@@ -92,7 +100,8 @@ test('privados sem cookie: API nega (401) e páginas internas vão à ponte SSO'
   }
 
   // páginas internas: redirect para a ponte SSO, nunca conteúdo
-  for (const caminho of [`${SEND}/`, `${SEND}/dashboard`, `${SEND}/settings/media`, `${SEND}/login`]) {
+  // (`/send/` com barra final é só o 308 do Next para `/send`; sonda-se `/send`)
+  for (const caminho of [SEND, `${SEND}/dashboard`, `${SEND}/settings/media`, `${SEND}/login`]) {
     const r = await anon.get(caminho, { maxRedirects: 0, failOnStatusCode: false })
     const destino = r.headers()['location'] ?? ''
     console.log(`  GET ${caminho} -> ${r.status()} ${destino}`)
