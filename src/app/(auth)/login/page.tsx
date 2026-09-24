@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { destinoSeguro } from '@/lib/sso-destino'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,10 +16,6 @@ export default async function LoginRedirect({
   searchParams: Promise<{ callbackUrl?: string }>
 }) {
   const { callbackUrl } = await searchParams
-  const bruto = callbackUrl ?? `${BASE_PATH}/dashboard`
-  const next =
-    bruto.startsWith('/') && !bruto.startsWith('//') && !bruto.includes('\\')
-      ? bruto
-      : `${BASE_PATH}/dashboard`
+  const next = destinoSeguro(callbackUrl, BASE_PATH)
   redirect(`/api/sso/entrar?next=${encodeURIComponent(next)}`)
 }
