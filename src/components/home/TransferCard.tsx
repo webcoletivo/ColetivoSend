@@ -3,12 +3,13 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Clock, ChevronDown, X, Check, Lock, Copy, RefreshCw, UserRound } from 'lucide-react'
+import { Send, Clock, X, Check, Lock, Copy, RefreshCw, UserRound } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
 import { UploadDropzone } from '@/components/upload/UploadDropzone'
 import { FileList, FileItem } from '@/components/upload/FileList'
 import { ProgressBar } from '@/components/upload/ProgressBar'
 import { Button } from '@/components/ui/Button'
+import { Select } from '@/components/ui/Select'
 import { formatBytes } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import { getUploadManager, UploadProgress as UploadProgressType } from '@/lib/upload/UploadManager'
@@ -580,25 +581,20 @@ export function TransferCard({ className = '' }: TransferCardProps) {
 
                         {/* Settings: Expiry & Password */}
                         <div className="space-y-4">
-                            {/* Expiry Selector (select nativo: acessível e no padrão de input h-10) */}
+                            {/* Expiry Selector: listbox próprio (sem a lista nativa do navegador), altura h-10 dos inputs */}
                             <div className="flex items-center justify-between gap-4">
-                                <label htmlFor="expiracao" className="text-sm text-muted-foreground flex items-center gap-2">
+                                <label id="expiracao-rotulo" htmlFor="expiracao" className="text-sm text-muted-foreground flex items-center gap-2">
                                     <Clock className="w-4 h-4" aria-hidden="true" />
                                     <span>Expira em</span>
                                 </label>
-                                <div className="relative">
-                                    <select
-                                        id="expiracao"
-                                        value={expiryDays}
-                                        onChange={(e) => setExpiryDays(Number(e.target.value))}
-                                        className="input w-auto min-w-[8rem] pr-9 appearance-none cursor-pointer"
-                                    >
-                                        {EXPIRY_OPTIONS.map(option => (
-                                            <option key={option.value} value={option.value}>{option.label}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-                                </div>
+                                <Select
+                                    id="expiracao"
+                                    rotuloId="expiracao-rotulo"
+                                    value={expiryDays}
+                                    onChange={setExpiryDays}
+                                    opcoes={EXPIRY_OPTIONS}
+                                    className="min-w-[8rem]"
+                                />
                             </div>
 
                             {/* Password Toggle (checkbox real, rotulado) */}

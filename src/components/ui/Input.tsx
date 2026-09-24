@@ -104,59 +104,6 @@ export function Textarea({
   )
 }
 
-interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
-  label?: string
-  error?: string
-  options: { value: string; label: string }[]
-}
-
-export function Select({
-  label,
-  error,
-  options,
-  className,
-  id,
-  ...props
-}: SelectProps) {
-  const inputId = id || label?.toLowerCase().replace(/\s/g, '-')
-
-  return (
-    <div className="space-y-2">
-      {label && (
-        <label htmlFor={inputId} className={labelBase}>
-          {label}
-        </label>
-      )}
-      <select
-        id={inputId}
-        className={cn(
-          fieldBase,
-          'h-10 px-4 appearance-none cursor-pointer',
-          error ? fieldError : fieldFocus,
-          className
-        )}
-        style={{
-          backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'right 1rem center',
-          backgroundSize: '1rem',
-          paddingRight: '2.5rem',
-        }}
-        {...props}
-      >
-        {options.map(option => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
-      )}
-    </div>
-  )
-}
-
 interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
   label: string
 }
