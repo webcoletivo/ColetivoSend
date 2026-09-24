@@ -1,45 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { exigirAdmin } from '@/lib/admin'
+import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
-// Check if user is admin
-async function requireAdmin() {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-        return { error: 'Não autenticado', status: 401 }
-    }
-
-    const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { isAdmin: true }
-    })
-
-    if (!user?.isAdmin) {
-        return { error: 'Acesso negado', status: 403 }
-    }
-
-    return { userId: session.user.id }
-}
+export const dynamic = 'force-dynamic'
 
 // Schema for reordering
 const reorderSchema = z.object({
     items: z.array(z.object({
-        id: z.string(),
-        order: z.number()
-    }))
+        id: z.string().max(64),
+        order: z.number().int().min(0).max(10_000)
+    })).max(500)
 })
 
 // POST /api/admin/media/reorder - Bulk update order
 export async function POST(req: NextRequest) {
-    const auth = await requireAdmin()
+    const auth = await exigirAdmin()
     if ('error' in auth) {
         return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
     try {
-        const body = await req.json()
+        const body = await req.json().catch(() => null)
         const { items } = reorderSchema.parse(body)
 
         // Update all items in a transaction
@@ -55,9 +38,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true })
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: error.errors }, { status: 400 })
+            return NextResponse.json({ error: 'Dados inválidos', details: error.flatten() }, { status: 400 })
         }
-        console.error('Error reordering media:', error)
+        logger.error('[media] erro ao reordenar', error)
         return NextResponse.json({ error: 'Erro ao reordenar mídia' }, { status: 500 })
     }
 }

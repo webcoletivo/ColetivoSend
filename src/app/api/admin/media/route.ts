@@ -1,32 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { generatePresignedUploadUrl, generatePresignedDownloadUrl, generateSimpleUploadUrl } from '@/lib/storage'
+import { generatePresignedDownloadUrl, generateSimpleUploadUrl } from '@/lib/storage'
+import { TIPOS_DE_MIDIA_ACEITOS } from '@/lib/assinatura-midia'
+import { exigirAdmin, urlDePromocaoSchema, TAMANHO_MAXIMO_MIDIA } from '@/lib/admin'
+import { logger } from '@/lib/logger'
 import { z } from 'zod'
+import crypto from 'crypto'
 
-// Check if user is admin
-async function requireAdmin() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) {
-    return { error: 'Não autenticado', status: 401 }
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { isAdmin: true }
-  })
-
-  if (!user?.isAdmin) {
-    return { error: 'Acesso negado', status: 403 }
-  }
-
-  return { userId: session.user.id }
-}
+export const dynamic = 'force-dynamic'
 
 // GET /api/admin/media - List all media
 export async function GET() {
-  const auth = await requireAdmin()
+  const auth = await exigirAdmin()
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
@@ -43,7 +28,7 @@ export async function GET() {
         try {
           url = await generatePresignedDownloadUrl(item.storageKey, item.title || 'media', 3600)
         } catch (e) {
-          console.error('Error generating URL for media:', item.id, e)
+          logger.error('[media] falha ao presignar mídia', e)
         }
         return { ...item, url }
       })
@@ -51,65 +36,72 @@ export async function GET() {
 
     return NextResponse.json(mediaWithUrls)
   } catch (error) {
-    console.error('Error fetching media:', error)
+    logger.error('[media] erro ao listar', error)
     return NextResponse.json({ error: 'Erro ao buscar mídia' }, { status: 500 })
   }
 }
 
+const EXTENSOES_POR_TIPO: Record<string, string> = {
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
+  'video/ogg': 'ogv',
+  'video/quicktime': 'mov',
+  'video/x-msvideo': 'avi',
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+}
+
 // Schema for creating media
 const createMediaSchema = z.object({
-  title: z.string().nullable().optional(),
+  title: z.string().max(120).nullable().optional(),
   type: z.enum(['video', 'image']),
   isPromotion: z.boolean().default(false),
-  promotionUrl: z.string().url().nullable().optional(),
-  fileName: z.string(),
-  mimeType: z.string(),
-  sizeBytes: z.number(),
-  duration: z.number().nullable().optional()
+  promotionUrl: urlDePromocaoSchema.nullable().optional(),
+  fileName: z.string().min(1).max(255),
+  mimeType: z.string().max(100),
+  sizeBytes: z.number().int().min(1),
+  duration: z.number().min(1).max(600).nullable().optional()
 })
 
-// POST /api/admin/media - Create new media with presigned upload URL
+/**
+ * POST /api/admin/media - Prepara o upload direto ao S3.
+ *
+ * O registro nasce INATIVO: só entra no loop da home depois de
+ * POST /api/admin/media/[id]/confirmar, que confere no próprio objeto o tipo
+ * (assinatura) e o tamanho. O PUT presignado já leva Content-Type e
+ * Content-Length assinados — o S3 recusa outro tipo ou outro tamanho.
+ */
 export async function POST(req: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await exigirAdmin()
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
 
   try {
-    const body = await req.json()
+    const body = await req.json().catch(() => null)
     const data = createMediaSchema.parse(body)
 
     // Validate promotion URL if isPromotion is true
     if (data.isPromotion && !data.promotionUrl) {
-      console.error('Validation error: Promotion URL missing')
       return NextResponse.json(
         { error: 'URL da propaganda é obrigatória' },
         { status: 400 }
       )
     }
 
-    // Validate file type
-    const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-msvideo']
-    const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml']
-    const allowedTypes = data.type === 'video' ? allowedVideoTypes : allowedImageTypes
-    const allowedTypesForChecking = data.type === 'video' ? [...allowedVideoTypes, 'video/quicktime'] : allowedImageTypes
-
-    // Temporary Allow .mov for checking but maybe fail if strict
-    // Just logging for now
-    console.log('Received file type:', data.mimeType)
-
-    if (!allowedTypes.includes(data.mimeType)) {
-      console.error(`Validation error: Invalid mime type ${data.mimeType}`)
+    const allowedTypes: readonly string[] = TIPOS_DE_MIDIA_ACEITOS[data.type]
+    const mimeType = data.mimeType.trim().toLowerCase()
+    if (!allowedTypes.includes(mimeType)) {
       return NextResponse.json(
         { error: `Tipo de arquivo não permitido. Permitidos: ${allowedTypes.join(', ')}` },
         { status: 400 }
       )
     }
 
-    // Max file size: 100MB for video, 10MB for image
-    const maxSize = data.type === 'video' ? 100 * 1024 * 1024 : 10 * 1024 * 1024
+    const maxSize = TAMANHO_MAXIMO_MIDIA[data.type]
     if (data.sizeBytes > maxSize) {
-      console.error(`Validation error: File too large ${data.sizeBytes} > ${maxSize}`)
       return NextResponse.json(
         { error: `Arquivo muito grande. Máximo: ${maxSize / (1024 * 1024)}MB` },
         { status: 400 }
@@ -122,14 +114,12 @@ export async function POST(req: NextRequest) {
     })
     const nextOrder = (lastMedia?.order ?? -1) + 1
 
-    // Generate storage key
-    const ext = data.fileName.split('.').pop() || ''
-    const storageKey = `background-media/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    // Chave gerada no servidor (extensão pelo tipo aceito, nunca pelo nome enviado)
+    const ext = EXTENSOES_POR_TIPO[mimeType] ?? 'bin'
+    const storageKey = `background-media/${Date.now()}-${crypto.randomBytes(8).toString('hex')}.${ext}`
 
-    // Generate presigned upload URL
-    const uploadUrl = await generateSimpleUploadUrl(storageKey, data.mimeType)
+    const uploadUrl = await generateSimpleUploadUrl(storageKey, mimeType, data.sizeBytes)
 
-    // Create media record
     const media = await prisma.backgroundMedia.create({
       data: {
         title: data.title,
@@ -137,11 +127,11 @@ export async function POST(req: NextRequest) {
         isPromotion: data.isPromotion,
         promotionUrl: data.promotionUrl,
         storageKey,
-        mimeType: data.mimeType,
+        mimeType,
         sizeBytes: data.sizeBytes,
         duration: data.duration,
         order: nextOrder,
-        isActive: true
+        isActive: false, // ativa só depois de /confirmar
       }
     })
 
@@ -151,10 +141,9 @@ export async function POST(req: NextRequest) {
     })
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('Validation error:', JSON.stringify(error.errors, null, 2))
-      return NextResponse.json({ error: error.errors }, { status: 400 })
+      return NextResponse.json({ error: 'Dados inválidos', details: error.flatten() }, { status: 400 })
     }
-    console.error('Error creating media:', error)
+    logger.error('[media] erro ao criar', error)
     return NextResponse.json({ error: 'Erro ao criar mídia' }, { status: 500 })
   }
 }

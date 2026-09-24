@@ -135,7 +135,7 @@ export default function MediaManagementPage() {
                 throw new Error(err.error || 'Erro ao preparar upload')
             }
 
-            const { uploadUrl } = await presignRes.json()
+            const { uploadUrl, media: criada } = await presignRes.json()
 
             // Upload to S3
             await new Promise<void>((resolve, reject) => {
@@ -151,6 +151,14 @@ export default function MediaManagementPage() {
                 xhr.setRequestHeader('Content-Type', uploadFile.type)
                 xhr.send(uploadFile)
             })
+
+            // Confirmação: o servidor confere tipo (assinatura) e tamanho no
+            // próprio objeto e só então ativa a mídia — se não confere, apaga.
+            const confirmaRes = await fetch(`/api/admin/media/${criada.id}/confirmar`, { method: 'POST' })
+            if (!confirmaRes.ok) {
+                const err = await confirmaRes.json().catch(() => ({}))
+                throw new Error(err.error || 'Arquivo recusado na confirmação')
+            }
 
             // Refresh list
             await fetchMedia()

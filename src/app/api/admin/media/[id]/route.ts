@@ -1,35 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { deleteFile } from '@/lib/storage'
+import { exigirAdmin, urlDePromocaoSchema, verificarMidiaNoArmazenamento } from '@/lib/admin'
+import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
-// Check if user is admin
-async function requireAdmin() {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-        return { error: 'Não autenticado', status: 401 }
-    }
-
-    const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { isAdmin: true }
-    })
-
-    if (!user?.isAdmin) {
-        return { error: 'Acesso negado', status: 403 }
-    }
-
-    return { userId: session.user.id }
-}
+export const dynamic = 'force-dynamic'
 
 // Schema for updating media
 const updateMediaSchema = z.object({
-    title: z.string().optional(),
+    title: z.string().max(120).optional(),
     isPromotion: z.boolean().optional(),
-    promotionUrl: z.string().url().optional().nullable(),
-    duration: z.number().optional(),
+    promotionUrl: urlDePromocaoSchema.optional().nullable(),
+    duration: z.number().min(1).max(600).optional(),
     isActive: z.boolean().optional()
 })
 
@@ -38,7 +21,7 @@ export async function PATCH(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const auth = await requireAdmin()
+    const auth = await exigirAdmin()
     if ('error' in auth) {
         return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
@@ -46,7 +29,7 @@ export async function PATCH(
     const { id } = await params
 
     try {
-        const body = await req.json()
+        const body = await req.json().catch(() => null)
         const data = updateMediaSchema.parse(body)
 
         // Validate promotion URL if isPromotion is true
@@ -55,6 +38,22 @@ export async function PATCH(
                 { error: 'URL da propaganda é obrigatória' },
                 { status: 400 }
             )
+        }
+
+        const atual = await prisma.backgroundMedia.findUnique({
+            where: { id },
+            select: { storageKey: true, mimeType: true, type: true, sizeBytes: true },
+        })
+        if (!atual) {
+            return NextResponse.json({ error: 'Mídia não encontrada' }, { status: 404 })
+        }
+        // Ativar = voltar ao loop da home: o objeto tem de estar lá com o tipo
+        // (assinatura) e o tamanho aprovados — sempre, não só no primeiro envio.
+        if (data.isActive) {
+            const veredito = await verificarMidiaNoArmazenamento(atual)
+            if (!veredito.ok) {
+                return NextResponse.json({ error: veredito.motivo }, { status: 409 })
+            }
         }
 
         const media = await prisma.backgroundMedia.update({
@@ -71,9 +70,9 @@ export async function PATCH(
         return NextResponse.json(media)
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: error.errors }, { status: 400 })
+            return NextResponse.json({ error: 'Dados inválidos', details: error.flatten() }, { status: 400 })
         }
-        console.error('Error updating media:', error)
+        logger.error('[media] erro ao atualizar', error)
         return NextResponse.json({ error: 'Erro ao atualizar mídia' }, { status: 500 })
     }
 }
@@ -83,7 +82,7 @@ export async function DELETE(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const auth = await requireAdmin()
+    const auth = await exigirAdmin()
     if ('error' in auth) {
         return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
@@ -104,7 +103,7 @@ export async function DELETE(
         try {
             await deleteFile(media.storageKey)
         } catch (e) {
-            console.error('Error deleting from storage:', e)
+            logger.error('[media] erro ao apagar do armazenamento', e)
             // Continue with database deletion even if storage fails
         }
 
@@ -115,7 +114,7 @@ export async function DELETE(
 
         return NextResponse.json({ success: true })
     } catch (error) {
-        console.error('Error deleting media:', error)
+        logger.error('[media] erro ao excluir', error)
         return NextResponse.json({ error: 'Erro ao excluir mídia' }, { status: 500 })
     }
 }
