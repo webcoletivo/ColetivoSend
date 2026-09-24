@@ -113,9 +113,33 @@ export function linhasDoPainel(page: Page): Locator {
   return page.locator('main .card').filter({ has: page.getByRole('button', { name: /^(Copiar|Copiado)$/ }) })
 }
 
-/** Botão "mais ações" da linha: o único botão sem texto (só ícone). */
+/** Botão "mais ações" da linha (ícone "…", nomeado por aria-label). */
 export function botaoMenu(linha: Locator): Locator {
-  return linha.getByRole('button').filter({ hasNotText: /./ }).first()
+  return linha.getByRole('button', { name: 'Mais ações' })
+}
+
+/**
+ * Item do menu "…" da linha. O menu novo usa role=menuitem; a versão anterior
+ * em produção usava button/link puros — aceita os dois para a suíte valer
+ * antes e depois do deploy.
+ */
+export function itemMenu(linha: Locator, nome: string): Locator {
+  return linha
+    .getByRole('menuitem', { name: nome })
+    .or(linha.getByRole('button', { name: nome }))
+    .or(linha.getByRole('link', { name: nome }))
+}
+
+/**
+ * Confirma a exclusão: no diálogo do padrão (role=alertdialog) clica no botão
+ * de confirmar; se a tela ainda usa confirm() nativo, o page.on('dialog') do
+ * teste já aceitou e nada aparece.
+ */
+export async function confirmarNoDialogo(page: Page, botao: RegExp | string) {
+  const dialogo = page.getByRole('alertdialog')
+  const apareceu = await dialogo.waitFor({ state: 'visible', timeout: 3_000 }).then(() => true, () => false)
+  if (apareceu) await dialogo.getByRole('button', { name: botao }).click()
+  return apareceu
 }
 
 /** Valor da métrica ("Views" | "Downloads") de uma linha do painel. */

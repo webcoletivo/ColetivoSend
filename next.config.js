@@ -8,6 +8,10 @@ const nextConfig = {
   // Saída enxuta para o Dockerfile (node server.js). Funciona com basePath —
   // o Kadro roda assim há meses.
   output: 'standalone',
+  // "Novo envio" é o formulário da home; /nova respondia 404 (auditoria).
+  async redirects() {
+    return [{ source: '/nova', destination: '/', permanent: false }]
+  },
   images: {
     remotePatterns: [
       {

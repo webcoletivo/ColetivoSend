@@ -58,39 +58,43 @@ export function UploadDropzone({
     multiple: true,
   })
 
-  const remainingFiles = maxFiles - currentFileCount
-  const remainingSize = maxSize - currentTotalSize
-
   return (
     <div className="space-y-4">
+      {/* A área inteira é um botão nomeado (Enter/Espaço abrem o seletor). */}
       <motion.div
-        {...(getRootProps() as any)}
+        {...(getRootProps({
+          role: 'button',
+          'aria-label': 'Selecionar arquivos para enviar',
+          'aria-disabled': disabled || undefined,
+        }) as any)}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         className={cn(
           'relative flex flex-col items-center justify-center gap-4',
-          'p-8 md:p-12 lg:p-16 rounded-2xl border-2 border-dashed',
+          'p-8 md:p-12 lg:p-16 rounded-xl border-2 border-dashed',
           'bg-background transition-all duration-300 cursor-pointer group',
           'dark:bg-secondary/10',
-          isDragActive && !isDragReject && 'border-primary-500 bg-primary-500/5',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          isDragActive && !isDragReject && 'border-primary bg-primary/5',
           isDragReject && 'border-destructive bg-destructive/5',
-          !isDragActive && !disabled && 'border-border hover:border-primary-500 hover:bg-accent/5',
+          !isDragActive && !disabled && 'border-border hover:border-primary hover:bg-accent/5',
           disabled && 'opacity-50 cursor-not-allowed'
         )}
       >
-        <input {...getInputProps()} />
-        
+        <input {...getInputProps({ 'aria-label': 'Arquivos para enviar' })} />
+
         {/* Animated icon */}
         <motion.div
-          animate={{ 
+          aria-hidden="true"
+          animate={{
             y: isDragActive ? -10 : 0,
             scale: isDragActive ? 1.1 : 1,
           }}
           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           className={cn(
             'w-20 h-20 rounded-full flex items-center justify-center',
-            'bg-primary-500/10 group-hover:bg-primary-500/20',
+            'bg-primary/10 group-hover:bg-primary/20',
             'transition-colors duration-300'
           )}
         >
@@ -99,9 +103,9 @@ export function UploadDropzone({
             transition={{ repeat: isDragActive ? Infinity : 0, duration: 0.8 }}
           >
             {isDragActive ? (
-              <Cloud className="w-10 h-10 text-primary-500" />
+              <Cloud className="w-10 h-10 text-primary" />
             ) : (
-              <Upload className="w-10 h-10 text-primary-500" />
+              <Upload className="w-10 h-10 text-primary" />
             )}
           </motion.div>
         </motion.div>
@@ -110,25 +114,30 @@ export function UploadDropzone({
           <h3 className="text-xl font-semibold text-foreground">
             {isDragActive ? 'Solte os arquivos aqui' : 'Arraste e solte seus arquivos'}
           </h3>
+          {/* Laranja como cor de TEXTO sobre fundo claro dá 2,7:1: o realce
+              fica no sublinhado laranja e o texto na cor do tema. */}
           <p className="text-muted-foreground">
-            ou <span className="text-primary-500 font-medium">clique para selecionar</span>
+            ou{' '}
+            <span className="text-foreground font-semibold underline decoration-primary decoration-2 underline-offset-4">
+              clique para selecionar
+            </span>
           </p>
         </div>
 
         {/* Limits info */}
         <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground font-medium">
           <span className="flex items-center gap-1.5 px-3 py-1 bg-muted rounded-full">
-            <FileUp className="w-3.5 h-3.5" />
+            <FileUp className="w-3.5 h-3.5" aria-hidden="true" />
             Arquivos ilimitados
           </span>
           <span className="flex items-center gap-1.5 px-3 py-1 bg-muted rounded-full">
-             <Cloud className="w-3.5 h-3.5" />
+             <Cloud className="w-3.5 h-3.5" aria-hidden="true" />
              Máx. 10 GB
           </span>
         </div>
 
         {/* Decorative elements */}
-        <div className="absolute inset-0 -z-10 overflow-hidden rounded-2xl">
+        <div className="absolute inset-0 -z-10 overflow-hidden rounded-xl" aria-hidden="true">
           <motion.div
             animate={{
               opacity: isDragActive ? 0.5 : 0.2,
@@ -141,7 +150,7 @@ export function UploadDropzone({
               opacity: isDragActive ? 0.3 : 0.1,
               scale: isDragActive ? 1.2 : 1,
             }}
-            className="absolute bottom-0 left-0 w-48 h-48 bg-accent-400 rounded-full blur-3xl"
+            className="absolute bottom-0 left-0 w-48 h-48 bg-primary-300 rounded-full blur-3xl"
           />
         </div>
       </motion.div>
@@ -150,12 +159,13 @@ export function UploadDropzone({
       <AnimatePresence>
         {error && (
           <motion.div
+            role="alert"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             className="flex items-center gap-2 px-4 py-3 bg-destructive/10 text-destructive rounded-xl border border-destructive/20"
           >
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <AlertCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
             <span className="text-sm font-medium">{error}</span>
           </motion.div>
         )}

@@ -1,11 +1,9 @@
 'use client'
 
-import React, { useState } from 'react'
+import React from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, LayoutDashboard } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { LayoutDashboard } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 import { BASE_PATH, caminhoSso } from '@/lib/sso-client'
 
@@ -13,17 +11,22 @@ import { BASE_PATH, caminhoSso } from '@/lib/sso-client'
 // (navegação inteira de propósito: a ponte grava cookie e redireciona).
 const ENTRAR = caminhoSso(BASE_PATH)
 
-const NAV_ITEMS: { label: string; href: string }[] = [
-    // Menu items removed as requested
-]
-
 interface HomeHeaderProps {
     transparent?: boolean
 }
 
+/**
+ * Cabeçalho da home, sobre a mídia de fundo. Os controles ficam em "pílulas"
+ * com superfície do tema (bg-card + texto do tema): legíveis sobre qualquer
+ * foto/vídeo e nos dois temas — texto branco solto dava 1,07:1 no claro.
+ */
+const PILULA =
+    'inline-flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-semibold ' +
+    'bg-card/90 text-foreground border border-border/70 backdrop-blur-md shadow-sm ' +
+    'hover:bg-card transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+
 export function HomeHeader({ transparent = true }: HomeHeaderProps) {
     const { data: session, status } = useSession()
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
     const isLoggedIn = !!session?.user
     const isLoading = status === 'loading'
@@ -31,101 +34,32 @@ export function HomeHeader({ transparent = true }: HomeHeaderProps) {
     return (
         <header className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-300 ${transparent ? 'bg-transparent' : 'bg-background/80 backdrop-blur-md border-b border-border'
             }`}>
-            <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" aria-label="ColetivoSend">
                 <div className="flex items-center justify-between h-16 md:h-20">
                     {/* Logo — always the white variant: the header sits over the dark media hero */}
-                    <Link href="/" className="flex items-center flex-shrink-0" aria-label="ColetivoSend">
+                    <Link href="/" className="flex items-center flex-shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="ColetivoSend — página inicial">
                         <Logo variant="white" priority className="h-7 md:h-9 w-auto" />
                     </Link>
 
-                    {/* Desktop Navigation - hidden on smaller screens */}
-                    <div className="hidden lg:flex items-center gap-8">
-                        {NAV_ITEMS.map(item => (
-                            <a
-                                key={item.label}
-                                href={item.href}
-                                className="text-sm font-medium text-white/80 hover:text-white transition-colors"
-                            >
-                                {item.label}
-                            </a>
-                        ))}
-                    </div>
-
                     {/* Right side actions */}
                     <div className="flex items-center gap-3 md:gap-4">
-
                         {isLoading ? (
-                            <div className="w-20 h-9 rounded-full bg-white/10 animate-pulse" />
+                            <div className="w-32 h-10 rounded-xl bg-card/60 animate-pulse" aria-hidden="true" />
                         ) : isLoggedIn ? (
-// Unificação: identidade e saída vivem na barra da plataforma.
+                            // Unificação: identidade e saída vivem na barra da plataforma.
                             // Aqui, só o atalho para os envios.
-                            <Link
-                                href="/dashboard"
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium text-white/85 hover:text-white hover:bg-white/10 transition-colors"
-                            >
-                                <LayoutDashboard className="w-4 h-4" />
-                                <span className="hidden sm:block">Meus envios</span>
+                            <Link href="/dashboard" className={PILULA}>
+                                <LayoutDashboard className="w-4 h-4" aria-hidden="true" />
+                                <span>Meus envios</span>
                             </Link>
                         ) : (
                             // Sem sessão local (expirou no meio do uso): ponte SSO
-                            <div className="flex items-center gap-2 md:gap-3">
-                                <a
-                                    href={ENTRAR}
-                                    className="hidden sm:block text-sm font-medium text-white/80 hover:text-white transition-colors"
-                                >
-                                    Entrar
-                                </a>
-                                <a href={ENTRAR}>
-                                    <Button variant="secondary" size="sm">
-                                        Criar conta
-                                    </Button>
-                                </a>
-                            </div>
+                            <a href={ENTRAR} className={PILULA}>
+                                Entrar
+                            </a>
                         )}
-
-                        {/* Mobile menu button */}
-                        <button
-                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            className="lg:hidden p-2 text-white/80 hover:text-white"
-                        >
-                            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-                        </button>
                     </div>
                 </div>
-
-                {/* Mobile menu */}
-                <AnimatePresence>
-                    {mobileMenuOpen && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="lg:hidden border-t border-white/10 overflow-hidden"
-                        >
-                            <div className="py-4 space-y-1">
-                                {NAV_ITEMS.map(item => (
-                                    <a
-                                        key={item.label}
-                                        href={item.href}
-                                        className="block px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-                                        onClick={() => setMobileMenuOpen(false)}
-                                    >
-                                        {item.label}
-                                    </a>
-                                ))}
-                                {!isLoggedIn && (
-                                    <a
-                                        href={ENTRAR}
-                                        className="block px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-colors sm:hidden"
-                                        onClick={() => setMobileMenuOpen(false)}
-                                    >
-                                        Entrar
-                                    </a>
-                                )}
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
             </nav>
         </header>
     )

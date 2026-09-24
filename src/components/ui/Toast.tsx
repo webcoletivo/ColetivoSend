@@ -63,15 +63,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 100 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
+              role={toast.type === 'error' ? 'alert' : 'status'}
               className="flex items-center gap-3 px-5 py-4 rounded-xl bg-card border border-border shadow-lg text-foreground"
             >
-              {icons[toast.type]}
+              <span aria-hidden="true">{icons[toast.type]}</span>
               <span className="font-medium text-sm">{toast.message}</span>
               <button
+                type="button"
                 onClick={() => removeToast(toast.id)}
-                className="ml-2 p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                aria-label="Fechar aviso"
+                className="ml-2 p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4" aria-hidden="true" />
               </button>
             </motion.div>
           ))}

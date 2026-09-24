@@ -17,7 +17,7 @@
     --popover: 0 0% 100%; /* #FFFFFF superfície elevada */
     --popover-foreground: 60 3.7% 10.6%;
 
-    --primary: 20 100% 56%; /* #FF6B1F laranja plataforma */
+    --primary: 20.4 100% 56.1%; /* #FF6B1F exato (20 100% 56% dava #FF691F) */
     --primary-foreground: 37 70% 6.5%; /* #1C1305 texto escuro sobre laranja */
 
     --secondary: 60 5% 92.2%; /* #ECECEA */
@@ -34,7 +34,7 @@
 
     --border: 60 4.9% 88%; /* #E2E2DF borda principal */
     --input: 60 4.9% 88%;
-    --ring: 20 100% 56%; /* #FF6B1F foco */
+    --ring: 20.4 100% 56.1%; /* #FF6B1F foco */
 
     --radius: 0.75rem;
 
@@ -52,8 +52,10 @@
     --popover: 30 6% 7.1%; /* #131211 */
     --popover-foreground: 33 29% 93.9%;
 
-    --primary: 20 100% 56%; /* #FF6B1F */
-    --primary-foreground: 0 0% 100%;
+    --primary: 20.4 100% 56.1%; /* #FF6B1F */
+    /* Branco sobre laranja dá 2,9:1 — o token da plataforma usa texto escuro
+       (--brand-foreground #131211 no escuro) também aqui. */
+    --primary-foreground: 30 6% 7.1%; /* #131211 */
 
     --secondary: 30 6% 7.1%; /* #131211 */
     --secondary-foreground: 33 29% 93.9%;
@@ -69,7 +71,7 @@
 
     --border: 30 8% 10.2%; /* #1C1A18 */
     --input: 30 8% 10.2%;
-    --ring: 20 100% 56%;
+    --ring: 20.4 100% 56.1%;
   }
 }
 
@@ -106,7 +108,7 @@
   }
 
   .btn-primary {
-    @apply btn bg-primary text-primary-foreground hover:bg-primary/90;
+    @apply btn bg-primary text-primary-foreground hover:bg-primary-400;
   }
 
   .btn-secondary {
@@ -128,11 +130,21 @@
   .card {
      @apply rounded-xl border border-border bg-card text-card-foreground;
   }
-  
+
+  /* Rótulo mono de seção (tokens: mono 11px, caixa alta, tracking largo) */
+  .rotulo-mono {
+    @apply font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground;
+  }
+
+  /* Rótulo de campo: visível e associado (htmlFor) a cada input */
+  .rotulo-campo {
+    @apply block text-sm font-medium text-foreground mb-1.5;
+  }
+
   /* Dropzone adaptation */
   .dropzone {
     @apply relative flex flex-col items-center justify-center gap-4
-           p-8 md:p-12 rounded-2xl border-2 border-dashed border-input
+           p-8 md:p-12 rounded-xl border-2 border-dashed border-input
            bg-gradient-to-b from-background to-background/50
            transition-all duration-300 cursor-pointer
            hover:border-primary hover:bg-accent/5
@@ -170,10 +182,10 @@
     @apply border-transparent bg-muted text-muted-foreground;
   }
 
-  /* WeTransfer-style transfer card */
+  /* WeTransfer-style transfer card (raio 12 px = token rounded-xl) */
   .transfer-card {
-    @apply bg-card/95 backdrop-blur-xl
-           rounded-2xl shadow-2xl border border-border;
+    @apply relative bg-card/95 backdrop-blur-xl
+           rounded-xl shadow-2xl border border-border;
   }
 
   /* Media overlay for contrast */

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
-import { Archivo } from 'next/font/google'
+import { Archivo, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { ToastProvider } from '@/components/ui/Toast'
 import { SessionProvider } from '@/components/providers/SessionProvider'
@@ -10,6 +10,14 @@ import { siteConfig } from '@/config/site'
 const archivo = Archivo({
   subsets: ['latin'],
   variable: '--font-archivo',
+  display: 'swap',
+})
+
+// Rótulos mono do design canônico (só o peso usado, self-hosted pelo next/font)
+const jetbrains = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['600'],
+  variable: '--font-jetbrains',
   display: 'swap',
 })
 
@@ -50,7 +58,7 @@ export default async function RootLayout({
   // CSP nonce set by middleware — forwarded to next-themes' inline script.
   const nonce = (await headers()).get('x-nonce') ?? undefined
   return (
-    <html lang="pt-BR" className={archivo.variable} suppressHydrationWarning>
+    <html lang="pt-BR" className={`${archivo.variable} ${jetbrains.variable}`} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <meta name="theme-color" content="#0C0B0A" />

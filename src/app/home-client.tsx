@@ -4,12 +4,13 @@ import React from 'react'
 import { MediaLoopPlayer } from '@/components/home/MediaLoopPlayer'
 import { TransferCard } from '@/components/home/TransferCard'
 import { HomeHeader } from '@/components/home/HomeHeader'
+import type { MidiaPublica } from '@/lib/media-publica'
 
-export function HomeClient() {
+export function HomeClient({ midiaInicial }: { midiaInicial?: MidiaPublica[] }) {
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Fullscreen media background */}
-      <MediaLoopPlayer className="fixed inset-0 w-full h-full z-0" />
+      {/* Fullscreen media background (lista já renderizada no servidor) */}
+      <MediaLoopPlayer className="fixed inset-0 w-full h-full z-0" initialItems={midiaInicial} />
 
       {/* Header */}
       <HomeHeader transparent />

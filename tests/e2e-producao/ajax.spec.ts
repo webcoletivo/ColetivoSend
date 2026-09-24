@@ -3,7 +3,7 @@ import {
   BASE, SEND, EMAIL_PROPRIO, ROTULO, PNG_1X1,
   lerEstado, gravarEstado,
   vigiarRecarga, marcar, exigirSemRecarga, vigiar, entrarNoSend,
-  linhasDoPainel, botaoMenu, metrica, resumo,
+  linhasDoPainel, botaoMenu, itemMenu, confirmarNoDialogo, metrica, resumo,
 } from './apoio'
 
 /**
@@ -29,9 +29,11 @@ test('home: cria envio [E2E-AJAX] e conclui sem recarga (progresso, link, copiar
     buffer: Buffer.from(`${ROTULO} envio de teste automatizado — pode apagar\n`.repeat(20)),
   })
   await expect(page.getByText(`${ROTULO}.txt`)).toBeVisible()
+  // e-mail digitado SEM Enter: tem de virar chip sozinho ao sair do campo
+  // (Tab) — antes só o Enter confirmava e o clique em "Transferir" não fazia nada
   const destinatario = page.getByPlaceholder('adicionar@email.com')
   await destinatario.fill(EMAIL_PROPRIO)
-  await destinatario.press('Enter')
+  await destinatario.press('Tab')
   await expect(page.getByText(EMAIL_PROPRIO, { exact: true })).toBeVisible()
   await page.getByPlaceholder('Mensagem (opcional)').fill(`${ROTULO} envio de teste automatizado — pode apagar`)
   await exigirSemRecarga(page, cargas, 'preencher formulário')
@@ -78,7 +80,8 @@ test('painel: lista o envio novo sem F5, copia sem recarga e navega por Link (se
   // a primeira linha é o envio recém-criado (ordem: mais recente primeiro)
   await expect(linha).toContainText(EMAIL_PROPRIO)
   await botaoMenu(linha).click()
-  await expect(linha.getByRole('link', { name: 'Abrir link' })).toHaveAttribute('href', new RegExp(`/send/d/${token}$`))
+  await expect(itemMenu(linha, 'Abrir link')).toHaveAttribute('href', new RegExp(`/send/d/${token}$`))
+  await page.keyboard.press('Escape') // fecha o menu sem escolher nada
 
   await linha.getByRole('button', { name: 'Copiar' }).click()
   await expect(page.getByText('Link copiado!')).toBeVisible()
@@ -161,15 +164,17 @@ test('painel: revogar e excluir refletem na hora, sem recarga', async ({ page })
   const totalAntes = Number(await resumo(page, 'Total de envios').innerText())
 
   await botaoMenu(linha).click()
-  await expect(linha.getByRole('link', { name: 'Abrir link' })).toHaveAttribute('href', new RegExp(`/send/d/${token}$`))
-  await linha.getByRole('button', { name: 'Revogar link' }).click()
+  await expect(itemMenu(linha, 'Abrir link')).toHaveAttribute('href', new RegExp(`/send/d/${token}$`))
+  await itemMenu(linha, 'Revogar link').click()
   await expect(linha.getByText('Revogado')).toBeVisible()
   await expect(linha.getByRole('button', { name: 'Copiar' })).toBeDisabled()
   await expect(resumo(page, 'Ativos')).toHaveText(String(ativosAntes - 1))
   await exigirSemRecarga(page, cargas, 'revogar')
 
   await botaoMenu(linha).click()
-  await linha.getByRole('button', { name: 'Excluir' }).click()
+  await itemMenu(linha, 'Excluir').click()
+  // diálogo do padrão (explica a consequência) no lugar do confirm() nativo
+  console.log(`[painel] diálogo de exclusão do padrão: ${await confirmarNoDialogo(page, /^Excluir envio$/)}`)
   await expect(linhas).toHaveCount(quantasAntes - 1)
   await expect(resumo(page, 'Total de envios')).toHaveText(String(totalAntes - 1))
   await exigirSemRecarga(page, cargas, 'excluir')
@@ -211,6 +216,7 @@ test('mídia de fundo: enviar, desativar e excluir imagem 1x1 sem recarga', asyn
   await exigirSemRecarga(page, cargas, 'desativar mídia')
 
   await item.locator('button').last().click() // lixeira
+  console.log(`[midia] diálogo de exclusão do padrão: ${await confirmarNoDialogo(page, /^Excluir mídia$/)}`)
   await expect(item).toHaveCount(0)
   await expect(itens).toHaveCount(antes)
   await exigirSemRecarga(page, cargas, 'excluir mídia')

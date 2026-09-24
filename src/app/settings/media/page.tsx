@@ -10,6 +10,7 @@ import {
     Save, X, AlertCircle, Check, Loader2, ExternalLink
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 interface MediaItem {
     id: string
@@ -25,6 +26,10 @@ interface MediaItem {
     isActive: boolean
     url?: string
 }
+
+// Botões de ícone: todos nomeados (aria-label) — a auditoria achou 8 sem nome.
+const BOTAO_ICONE =
+    'p-2 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
 export default function MediaManagementPage() {
     const { data: session, status } = useSession()
@@ -50,6 +55,10 @@ export default function MediaManagementPage() {
     // Edit state
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editData, setEditData] = useState<Partial<MediaItem>>({})
+
+    // Diálogo de exclusão (no lugar do confirm() nativo)
+    const [excluindo, setExcluindo] = useState<MediaItem | null>(null)
+    const [excluindoOcupado, setExcluindoOcupado] = useState(false)
 
     // Fetch media
     const fetchMedia = useCallback(async () => {
@@ -126,7 +135,7 @@ export default function MediaManagementPage() {
                 throw new Error(err.error || 'Erro ao preparar upload')
             }
 
-            const { uploadUrl, media } = await presignRes.json()
+            const { uploadUrl } = await presignRes.json()
 
             // Upload to S3
             await new Promise<void>((resolve, reject) => {
@@ -180,16 +189,20 @@ export default function MediaManagementPage() {
         }
     }
 
-    // Delete
-    const handleDelete = async (id: string) => {
-        if (!confirm('Excluir esta mídia?')) return
-
+    // Delete (confirmado no diálogo)
+    const confirmarExclusao = async () => {
+        if (!excluindo) return
+        const alvo = excluindo
+        setExcluindoOcupado(true)
         try {
-            const res = await fetch(`/api/admin/media/${id}`, { method: 'DELETE' })
+            const res = await fetch(`/api/admin/media/${alvo.id}`, { method: 'DELETE' })
             if (!res.ok) throw new Error('Erro ao excluir')
-            setItems(prev => prev.filter(item => item.id !== id))
+            setItems(prev => prev.filter(item => item.id !== alvo.id))
         } catch (e: any) {
             setError(e.message)
+        } finally {
+            setExcluindoOcupado(false)
+            setExcluindo(null)
         }
     }
 
@@ -244,8 +257,8 @@ export default function MediaManagementPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <div className="min-h-screen flex items-center justify-center" role="status" aria-label="Carregando">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" aria-hidden="true" />
             </div>
         )
     }
@@ -259,17 +272,29 @@ export default function MediaManagementPage() {
                     <h1 className="text-2xl font-bold text-foreground">Mídia de Fundo</h1>
                     <p className="text-muted-foreground">Gerencie vídeos e imagens da página inicial</p>
                 </div>
-                <Button onClick={() => setShowUpload(true)} icon={<Plus className="w-4 h-4" />}>
+                <Button
+                    onClick={() => setShowUpload(true)}
+                    icon={<Plus className="w-4 h-4" aria-hidden="true" />}
+                    aria-expanded={showUpload}
+                    aria-controls="form-nova-midia"
+                >
                     Adicionar mídia
                 </Button>
             </div>
 
             {/* Error */}
             {error && (
-                <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center gap-3 text-destructive">
-                    <AlertCircle className="w-5 h-5" />
+                <div role="alert" className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center gap-3 text-destructive">
+                    <AlertCircle className="w-5 h-5" aria-hidden="true" />
                     <span>{error}</span>
-                    <button onClick={() => setError(null)} className="ml-auto"><X className="w-4 h-4" /></button>
+                    <button
+                        type="button"
+                        onClick={() => setError(null)}
+                        aria-label="Fechar aviso"
+                        className={`ml-auto ${BOTAO_ICONE} hover:bg-destructive/10`}
+                    >
+                        <X className="w-4 h-4" aria-hidden="true" />
+                    </button>
                 </div>
             )}
 
@@ -277,27 +302,29 @@ export default function MediaManagementPage() {
             <AnimatePresence>
                 {showUpload && (
                     <motion.div
+                        id="form-nova-midia"
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         className="mb-6 p-6 bg-card border border-border rounded-xl overflow-hidden"
                     >
                         <div className="mb-4 flex items-center gap-3">
-                            <p className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                            <p className="rotulo-mono">
                                 Nova mídia
                             </p>
-                            <div className="h-px flex-1 bg-border" />
+                            <div className="h-px flex-1 bg-border" aria-hidden="true" />
                         </div>
 
                         <div className="space-y-4">
                             {/* File input */}
                             <div>
-                                <label className="block text-sm font-medium mb-2">Arquivo</label>
+                                <label htmlFor="midia-arquivo" className="rotulo-campo">Arquivo</label>
                                 <input
+                                    id="midia-arquivo"
                                     type="file"
                                     accept="video/*,image/*"
                                     onChange={handleFileSelect}
-                                    className="input"
+                                    className="input h-auto py-2"
                                 />
                             </div>
 
@@ -305,8 +332,9 @@ export default function MediaManagementPage() {
                                 <>
                                     {/* Title */}
                                     <div>
-                                        <label className="block text-sm font-medium mb-2">Título (opcional)</label>
+                                        <label htmlFor="midia-titulo" className="rotulo-campo">Título <span className="font-normal text-muted-foreground">(opcional)</span></label>
                                         <input
+                                            id="midia-titulo"
                                             type="text"
                                             value={uploadTitle}
                                             onChange={(e) => setUploadTitle(e.target.value)}
@@ -316,21 +344,23 @@ export default function MediaManagementPage() {
                                     </div>
 
                                     {/* Type */}
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2">Tipo</label>
+                                    <fieldset>
+                                        <legend className="rotulo-campo">Tipo</legend>
                                         <div className="flex gap-4">
-                                            <label className="flex items-center gap-2">
+                                            <label className="flex items-center gap-2 text-sm text-foreground">
                                                 <input
                                                     type="radio"
+                                                    name="midia-tipo"
                                                     className="accent-primary"
                                                     checked={!uploadIsPromo}
                                                     onChange={() => setUploadIsPromo(false)}
                                                 />
                                                 <span>{uploadType === 'video' ? 'Vídeo' : 'Imagem'}</span>
                                             </label>
-                                            <label className="flex items-center gap-2">
+                                            <label className="flex items-center gap-2 text-sm text-foreground">
                                                 <input
                                                     type="radio"
+                                                    name="midia-tipo"
                                                     className="accent-primary"
                                                     checked={uploadIsPromo}
                                                     onChange={() => setUploadIsPromo(true)}
@@ -338,14 +368,16 @@ export default function MediaManagementPage() {
                                                 <span>Propaganda</span>
                                             </label>
                                         </div>
-                                    </div>
+                                    </fieldset>
 
                                     {/* Promo URL */}
                                     {uploadIsPromo && (
                                         <div>
-                                            <label className="block text-sm font-medium mb-2">URL da propaganda *</label>
+                                            <label htmlFor="midia-url" className="rotulo-campo">URL da propaganda <span aria-hidden="true">*</span></label>
                                             <input
+                                                id="midia-url"
                                                 type="url"
+                                                required
                                                 value={uploadPromoUrl}
                                                 onChange={(e) => setUploadPromoUrl(e.target.value)}
                                                 className="input"
@@ -357,8 +389,9 @@ export default function MediaManagementPage() {
                                     {/* Duration for images */}
                                     {uploadType === 'image' && (
                                         <div>
-                                            <label className="block text-sm font-medium mb-2">Duração (segundos)</label>
+                                            <label htmlFor="midia-duracao" className="rotulo-campo">Duração (segundos)</label>
                                             <input
+                                                id="midia-duracao"
                                                 type="number"
                                                 value={uploadDuration}
                                                 onChange={(e) => setUploadDuration(parseInt(e.target.value) || 6)}
@@ -373,7 +406,14 @@ export default function MediaManagementPage() {
 
                             {/* Progress */}
                             {isUploading && (
-                                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                <div
+                                    className="h-2 bg-muted rounded-full overflow-hidden"
+                                    role="progressbar"
+                                    aria-label="Progresso do envio"
+                                    aria-valuemin={0}
+                                    aria-valuemax={100}
+                                    aria-valuenow={Math.round(uploadProgress)}
+                                >
                                     <div
                                         className="h-full bg-primary transition-all"
                                         style={{ width: `${uploadProgress}%` }}
@@ -386,7 +426,7 @@ export default function MediaManagementPage() {
                                 <Button
                                     onClick={handleUpload}
                                     disabled={!uploadFile || isUploading}
-                                    icon={isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                                    icon={isUploading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Upload className="w-4 h-4" aria-hidden="true" />}
                                 >
                                     {isUploading ? 'Enviando...' : 'Enviar'}
                                 </Button>
@@ -409,7 +449,7 @@ export default function MediaManagementPage() {
                     <Button
                         onClick={handleSaveOrder}
                         disabled={isSaving}
-                        icon={isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        icon={isSaving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Save className="w-4 h-4" aria-hidden="true" />}
                     >
                         Salvar ordem
                     </Button>
@@ -418,143 +458,183 @@ export default function MediaManagementPage() {
 
             {/* Media list */}
             <div className="mb-3 flex items-center gap-3">
-                <p className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                <p className="rotulo-mono">
                     Mídias
                 </p>
-                <div className="h-px flex-1 bg-border" />
+                <div className="h-px flex-1 bg-border" aria-hidden="true" />
             </div>
             {items.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
-                    <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-50" aria-hidden="true" />
                     <p>Nenhuma mídia cadastrada</p>
                 </div>
             ) : (
-                <Reorder.Group axis="y" values={items} onReorder={handleReorder} className="space-y-3">
-                    {items.map((item) => (
-                        <Reorder.Item
-                            key={item.id}
-                            value={item}
-                            className="bg-card border border-border rounded-xl p-5 flex items-center gap-4 cursor-move"
-                        >
-                            <GripVertical className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                <Reorder.Group axis="y" values={items} onReorder={handleReorder} className="space-y-3" aria-label="Mídias de fundo (arraste para reordenar)">
+                    {items.map((item) => {
+                        const nome = item.title || 'Sem título'
+                        return (
+                            <Reorder.Item
+                                key={item.id}
+                                value={item}
+                                className="bg-card border border-border rounded-xl p-5 flex items-center gap-4 cursor-move"
+                            >
+                                <GripVertical className="w-5 h-5 text-muted-foreground flex-shrink-0" aria-hidden="true" />
 
-                            {/* Preview */}
-                            <div className="w-20 h-14 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                                {item.url && (
-                                    item.type === 'video' ? (
-                                        <video src={item.url} className="w-full h-full object-cover" muted />
-                                    ) : (
-                                        <img src={item.url} alt={item.title || ''} className="w-full h-full object-cover" />
-                                    )
-                                )}
-                            </div>
+                                {/* Preview */}
+                                <div className="w-20 h-14 rounded-lg overflow-hidden bg-muted flex-shrink-0" aria-hidden="true">
+                                    {item.url && (
+                                        item.type === 'video' ? (
+                                            <video src={item.url} className="w-full h-full object-cover" muted preload="metadata" />
+                                        ) : (
+                                            // eslint-disable-next-line @next/next/no-img-element
+                                            <img src={item.url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                                        )
+                                    )}
+                                </div>
 
-                            {/* Info */}
-                            <div className="flex-1 min-w-0">
-                                {editingId === item.id ? (
-                                    <div className="space-y-2">
-                                        <input
-                                            type="text"
-                                            value={editData.title ?? item.title ?? ''}
-                                            onChange={(e) => setEditData({ ...editData, title: e.target.value })}
-                                            className="input text-sm"
-                                            placeholder="Título"
-                                        />
-                                        {item.isPromotion && (
+                                {/* Info */}
+                                <div className="flex-1 min-w-0">
+                                    {editingId === item.id ? (
+                                        <div className="space-y-2">
                                             <input
-                                                type="url"
-                                                value={editData.promotionUrl ?? item.promotionUrl ?? ''}
-                                                onChange={(e) => setEditData({ ...editData, promotionUrl: e.target.value })}
+                                                type="text"
+                                                aria-label="Título da mídia"
+                                                value={editData.title ?? item.title ?? ''}
+                                                onChange={(e) => setEditData({ ...editData, title: e.target.value })}
+                                                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit() }}
                                                 className="input text-sm"
-                                                placeholder="URL da propaganda"
+                                                placeholder="Título"
                                             />
-                                        )}
-                                    </div>
-                                ) : (
-                                    <>
-                                        <p className="font-medium text-foreground truncate">
-                                            {item.title || 'Sem título'}
-                                        </p>
-                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                            {item.type === 'video' ? (
-                                                <Video className="w-3.5 h-3.5" />
-                                            ) : (
-                                                <ImageIcon className="w-3.5 h-3.5" />
-                                            )}
-                                            <span>{item.type === 'video' ? 'Vídeo' : 'Imagem'}</span>
                                             {item.isPromotion && (
-                                                <>
-                                                    <span>•</span>
-                                                    <LinkIcon className="w-3.5 h-3.5" />
-                                                    <span className="text-primary">Propaganda</span>
-                                                </>
-                                            )}
-                                            {item.duration && (
-                                                <>
-                                                    <span>•</span>
-                                                    <span>{item.duration}s</span>
-                                                </>
+                                                <input
+                                                    type="url"
+                                                    aria-label="URL da propaganda"
+                                                    value={editData.promotionUrl ?? item.promotionUrl ?? ''}
+                                                    onChange={(e) => setEditData({ ...editData, promotionUrl: e.target.value })}
+                                                    className="input text-sm"
+                                                    placeholder="URL da propaganda"
+                                                />
                                             )}
                                         </div>
-                                    </>
-                                )}
-                            </div>
+                                    ) : (
+                                        <>
+                                            <p className="font-medium text-foreground truncate">
+                                                {nome}
+                                            </p>
+                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                {item.type === 'video' ? (
+                                                    <Video className="w-3.5 h-3.5" aria-hidden="true" />
+                                                ) : (
+                                                    <ImageIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                                                )}
+                                                <span>{item.type === 'video' ? 'Vídeo' : 'Imagem'}</span>
+                                                {item.isPromotion && (
+                                                    <>
+                                                        <span aria-hidden="true">•</span>
+                                                        <LinkIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                                                        <span className="font-medium text-foreground">Propaganda</span>
+                                                    </>
+                                                )}
+                                                {item.duration && (
+                                                    <>
+                                                        <span aria-hidden="true">•</span>
+                                                        <span>{item.duration}s</span>
+                                                    </>
+                                                )}
+                                                {!item.isActive && (
+                                                    <>
+                                                        <span aria-hidden="true">•</span>
+                                                        <span className="badge badge-info">Inativa</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
 
-                            {/* Actions */}
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                                {editingId === item.id ? (
-                                    <>
-                                        <button
-                                            onClick={handleSaveEdit}
-                                            className="p-2 text-primary hover:bg-primary/10 rounded-lg"
-                                        >
-                                            <Check className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => { setEditingId(null); setEditData({}) }}
-                                            className="p-2 text-muted-foreground hover:bg-muted rounded-lg"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <button
-                                            onClick={() => handleToggleActive(item.id, item.isActive)}
-                                            className={`p-2 rounded-lg ${item.isActive ? 'text-green-500 hover:bg-green-500/10' : 'text-muted-foreground hover:bg-muted'}`}
-                                            title={item.isActive ? 'Desativar' : 'Ativar'}
-                                        >
-                                            {item.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                                        </button>
-                                        <button
-                                            onClick={() => { setEditingId(item.id); setEditData({}) }}
-                                            className="p-2 text-muted-foreground hover:bg-muted rounded-lg"
-                                        >
-                                            <Edit2 className="w-4 h-4" />
-                                        </button>
-                                        {item.isPromotion && item.promotionUrl && (
-                                            <a
-                                                href={item.promotionUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="p-2 text-muted-foreground hover:bg-muted rounded-lg"
+                                {/* Actions — a lixeira é sempre o último botão da linha */}
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                    {editingId === item.id ? (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={handleSaveEdit}
+                                                aria-label={`Salvar alterações de ${nome}`}
+                                                title="Salvar"
+                                                className={`${BOTAO_ICONE} text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10`}
                                             >
-                                                <ExternalLink className="w-4 h-4" />
-                                            </a>
-                                        )}
-                                        <button
-                                            onClick={() => handleDelete(item.id)}
-                                            className="p-2 text-destructive hover:bg-destructive/10 rounded-lg"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-                        </Reorder.Item>
-                    ))}
+                                                <Check className="w-4 h-4" aria-hidden="true" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setEditingId(null); setEditData({}) }}
+                                                aria-label="Cancelar edição"
+                                                title="Cancelar"
+                                                className={`${BOTAO_ICONE} text-muted-foreground hover:bg-muted hover:text-foreground`}
+                                            >
+                                                <X className="w-4 h-4" aria-hidden="true" />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleToggleActive(item.id, item.isActive)}
+                                                className={`${BOTAO_ICONE} ${item.isActive ? 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                                                title={item.isActive ? 'Desativar' : 'Ativar'}
+                                                aria-label={item.isActive ? `Desativar ${nome}` : `Ativar ${nome}`}
+                                                aria-pressed={item.isActive}
+                                            >
+                                                {item.isActive ? <Eye className="w-4 h-4" aria-hidden="true" /> : <EyeOff className="w-4 h-4" aria-hidden="true" />}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setEditingId(item.id); setEditData({}) }}
+                                                aria-label={`Editar ${nome}`}
+                                                title="Editar"
+                                                className={`${BOTAO_ICONE} text-muted-foreground hover:bg-muted hover:text-foreground`}
+                                            >
+                                                <Edit2 className="w-4 h-4" aria-hidden="true" />
+                                            </button>
+                                            {item.isPromotion && item.promotionUrl && (
+                                                <a
+                                                    href={item.promotionUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    aria-label={`Abrir link da propaganda ${nome} (nova guia)`}
+                                                    title="Abrir propaganda"
+                                                    className={`${BOTAO_ICONE} text-muted-foreground hover:bg-muted hover:text-foreground`}
+                                                >
+                                                    <ExternalLink className="w-4 h-4" aria-hidden="true" />
+                                                </a>
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => setExcluindo(item)}
+                                                aria-label={`Excluir ${nome}`}
+                                                title="Excluir"
+                                                className={`${BOTAO_ICONE} text-destructive hover:bg-destructive/10`}
+                                            >
+                                                <Trash2 className="w-4 h-4" aria-hidden="true" />
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            </Reorder.Item>
+                        )
+                    })}
                 </Reorder.Group>
             )}
+
+            <ConfirmDialog
+                open={excluindo !== null}
+                title="Excluir esta mídia?"
+                description={`"${excluindo?.title || 'Sem título'}" sai da página inicial na hora e o arquivo é apagado. Não dá para desfazer.`}
+                confirmLabel="Excluir mídia"
+                busy={excluindoOcupado}
+                onConfirm={confirmarExclusao}
+                onCancel={() => { if (!excluindoOcupado) setExcluindo(null) }}
+            />
         </div>
     )
 }

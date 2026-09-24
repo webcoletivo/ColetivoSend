@@ -78,6 +78,8 @@ const config: Config = {
       fontFamily: {
         sans: ['var(--font-archivo)', 'Helvetica', 'Arial', 'sans-serif'],
         display: ['var(--font-archivo)', 'Helvetica', 'Arial', 'sans-serif'],
+        // Rótulos mono do design canônico (JetBrains Mono via next/font)
+        mono: ['var(--font-jetbrains)', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       fontSize: {
         'display-xl': ['4.5rem', { lineHeight: '1.1', letterSpacing: '-0.02em' }],

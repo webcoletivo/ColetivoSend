@@ -2,58 +2,60 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ExternalLink } from 'lucide-react'
+import type { MidiaPublica } from '@/lib/media-publica'
 
-interface MediaItem {
-    id: string
-    title: string | null
-    type: 'video' | 'image'
-    isPromotion: boolean
-    promotionUrl: string | null
-    mimeType: string
-    duration: number | null
-    url: string
-}
+type MediaItem = MidiaPublica
 
 interface MediaLoopPlayerProps {
     className?: string
     fallbackImageUrl?: string
+    /**
+     * Lista já resolvida no servidor (página inicial). Com ela, o primeiro
+     * <video>/<img> vai no HTML e nada é buscado no cliente; sem ela, o
+     * player busca /api/media/public sozinho (comportamento antigo).
+     */
+    initialItems?: MediaItem[]
 }
 
-export function MediaLoopPlayer({ className = '', fallbackImageUrl = '/api/placeholder/1920/1080' }: MediaLoopPlayerProps) {
-    const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
+export function MediaLoopPlayer({ className = '', fallbackImageUrl = '/api/placeholder/1920/1080', initialItems }: MediaLoopPlayerProps) {
+    const [mediaItems, setMediaItems] = useState<MediaItem[]>(initialItems ?? [])
     const [currentIndex, setCurrentIndex] = useState(0)
-    const [isLoading, setIsLoading] = useState(true)
+    const [isLoading, setIsLoading] = useState(initialItems === undefined)
     const [error, setError] = useState<string | null>(null)
     const [nextPreloaded, setNextPreloaded] = useState(false)
 
     const videoRef = useRef<HTMLVideoElement>(null)
     const timerRef = useRef<NodeJS.Timeout | null>(null)
 
-    // Fetch media items
+    // Fetch media items — só quando a lista não veio do servidor
     useEffect(() => {
+        if (initialItems !== undefined) return
+        let cancelado = false
         async function fetchMedia() {
             try {
-                console.log('Fetching media...')
                 const res = await fetch('/api/media/public', { cache: 'no-store' })
                 if (!res.ok) throw new Error(`Failed to fetch media: ${res.status}`)
                 const data = await res.json()
-                console.log('Media loaded:', data)
+                if (cancelado) return
                 setMediaItems(data)
                 setError(null)
             } catch (e: any) {
+                if (cancelado) return
                 console.error('Error fetching media:', e)
                 setError(`Erro ao carregar mídia: ${e.message}`)
             } finally {
-                setIsLoading(false)
+                if (!cancelado) setIsLoading(false)
             }
         }
         fetchMedia()
-    }, [])
+        return () => {
+            cancelado = true
+        }
+    }, [initialItems])
 
     // Get current and next media
     const currentMedia = mediaItems[currentIndex]
-    const nextIndex = (currentIndex + 1) % mediaItems.length
+    const nextIndex = mediaItems.length ? (currentIndex + 1) % mediaItems.length : 0
     const nextMedia = mediaItems[nextIndex]
 
     // Advance to next item
@@ -95,7 +97,7 @@ export function MediaLoopPlayer({ className = '', fallbackImageUrl = '/api/place
 
     // Preload next item
     useEffect(() => {
-        if (!nextMedia || nextPreloaded) return
+        if (!nextMedia || nextPreloaded || nextMedia === currentMedia) return
 
         if (nextMedia.type === 'image') {
             const img = new Image()
@@ -105,7 +107,7 @@ export function MediaLoopPlayer({ className = '', fallbackImageUrl = '/api/place
             // Video preloading is handled by the browser
             setNextPreloaded(true)
         }
-    }, [nextMedia, nextPreloaded])
+    }, [nextMedia, currentMedia, nextPreloaded])
 
     // Handle promotion click
     const handleBackgroundClick = useCallback((e: React.MouseEvent) => {
@@ -129,7 +131,7 @@ export function MediaLoopPlayer({ className = '', fallbackImageUrl = '/api/place
     // Show fallback when no media or loading
     if (isLoading) {
         return (
-            <div className={`bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 ${className}`}>
+            <div className={`bg-gradient-to-br from-surface-950 via-surface-900 to-surface-950 ${className}`} aria-hidden="true">
                 <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                 </div>
@@ -140,7 +142,7 @@ export function MediaLoopPlayer({ className = '', fallbackImageUrl = '/api/place
     if (!mediaItems.length || error) {
         // Fallback gradient background
         return (
-            <div className={`bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 ${className}`}>
+            <div className={`bg-gradient-to-br from-surface-950 via-surface-900 to-surface-950 ${className}`} aria-hidden="true">
                 {/* Animated gradient overlay */}
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/20 via-transparent to-transparent animate-pulse-soft" />
             </div>
@@ -155,8 +157,11 @@ export function MediaLoopPlayer({ className = '', fallbackImageUrl = '/api/place
             onClick={handleBackgroundClick}
             role={isClickable ? 'link' : undefined}
             aria-label={isClickable ? `Visitar ${currentMedia.title || 'anúncio'}` : undefined}
+            aria-hidden={isClickable ? undefined : true}
         >
-            <AnimatePresence mode="wait">
+            {/* initial={false}: o primeiro item já aparece no HTML do servidor,
+                sem fade de entrada; só as trocas seguintes fazem crossfade. */}
+            <AnimatePresence mode="wait" initial={false}>
                 <motion.div
                     key={currentMedia?.id || 'fallback'}
                     initial={{ opacity: 0 }}
@@ -172,14 +177,20 @@ export function MediaLoopPlayer({ className = '', fallbackImageUrl = '/api/place
                             autoPlay
                             muted
                             playsInline
+                            preload="auto"
+                            disablePictureInPicture
                             onEnded={handleVideoEnd}
                             onError={handleVideoError}
                             className="absolute inset-0 w-full h-full object-cover"
                         />
                     ) : (
+                        // Foto de fundo presignada (host S3 variável): <img> direto —
+                        // o otimizador do Next em VPS fria custaria mais que a foto.
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                             src={currentMedia?.url || fallbackImageUrl}
-                            alt={currentMedia?.title || 'Background'}
+                            alt=""
+                            decoding="async"
                             className="absolute inset-0 w-full h-full object-cover"
                         />
                     )}

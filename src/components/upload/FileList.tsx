@@ -155,14 +155,15 @@ export function FileList({ files, onRemove, maxFiles, maxSize, readonly = false 
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
                   >
                     <IconButton
                       variant="ghost"
                       onClick={() => onRemove(item.id)}
+                      aria-label={`Remover ${item.file.name}`}
                       className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-4 h-4" aria-hidden="true" />
                     </IconButton>
                   </motion.div>
                 )}

@@ -41,7 +41,7 @@ export default function SettingsLayout({
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" role="status" aria-label="Carregando">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     )
@@ -56,16 +56,17 @@ export default function SettingsLayout({
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/dashboard" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-                <ArrowLeft className="w-5 h-5" />
+              <Link href="/dashboard" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <ArrowLeft className="w-5 h-5" aria-hidden="true" />
                 <span className="text-sm font-medium">Voltar</span>
               </Link>
-              <div className="h-6 w-px bg-border" />
-              <Link href="/" className="flex items-center" aria-label="ColetivoSend">
+              <div className="h-6 w-px bg-border" aria-hidden="true" />
+              <Link href="/" className="flex items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="ColetivoSend — página inicial">
                 <Logo className="h-7 w-auto" />
               </Link>
             </div>
-            <h1 className="text-lg font-semibold text-foreground">Configurações</h1>
+            {/* A página tem o próprio h1 ("Mídia de Fundo"); aqui é só o eyebrow */}
+            <p className="rotulo-mono">Configurações</p>
           </div>
         </div>
       </header>
@@ -74,26 +75,29 @@ export default function SettingsLayout({
         <div className="flex gap-8">
           {/* Sidebar */}
           <aside className="w-64 flex-shrink-0">
-            <nav className="space-y-1">
+            <nav className="space-y-1" aria-label="Configurações do Send">
               {settingsNav.map((item) => {
                 const isActive = pathname === item.href
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                        ? 'bg-primary/10 text-primary border border-primary/20'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    aria-current={isActive ? 'page' : undefined}
+                    // Ativo: superfície do tema + acento só no ícone (laranja
+                    // como texto sobre o tile claro dava 2,4:1)
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isActive
+                        ? 'bg-card text-foreground border-border shadow-sm'
+                        : 'text-muted-foreground border-transparent hover:bg-muted hover:text-foreground'
                       }`}
                   >
-                    <item.icon className={`w-5 h-5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <item.icon className={`w-5 h-5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} aria-hidden="true" />
                     <div className="flex-1">
                       <p className="font-medium text-sm">{item.label}</p>
-                      <p className={`text-xs ${isActive ? 'text-primary/70' : 'text-muted-foreground/70'}`}>
+                      <p className="text-xs text-muted-foreground">
                         {item.description}
                       </p>
                     </div>
-                    <ChevronRight className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-muted-foreground/50'}`} />
+                    <ChevronRight className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-muted-foreground/50'}`} aria-hidden="true" />
                   </Link>
                 )
               })}

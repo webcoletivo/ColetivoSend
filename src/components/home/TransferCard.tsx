@@ -1,9 +1,9 @@
 'use client'
 
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, FolderPlus, Mail, Send, Clock, ChevronDown, X, ArrowRight, Upload, Check, AlertCircle, Lock, Copy, RefreshCw } from 'lucide-react'
+import { Send, Clock, ChevronDown, X, Check, Lock, Copy, RefreshCw, UserRound } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
 import { UploadDropzone } from '@/components/upload/UploadDropzone'
 import { FileList, FileItem } from '@/components/upload/FileList'
@@ -25,6 +25,22 @@ const EXPIRY_OPTIONS = [
     { value: 30, label: '30 dias' },
 ]
 
+// E-mail "bom o bastante" para virar chip; o servidor valida de novo.
+const EMAIL_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/** Separa um texto colado/digitado em e-mails válidos e inválidos. */
+function separarEmails(texto: string): { validos: string[]; invalidos: string[] } {
+    const validos: string[] = []
+    const invalidos: string[] = []
+    for (const parte of texto.split(/[,;\s]+/)) {
+        const email = parte.trim().toLowerCase()
+        if (!email) continue
+        if (EMAIL_VALIDO.test(email)) validos.push(email)
+        else invalidos.push(email)
+    }
+    return { validos, invalidos }
+}
+
 interface TransferCardProps {
     className?: string
 }
@@ -35,15 +51,20 @@ export function TransferCard({ className = '' }: TransferCardProps) {
     const isLoggedIn = !!session?.user
     const isLoadingAuth = status === 'loading'
 
+    // Remetente = conta da plataforma (nome vem do SSO; o servidor confirma
+    // na finalização). Não é editável: o envio sai sempre em nome de quem
+    // está logado.
+    const nomeRemetente = session?.user?.name?.trim() || session?.user?.email || ''
+    const emailRemetente = session?.user?.email || ''
+
     // Form state
     const [files, setFiles] = useState<FileItem[]>([])
     const [recipientEmails, setRecipientEmails] = useState<string[]>([])
     const [emailInput, setEmailInput] = useState('')
-    const [senderEmail, setSenderEmail] = useState('')
-    const [title, setTitle] = useState('')
+    const [emailErro, setEmailErro] = useState<string | null>(null)
     const [message, setMessage] = useState('')
     const [expiryDays, setExpiryDays] = useState(7)
-    const [showExpiryDropdown, setShowExpiryDropdown] = useState(false)
+    const emailInputRef = useRef<HTMLInputElement>(null)
 
     // Password state
     const [hasPassword, setHasPassword] = useState(false)
@@ -54,7 +75,6 @@ export function TransferCard({ className = '' }: TransferCardProps) {
     const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'processing' | 'finalize' | 'complete' | 'error'>('idle')
     const [uploadMessage, setUploadMessage] = useState('')
     const [bytesUploadedMap, setBytesUploadedMap] = useState<Record<string, number>>({})
-    const [startTime, setStartTime] = useState<number | null>(null)
     const [estimatedTime, setEstimatedTime] = useState('')
 
     // Result state
@@ -76,14 +96,9 @@ export function TransferCard({ className = '' }: TransferCardProps) {
     const isSuccess = uploadStatus === 'complete' && transferResult
 
     // Password validation
+    const senhaCurta = password.length > 0 && password.length < 6
+    const senhasDiferentes = confirmPassword.length > 0 && password !== confirmPassword
     const isPasswordValid = !hasPassword || (password.length >= 6 && password === confirmPassword)
-
-    // Set sender email from session
-    useEffect(() => {
-        if (session?.user?.email && !senderEmail) {
-            setSenderEmail(session.user.email)
-        }
-    }, [session, senderEmail])
 
     // Load draft if exists (e.g. returning from login)
     useEffect(() => {
@@ -92,7 +107,6 @@ export function TransferCard({ className = '' }: TransferCardProps) {
             try {
                 const draft = JSON.parse(draftStr)
                 if (draft.recipientEmails) setRecipientEmails(draft.recipientEmails)
-                if (draft.title) setTitle(draft.title)
                 if (draft.message) setMessage(draft.message)
                 if (draft.expiryDays) setExpiryDays(draft.expiryDays)
 
@@ -113,7 +127,7 @@ export function TransferCard({ className = '' }: TransferCardProps) {
         setFiles([])
         setRecipientEmails([])
         setEmailInput('')
-        setTitle('')
+        setEmailErro(null)
         setMessage('')
         setExpiryDays(7)
         setHasPassword(false)
@@ -168,23 +182,40 @@ export function TransferCard({ className = '' }: TransferCardProps) {
         setFiles(prev => prev.filter(f => f.id !== id))
     }, [])
 
-    // Email handlers
-    const addEmail = () => {
-        const email = emailInput.trim().toLowerCase()
-        if (email && email.includes('@') && !recipientEmails.includes(email)) {
-            setRecipientEmails(prev => [...prev, email])
-            setEmailInput('')
+    // Email handlers — o texto pendente vira chip com Enter, vírgula, ponto e
+    // vírgula, Tab/clique fora (blur) e também ao clicar em "Transferir".
+    /** Consome o texto do campo; devolve a lista final ou null se houver e-mail inválido. */
+    const consumirEmailPendente = (): string[] | null => {
+        const texto = emailInput.trim()
+        if (!texto) {
+            setEmailErro(null)
+            return recipientEmails
         }
+        const { validos, invalidos } = separarEmails(texto)
+        const lista = Array.from(new Set([...recipientEmails, ...validos]))
+        setRecipientEmails(lista)
+        if (invalidos.length) {
+            setEmailInput(invalidos.join(', '))
+            setEmailErro(`E-mail inválido: ${invalidos.join(', ')}`)
+            return null
+        }
+        setEmailInput('')
+        setEmailErro(null)
+        return lista
     }
 
     const removeEmail = (email: string) => {
         setRecipientEmails(prev => prev.filter(e => e !== email))
+        emailInputRef.current?.focus()
     }
 
-    const handleEmailKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ',') {
+    const handleEmailKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' || e.key === ',' || e.key === ';') {
             e.preventDefault()
-            addEmail()
+            consumirEmailPendente()
+        } else if (e.key === 'Backspace' && emailInput === '' && recipientEmails.length) {
+            // apaga o último chip como num campo de tags
+            setRecipientEmails(prev => prev.slice(0, -1))
         }
     }
 
@@ -196,6 +227,16 @@ export function TransferCard({ className = '' }: TransferCardProps) {
         }
 
         if (files.length === 0) return
+
+        // O que está digitado no campo de e-mail conta: vira chip agora ou
+        // barra o envio com aviso (antes, o clique não fazia nada visível).
+        const destinatarios = consumirEmailPendente()
+        if (destinatarios === null) {
+            showToast('Corrija o e-mail do destinatário antes de transferir', 'error')
+            emailInputRef.current?.focus()
+            return
+        }
+
         if (!isPasswordValid) {
             showToast('Verifique a senha antes de continuar', 'error')
             return
@@ -203,7 +244,6 @@ export function TransferCard({ className = '' }: TransferCardProps) {
 
         setUploadStatus('uploading')
         setBytesUploadedMap({})
-        setStartTime(Date.now())
         setEstimatedTime('')
         const uploadedFilesData = []
 
@@ -256,8 +296,9 @@ export function TransferCard({ className = '' }: TransferCardProps) {
 
             const finalizePayload = {
                 transferId,
-                senderName: senderEmail.split('@')[0],
-                recipientEmail: recipientEmails.length > 0 ? recipientEmails.join(',') : null,
+                // nome de exibição da plataforma (o servidor reconfirma no verify)
+                senderName: (nomeRemetente || emailRemetente.split('@')[0] || 'Usuário').slice(0, 100),
+                recipientEmail: destinatarios.length > 0 ? destinatarios.join(',') : null,
                 message,
                 files: uploadedFilesData,
                 expirationDays: expiryDays,
@@ -274,7 +315,7 @@ export function TransferCard({ className = '' }: TransferCardProps) {
             if (!finalizeRes.ok) throw new Error(finalizeData.error || 'Erro ao finalizar envio')
 
             // 4. Send Emails (if recipients exist)
-            if (recipientEmails.length > 0) {
+            if (destinatarios.length > 0) {
                 setUploadMessage('Enviando e-mails...')
                 await fetch(`/api/transfers/${finalizeData.transfer.id}/email`, { method: 'POST' }).catch(console.warn)
             }
@@ -282,7 +323,7 @@ export function TransferCard({ className = '' }: TransferCardProps) {
             setTransferResult({
                 shareToken: finalizeData.transfer.shareToken,
                 expiresAt: finalizeData.transfer.expiresAt,
-                recipientCount: recipientEmails.length
+                recipientCount: destinatarios.length
             })
 
             setUploadStatus('complete')
@@ -312,13 +353,13 @@ export function TransferCard({ className = '' }: TransferCardProps) {
         return (
             <div className={`transfer-card w-full max-w-md ${className}`}>
                 <div className="p-8 flex flex-col items-center justify-center text-center space-y-6">
-                    <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center text-green-500 mb-2">
+                    <div className="w-16 h-16 rounded-full bg-emerald-500/15 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-2" aria-hidden="true">
                         <Check className="w-8 h-8" />
                     </div>
 
                     <div>
-                        <h2 className="text-2xl font-bold text-white mb-2">Envio concluído!</h2>
-                        <p className="text-white/60">
+                        <h2 className="text-2xl font-bold text-foreground mb-2">Envio concluído!</h2>
+                        <p className="text-muted-foreground" role="status">
                             {transferResult.recipientCount > 0
                                 ? `E-mail enviado para ${transferResult.recipientCount} destinatário(s).`
                                 : 'Seus arquivos estão prontos para compartilhar.'}
@@ -326,12 +367,14 @@ export function TransferCard({ className = '' }: TransferCardProps) {
                     </div>
 
                     <div className="w-full space-y-2">
-                        <label className="text-sm font-medium text-white/70 block text-left">Link de download</label>
+                        <label htmlFor="link-download" className="rotulo-campo text-left">Link de download</label>
                         <div className="flex gap-2">
                             <input
+                                id="link-download"
                                 readOnly
                                 value={shareLink}
-                                className="flex-1 bg-black/20 border border-white/10 rounded-lg px-4 py-3 text-white/90 outline-none focus:border-primary/50"
+                                onFocus={(e) => e.currentTarget.select()}
+                                className="input flex-1 font-mono text-xs"
                             />
                             <Button
                                 onClick={() => {
@@ -339,22 +382,23 @@ export function TransferCard({ className = '' }: TransferCardProps) {
                                     showToast('Link copiado!', 'success')
                                 }}
                                 className="shrink-0"
+                                aria-label="Copiar link de download"
                             >
-                                <Copy className="w-4 h-4" />
+                                <Copy className="w-4 h-4" aria-hidden="true" />
                             </Button>
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/50 pt-2">
+                    <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground pt-2">
                         <div className="flex items-center gap-1.5">
-                            <Clock className="w-4 h-4" />
+                            <Clock className="w-4 h-4" aria-hidden="true" />
                             <span>
                                 Expira em {EXPIRY_OPTIONS.find(o => o.value === expiryDays)?.label}
                             </span>
                         </div>
                         {hasPassword && (
-                            <div className="flex items-center gap-1.5 text-yellow-500/80">
-                                <Lock className="w-4 h-4" />
+                            <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400">
+                                <Lock className="w-4 h-4" aria-hidden="true" />
                                 <span>Protegido com senha</span>
                             </div>
                         )}
@@ -365,7 +409,7 @@ export function TransferCard({ className = '' }: TransferCardProps) {
                             variant="secondary"
                             className="w-full"
                             onClick={handleNewTransfer}
-                            icon={<RefreshCw className="w-4 h-4" />}
+                            icon={<RefreshCw className="w-4 h-4" aria-hidden="true" />}
                         >
                             Enviar mais arquivos
                         </Button>
@@ -379,8 +423,8 @@ export function TransferCard({ className = '' }: TransferCardProps) {
         <div className={`transfer-card w-full max-w-md ${className}`}>
             {/* Login Overlay if not logged in */}
             {!isLoadingAuth && !isLoggedIn && (
-                <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-4 rounded-2xl">
-                    <Lock className="w-12 h-12 text-primary mb-2" />
+                <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-4 rounded-xl">
+                    <Lock className="w-12 h-12 text-primary mb-2" aria-hidden="true" />
                     <h3 className="text-2xl font-bold">Faça login para enviar</h3>
                     <p className="text-muted-foreground text-sm max-w-xs">
                         Para garantir a segurança e qualidade dos envios (até 10GB), é necessário estar logado.
@@ -402,8 +446,9 @@ export function TransferCard({ className = '' }: TransferCardProps) {
                                 {formatBytes(totalSize)}
                             </span>
                             <button
+                                type="button"
                                 onClick={() => setFiles([])} // Quick clear
-                                className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                                className="text-xs font-medium text-red-700 dark:text-red-400 hover:underline rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
                                 Limpar
                             </button>
@@ -462,123 +507,112 @@ export function TransferCard({ className = '' }: TransferCardProps) {
                     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
 
                         {/* Recipient emails */}
-                        <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-muted-foreground">E-mail para</label>
-                            <div className="flex flex-wrap gap-2 p-2 bg-muted/50 rounded-lg border border-border min-h-[42px] focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                        <div>
+                            <label htmlFor="destinatarios" className="rotulo-campo">
+                                E-mail para <span className="font-normal text-muted-foreground">(opcional — sem e-mail, só o link)</span>
+                            </label>
+                            <div
+                                className={`flex flex-wrap gap-2 p-2 bg-muted/50 rounded-lg border min-h-[42px] focus-within:ring-2 focus-within:ring-ring transition-all cursor-text ${emailErro ? 'border-destructive' : 'border-border'}`}
+                                onClick={() => emailInputRef.current?.focus()}
+                            >
                                 {recipientEmails.map(email => (
-                                    <span key={email} className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-sm rounded-md animate-in zoom-in duration-200">
+                                    <span key={email} className="inline-flex items-center gap-1 pl-2 pr-1 py-1 bg-muted text-foreground text-sm rounded-md border border-border animate-in zoom-in duration-200">
                                         {email}
-                                        <button onClick={() => removeEmail(email)} className="hover:text-primary/70">
-                                            <X className="w-3 h-3" />
+                                        <button
+                                            type="button"
+                                            onClick={() => removeEmail(email)}
+                                            aria-label={`Remover ${email}`}
+                                            className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        >
+                                            <X className="w-3 h-3" aria-hidden="true" />
                                         </button>
                                     </span>
                                 ))}
                                 <input
+                                    ref={emailInputRef}
+                                    id="destinatarios"
                                     type="email"
+                                    multiple
+                                    autoComplete="email"
                                     value={emailInput}
-                                    onChange={(e) => setEmailInput(e.target.value)}
+                                    onChange={(e) => { setEmailInput(e.target.value); if (emailErro) setEmailErro(null) }}
                                     onKeyDown={handleEmailKeyDown}
-                                    onBlur={addEmail}
+                                    onBlur={() => consumirEmailPendente()}
                                     placeholder={recipientEmails.length ? '' : 'adicionar@email.com'}
-                                    className="flex-1 min-w-[150px] bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground/50"
+                                    aria-invalid={emailErro ? true : undefined}
+                                    aria-describedby={emailErro ? 'destinatarios-erro' : 'destinatarios-dica'}
+                                    className="flex-1 min-w-[150px] bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground"
                                 />
                             </div>
+                            {emailErro ? (
+                                <p id="destinatarios-erro" role="alert" className="mt-1.5 text-xs text-red-700 dark:text-red-400">{emailErro}</p>
+                            ) : (
+                                <p id="destinatarios-dica" className="mt-1.5 text-xs text-muted-foreground">Vários e-mails: separe por vírgula ou Enter.</p>
+                            )}
                         </div>
 
-                        {/* Sender email */}
-                        <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-muted-foreground">Seu e-mail</label>
-                            <div className="relative">
-                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                <input
-                                    type="email"
-                                    value={senderEmail}
-                                    onChange={(e) => setSenderEmail(e.target.value)}
-                                    placeholder="seu@email.com"
-                                    className="input pl-10"
-                                />
-                            </div>
+                        {/* Sender (conta da plataforma, não editável) */}
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <UserRound className="w-4 h-4 shrink-0" aria-hidden="true" />
+                            <span>
+                                Enviado por <span className="font-medium text-foreground">{nomeRemetente || 'você'}</span>
+                                {emailRemetente && nomeRemetente !== emailRemetente && (
+                                    <span className="text-muted-foreground"> · {emailRemetente}</span>
+                                )}
+                            </span>
                         </div>
 
-                        {/* Title & Message */}
-                        <div className="space-y-3">
-                            <input
-                                type="text"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                placeholder="Título (opcional)"
-                                className="input"
-                            />
-
+                        {/* Message */}
+                        <div>
+                            <label htmlFor="mensagem" className="rotulo-campo">Mensagem</label>
                             <textarea
+                                id="mensagem"
                                 value={message}
                                 onChange={(e) => setMessage(e.target.value)}
                                 placeholder="Mensagem (opcional)"
+                                maxLength={500}
                                 rows={2}
-                                className="input resize-none"
+                                className="input h-auto resize-none"
                             />
                         </div>
 
-                        <div className="h-px bg-white/5 my-4" />
+                        <div className="h-px bg-border my-4" aria-hidden="true" />
 
                         {/* Settings: Expiry & Password */}
                         <div className="space-y-4">
-                            {/* Expiry Selector */}
-                            <div className="flex items-center justify-between">
-                                <label className="text-sm text-muted-foreground flex items-center gap-2">
-                                    <Clock className="w-4 h-4" />
-                                    <span>Expiração</span>
+                            {/* Expiry Selector (select nativo: acessível e no padrão de input h-10) */}
+                            <div className="flex items-center justify-between gap-4">
+                                <label htmlFor="expiracao" className="text-sm text-muted-foreground flex items-center gap-2">
+                                    <Clock className="w-4 h-4" aria-hidden="true" />
+                                    <span>Expira em</span>
                                 </label>
-
                                 <div className="relative">
-                                    <button
-                                        onClick={() => setShowExpiryDropdown(!showExpiryDropdown)}
-                                        className="flex items-center gap-2 text-sm text-foreground hover:bg-white/5 px-2 py-1 rounded transition-colors"
+                                    <select
+                                        id="expiracao"
+                                        value={expiryDays}
+                                        onChange={(e) => setExpiryDays(Number(e.target.value))}
+                                        className="input w-auto min-w-[8rem] pr-9 appearance-none cursor-pointer"
                                     >
-                                        <span>{EXPIRY_OPTIONS.find(o => o.value === expiryDays)?.label}</span>
-                                        <ChevronDown className="w-4 h-4 opacity-50" />
-                                    </button>
-
-                                    {showExpiryDropdown && (
-                                        <>
-                                            <div
-                                                className="fixed inset-0 z-10"
-                                                onClick={() => setShowExpiryDropdown(false)}
-                                            />
-                                            <div className="absolute bottom-full right-0 mb-2 w-32 bg-popover border border-border rounded-lg shadow-xl z-20 overflow-hidden">
-                                                {EXPIRY_OPTIONS.map(option => (
-                                                    <button
-                                                        key={option.value}
-                                                        onClick={() => {
-                                                            setExpiryDays(option.value)
-                                                            setShowExpiryDropdown(false)
-                                                        }}
-                                                        className={`w-full px-4 py-2 text-sm text-left hover:bg-white/5 transition-colors ${expiryDays === option.value ? 'text-primary font-medium bg-primary/5' : 'text-foreground'
-                                                            }`}
-                                                    >
-                                                        {option.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </>
-                                    )}
+                                        {EXPIRY_OPTIONS.map(option => (
+                                            <option key={option.value} value={option.value}>{option.label}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
                                 </div>
                             </div>
 
-                            {/* Password Toggle */}
+                            {/* Password Toggle (checkbox real, rotulado) */}
                             <div>
-                                <button
-                                    onClick={() => setHasPassword(!hasPassword)}
-                                    className={`flex items-center gap-2 text-sm transition-colors ${hasPassword ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-                                >
-                                    <div className={`w-4 h-4 border rounded relative flex items-center justify-center ${hasPassword ? 'border-primary bg-primary' : 'border-white/30'}`}>
-                                        {hasPassword && <Check className="w-3 h-3 text-white" />}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Lock className="w-4 h-4" />
-                                        <span>Proteger com senha</span>
-                                    </div>
-                                </button>
+                                <label className={`inline-flex items-center gap-2 text-sm cursor-pointer select-none ${hasPassword ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                                    <input
+                                        type="checkbox"
+                                        checked={hasPassword}
+                                        onChange={(e) => setHasPassword(e.target.checked)}
+                                        className="w-4 h-4 rounded border-border accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    />
+                                    <Lock className="w-4 h-4" aria-hidden="true" />
+                                    <span>Proteger com senha</span>
+                                </label>
 
                                 <AnimatePresence>
                                     {hasPassword && (
@@ -588,23 +622,38 @@ export function TransferCard({ className = '' }: TransferCardProps) {
                                             exit={{ height: 0, opacity: 0, marginTop: 0 }}
                                             className="overflow-hidden space-y-3"
                                         >
-                                            <input
-                                                type="password"
-                                                value={password}
-                                                onChange={(e) => setPassword(e.target.value)}
-                                                placeholder="Sua senha"
-                                                className={`input text-sm ${password.length > 0 && password.length < 6 ? 'border-red-500/50' : ''}`}
-                                            />
-                                            <input
-                                                type="password"
-                                                value={confirmPassword}
-                                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                                placeholder="Confirme a senha"
-                                                className={`input text-sm ${confirmPassword && password !== confirmPassword ? 'border-red-500/50' : ''}`}
-                                            />
-                                            {password.length > 0 && password.length < 6 && (
-                                                <p className="text-xs text-red-400">Mínimo de 6 caracteres</p>
-                                            )}
+                                            <div>
+                                                <label htmlFor="senha" className="rotulo-campo">Senha <span className="font-normal text-muted-foreground">(mínimo 6 caracteres)</span></label>
+                                                <input
+                                                    id="senha"
+                                                    type="password"
+                                                    autoComplete="new-password"
+                                                    value={password}
+                                                    onChange={(e) => setPassword(e.target.value)}
+                                                    aria-invalid={senhaCurta || undefined}
+                                                    aria-describedby={senhaCurta ? 'senha-erro' : undefined}
+                                                    className={`input text-sm ${senhaCurta ? 'border-destructive' : ''}`}
+                                                />
+                                                {senhaCurta && (
+                                                    <p id="senha-erro" className="mt-1.5 text-xs text-red-700 dark:text-red-400">Mínimo de 6 caracteres</p>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <label htmlFor="confirmar-senha" className="rotulo-campo">Confirmar senha</label>
+                                                <input
+                                                    id="confirmar-senha"
+                                                    type="password"
+                                                    autoComplete="new-password"
+                                                    value={confirmPassword}
+                                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                                    aria-invalid={senhasDiferentes || undefined}
+                                                    aria-describedby={senhasDiferentes ? 'confirmar-senha-erro' : undefined}
+                                                    className={`input text-sm ${senhasDiferentes ? 'border-destructive' : ''}`}
+                                                />
+                                                {senhasDiferentes && (
+                                                    <p id="confirmar-senha-erro" className="mt-1.5 text-xs text-red-700 dark:text-red-400">As senhas não conferem</p>
+                                                )}
+                                            </div>
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
@@ -617,7 +666,7 @@ export function TransferCard({ className = '' }: TransferCardProps) {
                                 disabled={!canContinue || isLoadingAuth}
                                 className="w-full"
                                 size="lg"
-                                icon={<Send className="w-4 h-4" />}
+                                icon={<Send className="w-4 h-4" aria-hidden="true" />}
                                 iconPosition="left"
                             >
                                 Transferir Arquivos
@@ -634,11 +683,12 @@ export function TransferCard({ className = '' }: TransferCardProps) {
                                 'Arraste arquivos ou clique para selecionar'
                             ) : (
                                 <>
-                                    <a href={caminhoSso(BASE_PATH)} className="text-primary hover:underline">Faça login</a> para enviar arquivos
+                                    <a href={caminhoSso(BASE_PATH)} className="text-foreground font-medium underline decoration-primary underline-offset-4">Faça login</a> para enviar arquivos
                                 </>
                             )}
                         </p>
-                        <p className="text-xs text-muted-foreground/70">
+                        {/* muted-foreground pleno: /70 dava 2,9:1 */}
+                        <p className="text-xs text-muted-foreground">
                             Até 10 GB por transferência
                         </p>
                     </div>

@@ -5,13 +5,15 @@ import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Plus, Copy, Trash2, MoreHorizontal,
+  Plus, Copy, Trash2,
   ExternalLink, FileIcon, Ban,
-  Settings, LogOut, CheckCircle2, Loader2,
-  Clock, CheckCircle, XCircle, AlertCircle
+  Settings, CheckCircle2, Loader2,
+  Clock, CheckCircle
 } from 'lucide-react'
-import { Button, IconButton } from '@/components/ui/Button'
+import { Button } from '@/components/ui/Button'
 import { Logo } from '@/components/ui/Logo'
+import { MenuAcoes } from '@/components/ui/MenuAcoes'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { SkeletonTable, SkeletonStatCard } from '@/components/ui/Skeleton'
 import { formatBytes, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
@@ -52,7 +54,9 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({ total: 0, active: 0, expired: 0 })
   const [isLoading, setIsLoading] = useState(true)
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [activeMenu, setActiveMenu] = useState<string | null>(null)
+  // Diálogo de exclusão (no lugar do confirm() nativo)
+  const [excluindo, setExcluindo] = useState<Transfer | null>(null)
+  const [excluindoOcupado, setExcluindoOcupado] = useState(false)
   const buscando = useRef(false)
   const logado = !!session?.user
 
@@ -112,8 +116,8 @@ export default function DashboardPage() {
   // Auth check
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      <div className="min-h-screen flex items-center justify-center" role="status" aria-label="Carregando">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" aria-hidden="true" />
       </div>
     )
   }
@@ -140,7 +144,6 @@ export default function DashboardPage() {
         // Reflete na hora no estado local; o refetch silencioso confirma com o servidor.
         setTransfers(prev => prev.map(t => (t.id === id ? { ...t, status: 'revoked' } : t)))
         setStats(prev => ({ ...prev, active: Math.max(0, prev.active - 1) }))
-        setActiveMenu(null)
         showToast('Link revogado com sucesso', 'success')
         fetchData(true)
       } else {
@@ -151,23 +154,22 @@ export default function DashboardPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este envio?')) return
-
+  const confirmarExclusao = async () => {
+    if (!excluindo) return
+    const alvo = excluindo
+    setExcluindoOcupado(true)
     try {
-      const res = await fetch(`/api/transfers/${id}`, {
+      const res = await fetch(`/api/transfers/${alvo.id}`, {
         method: 'DELETE'
       })
 
       if (res.ok) {
-        const alvo = transfers.find(t => t.id === id)
-        setTransfers(prev => prev.filter(t => t.id !== id))
+        setTransfers(prev => prev.filter(t => t.id !== alvo.id))
         setStats(prev => ({
           total: Math.max(0, prev.total - 1),
-          active: alvo?.status === 'active' ? Math.max(0, prev.active - 1) : prev.active,
-          expired: alvo?.status === 'expired' ? Math.max(0, prev.expired - 1) : prev.expired,
+          active: alvo.status === 'active' ? Math.max(0, prev.active - 1) : prev.active,
+          expired: alvo.status === 'expired' ? Math.max(0, prev.expired - 1) : prev.expired,
         }))
-        setActiveMenu(null)
         showToast('Envio excluído com sucesso', 'success')
         fetchData(true)
       } else {
@@ -175,6 +177,9 @@ export default function DashboardPage() {
       }
     } catch (error) {
       showToast('Erro ao excluir envio', 'error')
+    } finally {
+      setExcluindoOcupado(false)
+      setExcluindo(null)
     }
   }
 
@@ -196,7 +201,7 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center" aria-label="ColetivoSend">
+          <Link href="/" className="flex items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="ColetivoSend — página inicial">
             <Logo priority className="h-9 w-auto" />
           </Link>
 
@@ -206,9 +211,10 @@ export default function DashboardPage() {
             <Link
               href="/settings/media"
               title="Mídia de fundo (admin)"
-              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Mídia de fundo (admin)"
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <Settings className="w-5 h-5" />
+              <Settings className="w-5 h-5" aria-hidden="true" />
             </Link>
           </div>
         </div>
@@ -222,19 +228,19 @@ export default function DashboardPage() {
             <p className="text-muted-foreground">Gerencie todos os seus envios</p>
           </div>
 
-          <Link href="/">
-            <Button icon={<Plus className="w-4 h-4" />}>
-              Novo envio
-            </Button>
+          {/* Link com a cara de botão (botão dentro de link é inválido/ambíguo p/ leitor de tela) */}
+          <Link href="/" className="btn btn-primary">
+            <Plus className="w-4 h-4" aria-hidden="true" />
+            Novo envio
           </Link>
         </div>
 
         {/* Stats cards */}
         <div className="mb-3 flex items-center gap-3">
-          <p className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="rotulo-mono">
             Resumo
           </p>
-          <div className="h-px flex-1 bg-border" />
+          <div className="h-px flex-1 bg-border" aria-hidden="true" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
           {isLoading ? (
@@ -250,7 +256,7 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="card p-5 flex items-center gap-4"
               >
-                <div className="w-10 h-10 rounded-lg bg-muted border border-border text-primary flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-muted border border-border text-primary flex items-center justify-center" aria-hidden="true">
                   <FileIcon className="w-5 h-5" />
                 </div>
                 <div>
@@ -265,7 +271,7 @@ export default function DashboardPage() {
                 transition={{ delay: 0.1 }}
                 className="card p-5 flex items-center gap-4"
               >
-                <div className="w-10 h-10 rounded-lg bg-muted border border-border text-emerald-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-muted border border-border text-emerald-600 dark:text-emerald-400 flex items-center justify-center" aria-hidden="true">
                   <CheckCircle className="w-5 h-5" />
                 </div>
                 <div>
@@ -280,7 +286,7 @@ export default function DashboardPage() {
                 transition={{ delay: 0.2 }}
                 className="card p-5 flex items-center gap-4"
               >
-                <div className="w-10 h-10 rounded-lg bg-muted border border-border text-amber-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-muted border border-border text-amber-600 dark:text-amber-400 flex items-center justify-center" aria-hidden="true">
                   <Clock className="w-5 h-5" />
                 </div>
                 <div>
@@ -294,10 +300,10 @@ export default function DashboardPage() {
 
         {/* Transfers list */}
         <div className="mb-3 flex items-center gap-3">
-          <p className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="rotulo-mono">
             Envios
           </p>
-          <div className="h-px flex-1 bg-border" />
+          <div className="h-px flex-1 bg-border" aria-hidden="true" />
         </div>
         {isLoading ? (
           <SkeletonTable rows={5} />
@@ -307,7 +313,7 @@ export default function DashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             className="card p-12 text-center"
           >
-            <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-6">
+            <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-6" aria-hidden="true">
               <FileIcon className="w-10 h-10 text-muted-foreground/30" />
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-2">
@@ -316,16 +322,15 @@ export default function DashboardPage() {
             <p className="text-muted-foreground mb-6">
               Compartilhe arquivos e gerencie tudo por aqui
             </p>
-            <Link href="/">
-              <Button icon={<Plus className="w-4 h-4" />}>
-                Criar primeiro envio
-              </Button>
+            <Link href="/" className="btn btn-primary">
+              <Plus className="w-4 h-4" aria-hidden="true" />
+              Criar primeiro envio
             </Link>
           </motion.div>
         ) : (
           <div className="space-y-3">
             {/* Table header (desktop) */}
-            <div className="hidden md:grid grid-cols-12 gap-4 px-5 py-2 text-sm font-medium text-muted-foreground">
+            <div className="hidden md:grid grid-cols-12 gap-4 px-5 py-2 text-sm font-medium text-muted-foreground" aria-hidden="true">
               <div className="col-span-4">Envio</div>
               <div className="col-span-2">Arquivos</div>
               <div className="col-span-2">Status</div>
@@ -393,56 +398,37 @@ export default function DashboardPage() {
                         variant="secondary"
                         size="sm"
                         onClick={() => handleCopyLink(transfer)}
-                        icon={copiedId === transfer.id ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        icon={copiedId === transfer.id ? <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> : <Copy className="w-4 h-4" aria-hidden="true" />}
                         disabled={transfer.status !== 'active'}
-                        className={copiedId === transfer.id ? 'bg-emerald-500/10 text-emerald-500' : ''}
+                        className={copiedId === transfer.id ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : ''}
                       >
                         {copiedId === transfer.id ? 'Copiado' : 'Copiar'}
                       </Button>
 
-                      <div className="relative">
-                        <IconButton
-                          variant="ghost"
-                          aria-label="Mais ações"
-                          onClick={() => setActiveMenu(activeMenu === transfer.id ? null : transfer.id)}
-                        >
-                          <MoreHorizontal className="w-5 h-5" />
-                        </IconButton>
-
-                        {activeMenu === transfer.id && (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="absolute right-0 top-full mt-1 w-48 bg-card rounded-xl shadow-lg border border-border py-2 z-10"
-                          >
-                            <a
-                              href={`${BASE_PATH}/d/${transfer.shareToken}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:bg-accent/5 hover:text-foreground transition-colors"
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                              Abrir link
-                            </a>
-                            {transfer.status === 'active' && (
-                              <button
-                                onClick={() => handleRevoke(transfer.id)}
-                                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-amber-600 hover:bg-amber-500/10"
-                              >
-                                <Ban className="w-4 h-4" />
-                                Revogar link
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleDelete(transfer.id)}
-                              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-500/10"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Excluir
-                            </button>
-                          </motion.div>
-                        )}
-                      </div>
+                      <MenuAcoes
+                        label="Mais ações"
+                        items={[
+                          {
+                            label: 'Abrir link',
+                            icon: <ExternalLink className="w-4 h-4" aria-hidden="true" />,
+                            href: `${BASE_PATH}/d/${transfer.shareToken}`,
+                          },
+                          ...(transfer.status === 'active'
+                            ? [{
+                              label: 'Revogar link',
+                              icon: <Ban className="w-4 h-4" aria-hidden="true" />,
+                              tom: 'aviso' as const,
+                              onSelect: () => handleRevoke(transfer.id),
+                            }]
+                            : []),
+                          {
+                            label: 'Excluir',
+                            icon: <Trash2 className="w-4 h-4" aria-hidden="true" />,
+                            tom: 'perigo' as const,
+                            onSelect: () => setExcluindo(transfer),
+                          },
+                        ]}
+                      />
                     </div>
                   </div>
                 </motion.div>
@@ -451,6 +437,16 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+
+      <ConfirmDialog
+        open={excluindo !== null}
+        title="Excluir este envio?"
+        description="O link de download deixa de funcionar na hora e os arquivos são apagados do armazenamento. Não dá para desfazer."
+        confirmLabel="Excluir envio"
+        busy={excluindoOcupado}
+        onConfirm={confirmarExclusao}
+        onCancel={() => { if (!excluindoOcupado) setExcluindo(null) }}
+      />
     </div>
   )
 }
