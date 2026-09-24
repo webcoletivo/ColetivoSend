@@ -6,6 +6,7 @@ import { formatBytes } from '@/lib/utils'
 import { checkFileExists } from '@/lib/storage'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { nomeDeExibicao } from '@/lib/plataforma'
 import pLimit from 'p-limit'
 
 // Limit concurrency for S3 checks
@@ -132,11 +133,18 @@ export async function POST(request: NextRequest) {
 
     const totalSizeBytes = files.reduce((acc: number, f: any) => acc + (f.size || 0), 0)
 
+    // Remetente = nome da plataforma (o cliente manda um palpite; quem manda
+    // é o verify, com a cópia local como reserva). Aparece na página pública,
+    // no e-mail e no painel.
+    const nomeRemetente = userId
+      ? (await nomeDeExibicao(userId, request.headers.get('cookie'), senderName.trim())).slice(0, 100)
+      : senderName.trim()
+
     // 5. Create DB Records
     const transfer = await prisma.transfer.create({
       data: {
         ownerUserId: userId || null,
-        senderName: senderName.trim(),
+        senderName: nomeRemetente,
         recipientEmail: recipientEmail?.trim() || null,
         message: message?.trim() || null,
         shareToken,
