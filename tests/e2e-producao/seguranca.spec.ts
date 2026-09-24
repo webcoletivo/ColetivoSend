@@ -95,7 +95,9 @@ test('privados sem cookie: API nega (401) e páginas internas vão à ponte SSO'
     const r = await anon.post(caminho, { data: {}, failOnStatusCode: false })
     console.log(`  POST ${caminho} -> ${r.status()}`)
     expect(r.status(), `${caminho} nunca cria conta/sessão sem SSO`).not.toBe(200)
-    aposDeploy(`${caminho} removida (404)`, () => expect(r.status()).toBe(404))
+    // 404 quando a rota some; 400/405/410 quando o catch-all do next-auth ou o
+    // Next respondem por ela — em nenhum caso há conta ou sessão criada.
+    aposDeploy(`${caminho} removida (sem 2xx)`, () => expect([400, 404, 405, 410]).toContain(r.status()))
     await pausa()
   }
 
