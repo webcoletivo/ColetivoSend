@@ -26,6 +26,8 @@ function generateNonce(): string {
 
 // Build a strict CSP. script-src uses a per-request nonce + strict-dynamic
 // instead of 'unsafe-inline', removing the inline-script XSS vector.
+// Vale para TODAS as páginas, inclusive a pública /d/[token] (o matcher
+// abaixo cobre tudo que não é asset estático).
 function buildCsp(nonce: string): string {
   const isDev = process.env.NODE_ENV === 'development'
   // next dev needs 'unsafe-eval' for HMR; production does not.
@@ -88,47 +90,36 @@ function checkRateLimit(key: string, limit: number, windowMs: number): boolean {
   return true
 }
 
+/**
+ * Rotas de API que podem ser cacheadas: só o healthcheck (que já manda
+ * no-store) e a lista de mídia da home (privada, 60 s). Todo o resto é
+ * resposta privada ou pública-por-token: nunca em cache compartilhado.
+ */
+function apiSemCache(pathname: string): boolean {
+  return pathname.startsWith('/api/') && pathname !== '/api/media/public' && pathname !== '/api/health'
+}
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const nonce = generateNonce()
   const csp = buildCsp(nonce)
 
-  // 1. Rate limiting checks
+  // 1. Rate limiting checks (por processo; os freios de força bruta de
+  //    verdade ficam no banco, dentro das rotas públicas)
   if (pathname.startsWith('/api/')) {
-    const isNextAuthCallback = pathname.includes('/api/auth/callback') ||
-      pathname.includes('/api/auth/session') ||
-      pathname.includes('/api/auth/providers') ||
-      pathname.includes('/api/auth/csrf')
-
-    // Auth attempts
-    if (!isNextAuthCallback && (pathname === '/api/auth/signup' || pathname.includes('/api/auth/signin'))) {
-      const key = getRateLimitKey(request, 'auth')
-      if (!checkRateLimit(key, 10, 60 * 1000)) {
-        return withSecurityHeaders(NextResponse.json({ error: 'Muitas tentativas.' }, { status: 429 }), request, csp)
-      }
-    }
-
-    // 2FA Verification
-    if (pathname.includes('/api/auth/2fa/verify')) {
-      const key = getRateLimitKey(request, '2fa')
-      if (!checkRateLimit(key, 5, 60 * 1000)) { // 5 attempts per minute
-        return withSecurityHeaders(NextResponse.json({ error: 'Muitas tentativas. Aguarde.' }, { status: 429 }), request, csp)
-      }
-    }
-
-    // Transfer creation (Finalize & Presign)
-    if (pathname === '/api/transfers/finalize' || pathname === '/api/upload/presign') {
+    // Criação de envio
+    if (pathname === '/api/transfers/finalize') {
       const key = getRateLimitKey(request, 'transfer_create')
       if (!checkRateLimit(key, 10, 60 * 1000)) {
         return withSecurityHeaders(NextResponse.json({ error: 'Limite de criação rápida atingido.' }, { status: 429 }), request, csp)
       }
     }
 
-    // Password verification (for downloads)
-    if (pathname.includes('/transfer/') && pathname.includes('/password') && request.method === 'POST') {
-      const key = getRateLimitKey(request, 'password_verify')
-      if (!checkRateLimit(key, 5, 60 * 1000)) {
-        return withSecurityHeaders(NextResponse.json({ error: 'Muitas tentativas de senha.' }, { status: 429 }), request, csp)
+    // Ponte SSO: cada chamada bate no verify da plataforma
+    if (pathname === '/api/sso/entrar') {
+      const key = getRateLimitKey(request, 'sso')
+      if (!checkRateLimit(key, 30, 60 * 1000)) {
+        return withSecurityHeaders(NextResponse.json({ error: 'Muitas tentativas. Aguarde um momento.' }, { status: 429 }), request, csp)
       }
     }
   }
@@ -196,13 +187,21 @@ function withSecurityHeaders(response: NextResponse, request: NextRequest, csp: 
   })
   response.headers.set('Content-Security-Policy', csp)
 
-  // CORS
+  if (apiSemCache(request.nextUrl.pathname)) {
+    response.headers.set('Cache-Control', 'no-store')
+  }
+
+  // CORS: só a própria origem unificada (o app vive em app.grupocoletivo.com.br/send).
+  // Chamadas same-origin não precisam de CORS; nada de credenciais cross-origin.
   const origin = request.headers.get('origin')
-  const allowedOrigins = [
-    'https://send.grupocoletivo.com.br',
-    'https://coletivo-send.vercel.app',
-    'https://app.grupocoletivo.com.br',
-  ]
+  const allowedOrigins = ['https://app.grupocoletivo.com.br']
+  if (process.env.PLATFORM_URL) {
+    try {
+      allowedOrigins.push(new URL(process.env.PLATFORM_URL).origin)
+    } catch {
+      // PLATFORM_URL inválida: fica só a origem fixa
+    }
+  }
   if (process.env.NODE_ENV === 'development') {
     allowedOrigins.push('http://localhost:3000')
   }
@@ -211,6 +210,7 @@ function withSecurityHeaders(response: NextResponse, request: NextRequest, csp: 
     response.headers.set('Access-Control-Allow-Origin', origin)
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH')
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    response.headers.set('Vary', 'Origin')
   }
 
   return response

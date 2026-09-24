@@ -5,6 +5,8 @@ const nextConfig = {
   // Unificação por abas: o app vive em app.grupocoletivo.com.br/send
   basePath: process.env.NEXT_PUBLIC_BASE_PATH ?? '/send',
   productionBrowserSourceMaps: false,
+  // Sem "X-Powered-By: Next.js" (não anuncia a stack)
+  poweredByHeader: false,
   // Saída enxuta para o Dockerfile (node server.js). Funciona com basePath —
   // o Kadro roda assim há meses.
   output: 'standalone',
