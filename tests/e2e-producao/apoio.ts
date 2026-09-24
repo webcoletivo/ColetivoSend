@@ -1,4 +1,5 @@
-import { expect, type Locator, type Page } from '@playwright/test'
+import { expect, request, type APIRequestContext, type Locator, type Page } from '@playwright/test'
+import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -34,6 +35,8 @@ export interface EstadoSuite {
   token?: string | null
   transferId?: string | null
   mediaId?: string | null
+  /** Envios criados por API (a11y, segurança) que ainda não foram apagados. */
+  transferIdsApi?: string[]
 }
 
 export function lerEstado(): EstadoSuite {
@@ -47,6 +50,14 @@ export function lerEstado(): EstadoSuite {
 export function gravarEstado(parcial: EstadoSuite) {
   fs.mkdirSync(path.dirname(ARQUIVO_ESTADO), { recursive: true })
   fs.writeFileSync(ARQUIVO_ESTADO, JSON.stringify({ ...lerEstado(), ...parcial }))
+}
+
+/** Registra/retira um envio criado por API na lista de pendências da limpeza. */
+export function lembrarEnvioApi(transferId: string, apagado = false) {
+  const atual = new Set(lerEstado().transferIdsApi ?? [])
+  if (apagado) atual.delete(transferId)
+  else atual.add(transferId)
+  gravarEstado({ transferIdsApi: [...atual] })
 }
 
 /** PNG 1x1 transparente — única mídia que a suíte envia (e apaga). */
@@ -106,6 +117,96 @@ export async function entrarNoSend(page: Page) {
   await page.request.get(`${SEND}/api/sso/entrar?next=${encodeURIComponent(`${SEND}/dashboard`)}`, {
     failOnStatusCode: false,
   })
+}
+
+/** Contexto de API já logado no Send (sessão salva + ponte SSO). */
+export async function apiLogada(): Promise<APIRequestContext> {
+  const api = await request.newContext({ baseURL: BASE, storageState: ESTADO })
+  await api.get(`${SEND}/api/sso/entrar?next=${encodeURIComponent(`${SEND}/dashboard`)}`, { failOnStatusCode: false })
+  return api
+}
+
+/** Contexto de API SEM sessão nenhuma (quem está de fora). */
+export async function apiAnonima(): Promise<APIRequestContext> {
+  return request.newContext({ baseURL: BASE, storageState: { cookies: [], origins: [] } })
+}
+
+export interface EnvioCriado {
+  token: string
+  transferId: string
+  nomeDoArquivo: string
+}
+
+/**
+ * Cria um envio pequeno pela API (o mesmo caminho do formulário: init →
+ * PUT presignado → report → complete → finalize), com 1 arquivo .txt e sem
+ * destinatário (nenhum e-mail sai). Quem chama apaga com apagarEnvio().
+ */
+export async function criarEnvioViaApi(
+  api: APIRequestContext,
+  rotulo: string,
+  opcoes: { senha?: string; expirationDays?: number } = {},
+): Promise<EnvioCriado> {
+  const transferId = crypto.randomUUID()
+  const fileId = crypto.randomUUID()
+  const nomeDoArquivo = `${rotulo}.txt`
+  const conteudo = Buffer.from(`${rotulo} envio de teste automatizado — pode apagar\n`.repeat(4))
+
+  const init = await api.post(`${SEND}/api/upload/chunk/init`, {
+    data: { transferId, fileId, fileName: nomeDoArquivo, fileSize: conteudo.length, mimeType: 'text/plain' },
+    failOnStatusCode: false,
+  })
+  if (!init.ok()) throw new Error(`init do upload: HTTP ${init.status()} ${(await init.text()).slice(0, 200)}`)
+  const { sessionId, storageKey } = (await init.json()) as { sessionId: string; storageKey: string }
+
+  const presign = await api.get(`${SEND}/api/upload/chunk/${sessionId}/presign?partNumber=1`, { failOnStatusCode: false })
+  if (!presign.ok()) throw new Error(`presign da parte: HTTP ${presign.status()}`)
+  const { url, storageType } = (await presign.json()) as { url: string; storageType: string }
+
+  if (storageType === 's3') {
+    const put = await api.put(url, { data: conteudo, headers: { 'Content-Type': 'application/octet-stream' }, failOnStatusCode: false })
+    if (!put.ok()) throw new Error(`PUT presignado: HTTP ${put.status()}`)
+    const etag = put.headers()['etag'] ?? ''
+    const report = await api.post(`${SEND}/api/upload/chunk/${sessionId}/report`, {
+      data: { partNumber: 1, ETag: etag, size: conteudo.length },
+      failOnStatusCode: false,
+    })
+    if (!report.ok()) throw new Error(`report da parte: HTTP ${report.status()}`)
+  } else {
+    const put = await api.put(`${SEND}/api/upload/chunk/${sessionId}`, {
+      data: conteudo,
+      headers: { 'Content-Type': 'application/octet-stream', 'x-part-number': '1' },
+      failOnStatusCode: false,
+    })
+    if (!put.ok()) throw new Error(`PUT local da parte: HTTP ${put.status()}`)
+  }
+
+  const complete = await api.post(`${SEND}/api/upload/chunk/${sessionId}/complete`, { failOnStatusCode: false })
+  if (!complete.ok()) throw new Error(`complete do upload: HTTP ${complete.status()}`)
+
+  const finalize = await api.post(`${SEND}/api/transfers/finalize`, {
+    data: {
+      transferId,
+      senderName: 'E2E',
+      recipientEmail: null,
+      message: `${rotulo} envio de teste automatizado — pode apagar`,
+      files: [{ name: nomeDoArquivo, size: conteudo.length, type: 'text/plain', storageKey }],
+      expirationDays: opcoes.expirationDays ?? 1,
+      password: opcoes.senha ?? null,
+    },
+    failOnStatusCode: false,
+  })
+  if (!finalize.ok()) throw new Error(`finalize: HTTP ${finalize.status()} ${(await finalize.text()).slice(0, 200)}`)
+  const dados = (await finalize.json()) as { transfer: { id: string; shareToken: string } }
+  lembrarEnvioApi(dados.transfer.id)
+  return { token: dados.transfer.shareToken, transferId: dados.transfer.id, nomeDoArquivo }
+}
+
+/** Apaga um envio criado pela suíte (idempotente: 404 também conta como apagado). */
+export async function apagarEnvio(api: APIRequestContext, transferId: string): Promise<number> {
+  const r = await api.delete(`${SEND}/api/transfers/${transferId}`, { failOnStatusCode: false })
+  if (r.ok() || r.status() === 404) lembrarEnvioApi(transferId, true)
+  return r.status()
 }
 
 /** Linhas da lista de envios do painel: os cards que têm o botão "Copiar" (mais recente primeiro). */

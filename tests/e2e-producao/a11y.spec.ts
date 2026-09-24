@@ -1,5 +1,8 @@
-import { test, expect, type Page } from '@playwright/test'
-import { SEND, entrarNoSend, linhasDoPainel, botaoMenu, itemMenu } from './apoio'
+import { test, expect, type Page, type APIRequestContext } from '@playwright/test'
+import {
+  SEND, entrarNoSend, linhasDoPainel, botaoMenu, itemMenu,
+  apiLogada, criarEnvioViaApi, apagarEnvio, type EnvioCriado,
+} from './apoio'
 
 /**
  * Acessibilidade e contraste do Send, contra produção, nos dois temas.
@@ -13,8 +16,13 @@ import { SEND, entrarNoSend, linhasDoPainel, botaoMenu, itemMenu } from './apoio
  *    (e o "Cancelar" não apaga nada).
  *
  * O tema é forçado pela classe do <html> (mesmo mecanismo da barra), então
- * cada tela é medida no claro e no escuro. Nada é criado nem apagado.
+ * cada tela é medida no claro e no escuro. O painel precisa de um envio para
+ * testar o menu "…" e o diálogo de exclusão: o bloco cria o seu ("[E2E-A11Y]",
+ * 1 arquivo .txt, sem destinatário) no beforeAll e apaga no afterAll — não
+ * depende da ordem dos specs nem do que o web@ tem no painel.
  */
+
+const ROTULO_A11Y = '[E2E-A11Y]'
 
 type Tema = 'light' | 'dark'
 const TEMAS: Tema[] = ['light', 'dark']
@@ -130,10 +138,15 @@ async function contrasteDe(page: Page, seletor: string, filtroTexto?: RegExp): P
       })
 
       const todos = Array.from(document.querySelectorAll<HTMLElement>(seletor))
+      // innerText reflete text-transform (o rótulo mono é "uppercase" no CSS e
+      // vira "RESUMO"); o filtro casa com o texto renderizado OU com o do DOM.
       const el = filtro
-        ? todos.find((e) => new RegExp(filtro.source, filtro.flags).test((e.innerText || '').trim()))
+        ? todos.find((e) => {
+            const re = new RegExp(filtro.source, filtro.flags)
+            return re.test((e.innerText || '').trim()) || re.test((e.textContent || '').trim())
+          })
         : todos[0]
-      if (!el) throw new Error(`elemento não encontrado: ${seletor}`)
+      if (!el) throw new Error(`elemento não encontrado: ${seletor}${filtro ? ` com texto ${filtro.source}` : ''}`)
 
       const cs = getComputedStyle(el)
       const corTxt = parse(cs.color)!
@@ -226,7 +239,55 @@ for (const tema of TEMAS) {
     await expect(page.getByRole('heading', { name: 'Enviar arquivos' })).toBeVisible() // continua no formulário
   })
 
+  test(`mídia (${tema}): 8 botões-ícone nomeados, campos rotulados e "Adicionar mídia" legível`, async ({ page }) => {
+    await entrarNoSend(page)
+    const sonda = await page.request.get(`${SEND}/api/admin/media`, { failOnStatusCode: false })
+    test.skip(sonda.status() === 401 || sonda.status() === 403, 'usuário sem papel de admin no Send')
+    await page.goto(`${SEND}/settings/media`)
+    await expect(page.getByRole('heading', { name: 'Mídia de Fundo' })).toBeVisible({ timeout: 30_000 })
+    await aplicarTema(page, tema)
+
+    const anonimos = await semNome(page)
+    console.log(`[mídia ${tema}] botões-ícone sem nome: ${anonimos.length}`)
+    expect(anonimos, 'controles sem nome acessível').toEqual([])
+
+    await exigirContraste(page, 'Adicionar mídia (texto sobre laranja)', 'button', /Adicionar mídia/)
+    await exigirContraste(page, 'item ativo da navegação', 'aside a', /Mídia de Fundo/)
+    await exigirContraste(page, 'descrição do item ativo', 'aside a p', /Gerenciar background/)
+
+    await page.getByRole('button', { name: 'Adicionar mídia' }).click()
+    await expect(page.getByLabel('Arquivo')).toBeVisible()
+    expect(await camposSemRotulo(page), 'campos do formulário de mídia sem rótulo').toEqual([])
+    await page.getByRole('button', { name: 'Cancelar' }).click()
+  })
+}
+
+test.describe('painel', () => {
+  let api: APIRequestContext | null = null
+  let envio: EnvioCriado | null = null
+  let motivo = ''
+
+  test.beforeAll(async () => {
+    try {
+      api = await apiLogada()
+      envio = await criarEnvioViaApi(api, ROTULO_A11Y)
+      console.log(`[painel] envio ${ROTULO_A11Y} criado: token=${envio.token} id=${envio.transferId}`)
+    } catch (e) {
+      motivo = String(e).slice(0, 200)
+      console.log(`[painel] não foi possível criar o envio ${ROTULO_A11Y}: ${motivo}`)
+    }
+  })
+
+  test.afterAll(async () => {
+    if (api && envio) {
+      console.log(`[painel] envio ${ROTULO_A11Y} apagado: HTTP ${await apagarEnvio(api, envio.transferId)}`)
+    }
+    await api?.dispose()
+  })
+
+  for (const tema of TEMAS) {
   test(`painel (${tema}): nomes, contraste, menu "…" com papéis e diálogo de exclusão cancelável`, async ({ page }) => {
+    test.skip(!envio, `sem envio ${ROTULO_A11Y} para testar o menu e o diálogo: ${motivo}`)
     await page.goto(`${SEND}/dashboard`)
     await expect(page.getByRole('heading', { name: 'Meus envios' })).toBeVisible({ timeout: 30_000 })
     await expect(page.locator('main .card').first()).toBeVisible({ timeout: 30_000 })
@@ -237,7 +298,7 @@ for (const tema of TEMAS) {
 
     console.log(`[painel ${tema}]`)
     await exigirContraste(page, 'título Meus envios', 'h1', /Meus envios/)
-    await exigirContraste(page, 'rótulo mono', 'p', /^Resumo$/)
+    await exigirContraste(page, 'rótulo mono', 'p', /^Resumo$/i)
     await exigirContraste(page, 'Novo envio (texto sobre laranja)', 'main a', /Novo envio/)
     const mono = await page.locator('p', { hasText: /^Resumo$/ }).evaluate((el) => {
       const cs = getComputedStyle(el)
@@ -247,12 +308,10 @@ for (const tema of TEMAS) {
     expect(mono.fonte, 'rótulo em JetBrains Mono').toMatch(/JetBrains/i)
     expect(mono.px, 'rótulo mono a 11px').toBeCloseTo(11, 0)
 
+    // a linha do envio criado no beforeAll (nome do arquivo no card)
     const linhas = linhasDoPainel(page)
     const quantas = await linhas.count()
-    if (quantas === 0) {
-      console.log('  sem envios no painel: menu/diálogo não testados nesta rodada')
-      return
-    }
+    expect(quantas, 'painel lista pelo menos o envio criado').toBeGreaterThan(0)
     const linha = linhas.first()
 
     // menu "…": papéis, foco no primeiro item, setas, Esc devolve o foco ao gatilho
@@ -282,26 +341,5 @@ for (const tema of TEMAS) {
     await expect(dialogo).toHaveCount(0)
     await expect(linhas, 'cancelar não apaga nada').toHaveCount(quantas)
   })
-
-  test(`mídia (${tema}): 8 botões-ícone nomeados, campos rotulados e "Adicionar mídia" legível`, async ({ page }) => {
-    await entrarNoSend(page)
-    const sonda = await page.request.get(`${SEND}/api/admin/media`, { failOnStatusCode: false })
-    test.skip(sonda.status() === 401 || sonda.status() === 403, 'usuário sem papel de admin no Send')
-    await page.goto(`${SEND}/settings/media`)
-    await expect(page.getByRole('heading', { name: 'Mídia de Fundo' })).toBeVisible({ timeout: 30_000 })
-    await aplicarTema(page, tema)
-
-    const anonimos = await semNome(page)
-    console.log(`[mídia ${tema}] botões-ícone sem nome: ${anonimos.length}`)
-    expect(anonimos, 'controles sem nome acessível').toEqual([])
-
-    await exigirContraste(page, 'Adicionar mídia (texto sobre laranja)', 'button', /Adicionar mídia/)
-    await exigirContraste(page, 'item ativo da navegação', 'aside a', /Mídia de Fundo/)
-    await exigirContraste(page, 'descrição do item ativo', 'aside a p', /Gerenciar background/)
-
-    await page.getByRole('button', { name: 'Adicionar mídia' }).click()
-    await expect(page.getByLabel('Arquivo')).toBeVisible()
-    expect(await camposSemRotulo(page), 'campos do formulário de mídia sem rótulo').toEqual([])
-    await page.getByRole('button', { name: 'Cancelar' }).click()
-  })
-}
+  }
+})
