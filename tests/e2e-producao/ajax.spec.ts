@@ -210,9 +210,9 @@ test('mídia de fundo: enviar, desativar e excluir imagem 1x1 sem recarga', asyn
   const lista = await (await page.request.get(`${SEND}/api/admin/media`)).json()
   gravarEstado({ mediaId: lista.find((m: { title: string | null; id: string }) => m.title === ROTULO)?.id ?? null })
 
-  // só desativa (nunca ativa: não vira fundo real) — o botão troca de título na hora
-  await item.getByTitle('Desativar').click()
-  await expect(item.getByTitle('Ativar')).toBeVisible()
+  // só desativa (nunca ativa: não vira fundo real) — o botão troca de nome na hora (title= virou tooltip próprio)
+  await item.getByRole('button', { name: /^Desativar / }).click()
+  await expect(item.getByRole('button', { name: /^Ativar / })).toBeVisible()
   await exigirSemRecarga(page, cargas, 'desativar mídia')
 
   await item.locator('button').last().click() // lixeira
