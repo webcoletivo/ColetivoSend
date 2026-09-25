@@ -66,9 +66,14 @@ export function ConfirmDialog({
         }
     }
 
+    // Destrutivo no vermelho AA (o --destructive do claro dá só 3,8:1 com texto claro).
+    const classeConfirmar = variant === 'danger'
+        ? 'bg-red-700 text-white hover:bg-red-800 dark:bg-destructive dark:text-destructive-foreground dark:hover:bg-destructive/90'
+        : undefined
+
     return (
         <div
-            className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-[2px]"
+            className="fixed inset-0 !m-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-[rgba(12,11,10,0.55)] backdrop-blur-[2px]"
             onMouseDown={(e) => {
                 if (e.target === e.currentTarget && !busy) onCancel()
             }}
@@ -79,14 +84,16 @@ export function ConfirmDialog({
                 aria-labelledby={tituloId}
                 aria-describedby={descricaoId}
                 onKeyDown={onKeyDown}
-                className="w-full max-w-md rounded-xl border border-border bg-card text-card-foreground shadow-2xl p-6 space-y-5 animate-scale-in"
+                className="sombra-flutuante w-full max-w-[420px] rounded-2xl border border-border bg-card text-card-foreground p-6 space-y-6 motion-safe:animate-scale-in"
             >
-                <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 shrink-0 rounded-lg bg-destructive/10 text-destructive flex items-center justify-center">
-                        <AlertTriangle className="w-5 h-5" aria-hidden="true" />
-                    </div>
+                <div className="flex items-start gap-3">
+                    {variant === 'danger' && (
+                        <div className="w-9 h-9 shrink-0 rounded-lg bg-red-500/10 text-red-700 dark:text-red-400 flex items-center justify-center">
+                            <AlertTriangle className="w-4 h-4" aria-hidden="true" />
+                        </div>
+                    )}
                     <div className="space-y-1.5 min-w-0">
-                        <h2 id={tituloId} className="text-lg font-semibold text-foreground leading-snug">
+                        <h2 id={tituloId} className="text-base font-semibold text-foreground leading-snug">
                             {title}
                         </h2>
                         <p id={descricaoId} className="text-sm text-muted-foreground leading-relaxed">
@@ -105,6 +112,7 @@ export function ConfirmDialog({
                         variant={variant}
                         onClick={onConfirm}
                         disabled={busy}
+                        className={classeConfirmar}
                         icon={busy ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : undefined}
                     >
                         {confirmLabel}

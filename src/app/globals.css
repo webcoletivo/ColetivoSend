@@ -40,6 +40,20 @@
 
     /* Gradiente primário na família do laranja */
     --gradient-primary: linear-gradient(135deg, #FF6B1F 0%, #FF8340 100%);
+
+    /* Superfícies flutuantes próprias (lista do Select, menus, toast, diálogo).
+       A sombra é fixa por tema — nunca derivada da cor do texto (no escuro
+       isso virava um "brilho branco" em volta da lista). */
+    --flutuante: #FFFFFF;
+    --flutuante-borda: #E2E2DF;
+    --sombra-flutuante: 0 12px 32px -12px rgba(28, 28, 26, 0.22), 0 2px 6px rgba(28, 28, 26, 0.06);
+    --realce-opcao: #ECECEA; /* hover/ativa por teclado */
+    --linha-rolagem: #E2E2DF;
+    /* Laranja como TEXTO (AA: 5,5:1 no branco, 4,6:1 sobre o realce) */
+    --laranja-texto: #B04A0A;
+    /* Dica (tooltip) invertida, alto contraste */
+    --dica-fundo: #1C1C1A;
+    --dica-texto: #F4F0EB;
   }
 
   .dark {
@@ -72,6 +86,16 @@
     --border: 30 8% 10.2%; /* #1C1A18 */
     --input: 30 8% 10.2%;
     --ring: 20.4 100% 56.1%;
+
+    /* Um degrau ACIMA do painel (nunca igual à página); sombra preta. */
+    --flutuante: #1C1A18;
+    --flutuante-borda: rgba(255, 255, 255, 0.08);
+    --sombra-flutuante: 0 16px 40px -12px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.4);
+    --realce-opcao: rgba(255, 255, 255, 0.06);
+    --linha-rolagem: #2A2724;
+    --laranja-texto: #FF8340;
+    --dica-fundo: #F4F0EB;
+    --dica-texto: #1C1C1A;
   }
 }
 
@@ -155,6 +179,88 @@
     @apply border-primary bg-primary/5;
   }
 
+  /* ---- Componentes próprios: padrão visual comum a todos os sistemas ---- */
+
+  /* Superfície flutuante (lista do Select, menus, toast) */
+  .superficie-flutuante {
+    background-color: var(--flutuante);
+    color: hsl(var(--popover-foreground));
+    border: 1px solid var(--flutuante-borda);
+    border-radius: 12px;
+    box-shadow: var(--sombra-flutuante);
+  }
+
+  .sombra-flutuante {
+    box-shadow: var(--sombra-flutuante);
+  }
+
+  /* Rolagem própria da lista: fina, e sem "vazar" a rolagem para a página. */
+  .rolagem-fina {
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--linha-rolagem) transparent;
+  }
+  .rolagem-fina::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .rolagem-fina::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .rolagem-fina::-webkit-scrollbar-thumb {
+    background-color: var(--linha-rolagem);
+    border-radius: 8px;
+  }
+
+  /* Entrada 120 ms (de baixo para cima; lado de cima: de cima para baixo). */
+  .entrada-flutuante {
+    animation: entradaFlutuante 120ms ease-out;
+  }
+  .entrada-flutuante[data-lado='cima'] {
+    animation-name: entradaFlutuanteCima;
+  }
+
+  /* Opção de lista (Select) e item de menu */
+  .opcao-lista {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 400;
+    cursor: pointer;
+    user-select: none;
+  }
+  .opcao-lista[data-ativa='true'],
+  .item-menu:hover,
+  .item-menu:focus-visible {
+    background-color: var(--realce-opcao);
+  }
+  .opcao-lista[aria-selected='true'] {
+    color: var(--laranja-texto);
+    font-weight: 500;
+  }
+  .opcao-lista[aria-disabled='true'] {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* Dica (tooltip): invertida, sem borda */
+  .dica {
+    background-color: var(--dica-fundo);
+    color: var(--dica-texto);
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 500;
+    padding: 6px 8px;
+    border-radius: 6px;
+    max-width: 260px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  }
+
   .toast {
     @apply fixed bottom-6 right-6 z-50 flex items-center gap-3
            px-5 py-4 rounded-xl shadow-lg
@@ -221,6 +327,23 @@
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
+}
+
+@keyframes entradaFlutuante {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes entradaFlutuanteCima {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entrada-flutuante,
+  .entrada-flutuante[data-lado='cima'] {
+    animation: none;
+  }
 }
 
 @keyframes shimmer {

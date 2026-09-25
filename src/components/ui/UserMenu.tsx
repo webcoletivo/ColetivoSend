@@ -90,14 +90,14 @@ export function UserMenu() {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 8, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.96 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="absolute right-0 top-full mt-2 w-56 bg-card rounded-xl shadow-lg border border-border py-1 z-50"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.12, ease: 'easeOut' }}
+            className="superficie-flutuante absolute right-0 top-full mt-1.5 w-56 py-1 z-[70]"
           >
             {/* User info header */}
-            <div className="px-4 py-3 border-b border-border">
+            <div className="px-4 py-3 border-b border-[var(--flutuante-borda)]">
               <p className="text-sm font-medium text-foreground truncate">
                 {user.name}
               </p>
@@ -112,7 +112,7 @@ export function UserMenu() {
                 <a
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-accent/5 transition-colors"
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground item-menu transition-colors"
                   onClick={() => setIsOpen(false)}
                 >
                   <item.icon className="w-4 h-4 text-muted-foreground" />
@@ -121,7 +121,7 @@ export function UserMenu() {
               ))}
             </div>
 
-            <div className="border-t border-border py-1">
+            <div className="border-t border-[var(--flutuante-borda)] py-1">
               <p className="px-4 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Ajuda
               </p>
@@ -129,7 +129,7 @@ export function UserMenu() {
                 <a
                   key={item.href}
                   href={item.href}
-                  className="block px-4 py-2 text-sm text-muted-foreground hover:bg-accent/5 hover:text-foreground transition-colors"
+                  className="block px-4 py-2 text-sm text-muted-foreground item-menu hover:text-foreground transition-colors"
                   onClick={() => setIsOpen(false)}
                 >
                   {item.label}

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useId, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { MoreHorizontal } from 'lucide-react'
 import { IconButton } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
@@ -31,7 +31,7 @@ interface MenuAcoesProps {
 }
 
 const TONS: Record<NonNullable<ItemMenuAcoes['tom']>, string> = {
-    normal: 'text-foreground hover:bg-muted focus-visible:bg-muted',
+    normal: 'item-menu text-foreground',
     aviso: 'text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 focus-visible:bg-amber-500/10',
     perigo: 'text-red-700 dark:text-red-400 hover:bg-red-500/10 focus-visible:bg-red-500/10',
 }
@@ -44,6 +44,7 @@ export function MenuAcoes({ label, items, open: openProp, onOpenChange, classNam
         onOpenChange?.(v)
     }
 
+    const reduzir = useReducedMotion()
     const menuId = useId()
     const gatilhoRef = useRef<HTMLButtonElement>(null)
     const raizRef = useRef<HTMLDivElement>(null)
@@ -130,15 +131,15 @@ export function MenuAcoes({ label, items, open: openProp, onOpenChange, classNam
                     id={menuId}
                     role="menu"
                     aria-label={label}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.12 }}
+                    initial={reduzir ? { opacity: 0 } : { opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.12, ease: 'easeOut' }}
                     onKeyDown={onKeyDownMenu}
-                    className="absolute right-0 top-full mt-1 w-48 bg-popover text-popover-foreground rounded-xl shadow-lg border border-border py-2 z-20"
+                    className="superficie-flutuante absolute right-0 top-full mt-1.5 w-52 p-1 z-[70]"
                 >
                     {items.map((item, i) => {
                         const classes = cn(
-                            'w-full flex items-center gap-2 px-4 py-2 text-sm text-left transition-colors outline-none',
+                            'w-full flex items-center gap-2 min-h-9 px-2.5 py-2 rounded-lg text-sm text-left transition-colors outline-none',
                             TONS[item.tom ?? 'normal'],
                         )
                         if (item.href) {

@@ -1,7 +1,7 @@
 'use client'
 
-import React, { createContext, useContext, useState, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { X, CheckCircle2, AlertCircle, Info } from 'lucide-react'
 
 type ToastType = 'success' | 'error' | 'info'
@@ -18,6 +18,9 @@ interface ToastContextType {
 
 const ToastContext = createContext<ToastContextType | null>(null)
 
+// Fecha sozinho em 5 s (pausa enquanto o ponteiro ou o foco estão no aviso).
+const DURACAO = 5000
+
 export function useToast() {
   const context = useContext(ToastContext)
   if (!context) {
@@ -26,57 +29,102 @@ export function useToast() {
   return context
 }
 
+// Status só no ícone (16 px): verde sucesso, vermelho erro, texto2 info.
+const ICONES: Record<ToastType, React.ReactNode> = {
+  success: <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />,
+  error: <AlertCircle className="w-4 h-4 text-red-700 dark:text-red-400" />,
+  info: <Info className="w-4 h-4 text-muted-foreground" />,
+}
+
+function ItemToast({ toast, onClose }: { toast: Toast; onClose: (id: string) => void }) {
+  const reduzir = useReducedMotion()
+  const restante = useRef(DURACAO)
+  const inicio = useRef(0)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pausas = useRef({ ponteiro: false, foco: false })
+
+  const retomar = useCallback(() => {
+    if (timer.current) return
+    inicio.current = Date.now()
+    timer.current = setTimeout(() => onClose(toast.id), restante.current)
+  }, [onClose, toast.id])
+
+  const pausar = useCallback(() => {
+    if (!timer.current) return
+    clearTimeout(timer.current)
+    timer.current = null
+    restante.current = Math.max(1000, restante.current - (Date.now() - inicio.current))
+  }, [])
+
+  useEffect(() => {
+    retomar()
+    return () => {
+      if (timer.current) clearTimeout(timer.current)
+      timer.current = null
+    }
+  }, [retomar])
+
+  const atualizar = () => {
+    const p = pausas.current
+    if (p.ponteiro || p.foco) pausar()
+    else retomar()
+  }
+
+  return (
+    <motion.div
+      layout={!reduzir}
+      initial={reduzir ? { opacity: 0 } : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={reduzir ? { opacity: 0 } : { opacity: 0, y: 8 }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
+      role={toast.type === 'error' ? 'alert' : 'status'}
+      onPointerEnter={() => { pausas.current.ponteiro = true; atualizar() }}
+      onPointerLeave={() => { pausas.current.ponteiro = false; atualizar() }}
+      onFocus={() => { pausas.current.foco = true; atualizar() }}
+      onBlur={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+        pausas.current.foco = false
+        atualizar()
+      }}
+      className="superficie-flutuante pointer-events-auto flex items-start gap-3 py-3 pl-4 pr-2"
+    >
+      <span aria-hidden="true" className="mt-0.5 shrink-0">{ICONES[toast.type]}</span>
+      <span className="min-w-0 flex-1 py-px text-sm font-medium leading-5 text-foreground break-words">
+        {toast.message}
+      </span>
+      <button
+        type="button"
+        onClick={() => onClose(toast.id)}
+        aria-label="Fechar aviso"
+        className="-my-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--realce-opcao)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <X className="w-4 h-4" aria-hidden="true" />
+      </button>
+    </motion.div>
+  )
+}
+
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
 
   const showToast = useCallback((message: string, type: ToastType = 'info') => {
     const id = Math.random().toString(36).slice(2)
     setToasts(prev => [...prev, { id, message, type }])
-    
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id))
-    }, 5000)
   }, [])
 
   const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id))
   }, [])
 
-  // Mesmo padrão das camadas flutuantes do sistema (dropdowns):
-  // bg-card + borda + shadow, com o status apenas no ícone.
-  const icons = {
-    success: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
-    error: <AlertCircle className="w-5 h-5 text-destructive" />,
-    info: <Info className="w-5 h-5 text-primary" />,
-  }
-
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
-        <AnimatePresence mode="popLayout">
+
+      {/* Canto inferior direito; no celular, largura total com margem de 16 px. */}
+      <div className="pointer-events-none fixed inset-x-4 bottom-4 z-[80] flex flex-col gap-2 sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[380px]">
+        <AnimatePresence>
           {toasts.map(toast => (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, x: 100 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 100 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              role={toast.type === 'error' ? 'alert' : 'status'}
-              className="flex items-center gap-3 px-5 py-4 rounded-xl bg-card border border-border shadow-lg text-foreground"
-            >
-              <span aria-hidden="true">{icons[toast.type]}</span>
-              <span className="font-medium text-sm">{toast.message}</span>
-              <button
-                type="button"
-                onClick={() => removeToast(toast.id)}
-                aria-label="Fechar aviso"
-                className="ml-2 p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <X className="w-4 h-4" aria-hidden="true" />
-              </button>
-            </motion.div>
+            <ItemToast key={toast.id} toast={toast} onClose={removeToast} />
           ))}
         </AnimatePresence>
       </div>
