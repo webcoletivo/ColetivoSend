@@ -271,3 +271,49 @@ test.describe('link público com senha (envio de teste [E2E-SEC])', () => {
     expect(dlRev.status(), 'download de link revogado').not.toBe(200)
   })
 })
+
+/**
+ * A onda de "UI própria" (28/09) trocou o <select> nativo do "Expira em" e o
+ * `required`/`type=url` da URL da propaganda por validação no navegador.
+ * O servidor precisa recusar o mesmo — provado aqui com corpos inválidos que
+ * o zod barra ANTES de gravar qualquer coisa (nada é criado).
+ */
+test('validação no servidor: expiração fora da lista e URL de propaganda inválida são recusadas (400)', async () => {
+  const api = await apiLogada()
+  try {
+    // "Expira em" só aceita 0.0416 / 1 / 7 / 30 dias.
+    const corpo = {
+      transferId: '00000000-0000-4000-8000-000000000000',
+      senderName: 'Auditoria',
+      recipientEmail: '',
+      message: '',
+      files: [{ name: 'a.txt', type: 'text/plain', size: 1, storageKey: 'x' }],
+    }
+    for (const expirationDays of [365, 0.5, 2, -1]) {
+      const r = await api.post(`${SEND}/api/transfers/finalize`, { data: { ...corpo, expirationDays }, failOnStatusCode: false })
+      expect(r.status(), `expirationDays=${expirationDays}`).toBe(400)
+      const j = (await r.json()) as { details?: { fieldErrors?: { expirationDays?: string[] } } }
+      expect(j.details?.fieldErrors?.expirationDays?.join(' '), `expirationDays=${expirationDays}`).toContain('Opção de expiração inválida')
+      await pausa()
+    }
+
+    // URL da propaganda: só http(s) absoluto — javascript:/data:/relativa/ftp caem no zod.
+    const sonda = await api.get(`${SEND}/api/admin/media`, { failOnStatusCode: false })
+    if (sonda.status() !== 200) {
+      console.log(`  usuário sem papel admin (${sonda.status()}): URL da propaganda não sondada`)
+      return
+    }
+    const base = { title: '[E2E-SEC] nunca gravada', type: 'image', isPromotion: true, fileName: 'a.png', mimeType: 'image/png', sizeBytes: 1 }
+    for (const promotionUrl of ['javascript:alert(1)', 'data:text/html,x', 'exemplo.com', 'ftp://x/y']) {
+      const r = await api.post(`${SEND}/api/admin/media`, { data: { ...base, promotionUrl }, failOnStatusCode: false })
+      expect(r.status(), promotionUrl).toBe(400)
+      const j = (await r.json()) as { details?: { fieldErrors?: { promotionUrl?: string[] } } }
+      expect(j.details?.fieldErrors?.promotionUrl?.length ?? 0, promotionUrl).toBeGreaterThan(0)
+      await pausa()
+    }
+    const lista = (await (await api.get(`${SEND}/api/admin/media`)).json()) as { title: string | null }[]
+    expect(lista.some((m) => m.title === base.title), 'nada foi gravado pelas sondas').toBe(false)
+  } finally {
+    await api.dispose()
+  }
+})
